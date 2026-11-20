@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { ComingSoon } from '../components/PageHeader'
+import { WhereToWatch } from '../components/WhereToWatch'
+import { supportsWhereToWatch } from '../lib/integrations'
 import { useItems, useRemoveItem } from '../lib/library'
 import { mediaLabels, type MediaType, type Title } from '../types'
 
@@ -139,9 +141,10 @@ export function TitleDetail() {
         <div className="space-y-6">
           {typeof d.tagline === 'string' && d.tagline && <p className="text-muted italic">{d.tagline}</p>}
           {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
+          {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
           <ComingSoon>
             Next up on this page: status controls (Owned, progress, Liked / Didn’t like, ★ favourite, priority),
-            notes, collections and Plex availability.
+            notes and collections.
           </ComingSoon>
         </div>
 

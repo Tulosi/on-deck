@@ -432,3 +432,9 @@ enabled = true
 # because the gateway's JWT check doesn't support this project's new-style API keys.
 [functions.tmdb]
 verify_jwt = false
+
+[functions.plex-link]
+verify_jwt = false
+
+[functions.seerr]
+verify_jwt = false

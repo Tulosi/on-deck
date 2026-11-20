@@ -130,7 +130,7 @@ export function useItems() {
 // ─── Writing ───────────────────────────────────────────────────────────────
 
 /** Turn a Supabase Functions error into a readable message. */
-async function functionError(error: unknown): Promise<Error> {
+export async function functionError(error: unknown): Promise<Error> {
   if (error instanceof FunctionsHttpError) {
     const body = await error.context.json().catch(() => null)
     return new Error(body?.error ?? `Request failed (${error.context.status})`)

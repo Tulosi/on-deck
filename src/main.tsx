@@ -11,7 +11,8 @@ import { CategoryPage } from './pages/CategoryPage'
 import { TitleDetail } from './pages/TitleDetail'
 import { Login } from './pages/Login'
 import { ResetPassword } from './pages/ResetPassword'
-import { Collections, NotFound, Settings, SharedList } from './pages/Placeholders'
+import { Collections, NotFound, SharedList } from './pages/Placeholders'
+import { Settings } from './pages/Settings'
 import { AuthProvider } from './lib/auth'
 
 const queryClient = new QueryClient({

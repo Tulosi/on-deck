@@ -60,6 +60,40 @@ one media type, or one collection, and revoke it later.
   **Available on Plex / Requested / Not available**, and can submit a request.
 - The Plex token is stored server-side only, never returned to the browser.
 
+## Where to watch (Movies + TV)
+
+A **Where to watch** section on the title page, in this order:
+
+1. **Plex** (only once the user has linked Plex and entered their Seerr URL in Settings).
+   - The status comes from the user's own Seerr, which already tracks what's on their Plex:
+     On your Plex (with **Open in Plex** when Seerr provides a link), Partly on your Plex,
+     Requested (awaiting approval or downloading), or Not on your Plex.
+   - "Partly on your Plex" keeps its **Open in Plex** link. Once the rest is requested it shows **Requested**
+     instead of the request button.
+   - **Movies:** a **Request on Seerr** button when the movie is missing.
+   - **TV:** **Request seasons** opens a season picker, like Seerr's own dialog. Each season shows On Plex,
+     Requested, or nothing if it's missing. You tick individual missing seasons or **All missing seasons**.
+     Seasons already on Plex or requested can't be picked, and specials (season 0) are left out.
+   - If Plex or Seerr isn't set up, the section shows a quiet "Connect Plex & Seerr" prompt instead.
+2. **Streaming services, opt-in.** Under Settings → Streaming services, the user picks the services they
+   have from the full list for their region, most popular first, with a search box. The choice is stored in
+   `profiles.streaming_services`.
+   - Title pages show only those services: included with the subscription, or free/ad-supported.
+     **Rent and buy are never shown.**
+   - With no services picked, the section shows a "Choose your streaming services" prompt.
+   - Data comes from TMDB's watch providers (by JustWatch, credited on the page as TMDB requires), for the
+     user's region (Settings → Region).
+   - Add-on channels are merged into their service, e.g. "Shudder Amazon Channel" counts as Shudder.
+   - Looked up live and cached in the app for an hour, since availability changes too often to store.
+
+**Plex linking** uses Plex's PIN sign-in: the user approves On Deck on plex.tv, so their password
+never touches On Deck. The token is stored server-side only (`user_integrations`).
+**The Seerr URL** must be public https. The server rejects localhost and private-network addresses.
+
+**Later:**
+- poster badges for availability
+- an alert when a title arrives on Plex or on one of the user's services (alongside release alerts)
+
 ## Pre-release media & release tracking
 
 Users can add titles that aren't out yet and follow their release. "Wanted" plus a future

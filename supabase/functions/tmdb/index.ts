@@ -3,6 +3,8 @@
 //   POST { action: 'add', tmdbId, mediaType }   → fetch full details (+ review scores via MDBList/OMDb),
 //                                                 upsert into `titles`, return the row. Also used to refresh
 //                                                 a title that's already cached.
+//   POST { action: 'providers', tmdbId, mediaType, country } → where to stream (subscription / free) there
+//   POST { action: 'provider-list', country }                 → all streaming services in that country
 // The caller then creates their own user_items row (RLS-protected) pointing at that title.
 // Requires secret: TMDB_READ_TOKEN. Caller must be signed in.
 import { admin, HttpError, json, requireUser, secret, serve } from '../_shared/http.ts'
@@ -132,17 +134,81 @@ async function add(tmdbId: number, mediaType: MediaType) {
   return json({ title: data })
 }
 
+// ─── Where to watch (TMDB watch providers, data by JustWatch) ──────────────
+
+interface Provider {
+  id: number
+  name: string
+  logoUrl: string | null
+}
+
+// "Shudder Amazon Channel", "AMC Plus Apple TV channel" … → the underlying service.
+const CHANNEL_SUFFIX = /\s+(amazon channel|apple tv channel|apple tv\+? channel|roku premium channel|prime video channel)$/i
+const ALIASES: Record<string, string> = { 'AMC Plus': 'AMC+', 'Amazon Prime Video with Ads': 'Amazon Prime Video' }
+
+function normaliseName(name: string) {
+  const base = name.replace(CHANNEL_SUFFIX, '').trim()
+  return ALIASES[base] ?? base
+}
+
+function toProviders(list: Json[] | undefined): Provider[] {
+  const seen = new Map<string, Provider>()
+  for (const p of [...(list ?? [])].sort((a, b) => (a.display_priority ?? 99) - (b.display_priority ?? 99))) {
+    const name = normaliseName(p.provider_name)
+    if (!seen.has(name)) seen.set(name, { id: p.provider_id, name, logoUrl: img(p.logo_path, 'w92') })
+  }
+  return [...seen.values()]
+}
+
+/**
+ * Streaming (subscription) and free/ad-supported options for one country — rent/buy is deliberately left
+ * out. The app shows only the services the user opted in to. Live lookup (the app caches it for an hour):
+ * availability changes too often to store. TMDB's terms require crediting JustWatch where it's shown.
+ */
+async function providers(tmdbId: number, mediaType: MediaType, country: string) {
+  const data = await tmdb(`/${mediaType}/${tmdbId}/watch/providers`)
+  const r = (data.results ?? {})[country] as Json | undefined
+  const stream = toProviders(r?.flatrate)
+  const streamNames = new Set(stream.map((p) => p.name))
+  const free = toProviders([...(r?.free ?? []), ...(r?.ads ?? [])]).filter((p) => !streamNames.has(p.name))
+  return json({
+    country,
+    link: r?.link ?? null, // TMDB → JustWatch page with deep links
+    stream,
+    free,
+  })
+}
+
+/** Every streaming service available in a country (movies + TV), for the Settings opt-in list. */
+async function providerList(country: string) {
+  const [movies, tv] = await Promise.all([
+    tmdb('/watch/providers/movie', { watch_region: country, language: 'en-US' }),
+    tmdb('/watch/providers/tv', { watch_region: country, language: 'en-US' }),
+  ])
+  const all = [...(movies.results ?? []), ...(tv.results ?? [])].map((p: Json) => ({
+    ...p,
+    display_priority: p.display_priorities?.[country] ?? p.display_priority ?? 99,
+  }))
+  return json({ country, services: toProviders(all).map(({ name, logoUrl }) => ({ name, logoUrl })) })
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'method_not_allowed')
   await requireUser(req)
 
   const body = (await req.json().catch(() => null)) as Json | null
   if (body?.action === 'search' && typeof body.query === 'string') return search(body.query)
-  if (body?.action === 'add') {
+  if (body?.action === 'provider-list') {
+    const country = typeof body.country === 'string' && /^[A-Z]{2}$/.test(body.country) ? body.country : 'US'
+    return providerList(country)
+  }
+  if (body?.action === 'add' || body?.action === 'providers') {
     const id = Number(body.tmdbId)
     if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'bad_tmdb_id')
     if (body.mediaType !== 'movie' && body.mediaType !== 'tv') throw new HttpError(400, 'bad_media_type')
-    return add(id, body.mediaType)
+    if (body.action === 'add') return add(id, body.mediaType)
+    const country = typeof body.country === 'string' && /^[A-Z]{2}$/.test(body.country) ? body.country : 'US'
+    return providers(id, body.mediaType, country)
   }
   throw new HttpError(400, 'unknown_action')
 })

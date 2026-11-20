@@ -11,26 +11,6 @@ export function Collections() {
   )
 }
 
-export function Settings() {
-  return (
-    <div className="max-w-2xl space-y-8">
-      <PageHeader title="Settings" />
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-fg">Region &amp; currency</h2>
-        <ComingSoon>Pick the country and currency used for Steam and gg.deals prices.</ComingSoon>
-      </section>
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-fg">Plex &amp; Seerr</h2>
-        <ComingSoon>Link your Plex account and enter your Seerr URL to see what’s on your server and request what isn’t.</ComingSoon>
-      </section>
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-fg">Sharing</h2>
-        <ComingSoon>Create and revoke read-only share links for your library, a category or a collection.</ComingSoon>
-      </section>
-    </div>
-  )
-}
-
 /** Public, read-only view of someone's shared list. Lives outside the app shell. */
 export function SharedList() {
   const { token } = useParams()

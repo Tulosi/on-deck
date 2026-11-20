@@ -13,7 +13,8 @@ cut out from the noise.
 | Auth | Supabase Auth — Google OAuth, email + password |
 | Database | Supabase Postgres with Row Level Security (users see only their own rows) |
 | Server logic | Supabase Edge Functions (Deno) — proxy every keyed / CORS-blocked API, cache results |
-| Scheduled jobs | Supabase cron (pg_cron) — daily price refresh for Wanted games |
+| Scheduled jobs | Supabase cron (pg_cron) — daily price refresh for Wanted games; daily release check for followed titles |
+| Notifications | In-app inbox + Web Push (PWA, VAPID). No email. |
 | Mobile | Responsive + installable PWA |
 
 Secrets (API keys, Plex tokens) never reach the browser. The frontend only knows the
@@ -59,11 +60,64 @@ one media type, or one collection, and revoke it later.
   **Available on Plex / Requested / Not available**, and can submit a request.
 - The Plex token is stored server-side only, never returned to the browser.
 
+## Pre-release media & release tracking
+
+Users can add titles that aren't out yet and follow their release. "Wanted" plus a future
+release date reads as **Awaiting release**. That label is derived from the data, not a separate status.
+
+### Release data
+
+| Category | Source | What's tracked |
+|---|---|---|
+| Games | IGDB release dates + status, Steam `coming_soon` / Early Access genre | Release date (exact or fuzzy), Early Access → 1.0 |
+| Movies | TMDB release dates by type and country | Theatrical **or** digital release, chosen per movie (default: digital) |
+| TV | TMDB `next_episode_to_air`, season air dates | Next **season premiere** (not individual episodes) |
+| Books | Hardcover | Publication date |
+
+**Fuzzy dates:** every release date has a precision: `day | month | quarter | year | tbd`.
+The countdown only shows "in X days" for exact dates. Otherwise it shows the precision as given:
+"March 2027", "Q2 2027", "2027" or "TBA". Never invent a false exact date.
+
+### Countdown display
+- Poster card: a small chip, e.g. `12 DAYS`, `MAR 14`, `Q2 2027`, `EARLY ACCESS`.
+- Title page: the full date, which release type it is, a release history if the date has slipped,
+  and a **Notify me** toggle.
+- Home: a **Coming Soon** row, sorted by soonest release with exact dates first.
+
+### Notifications
+- **Opt-in per title** with a "Notify me" toggle. It's on by default when adding a pre-release title.
+- **Triggers:**
+  - one week before release, once the date is exact
+  - on release day
+  - when the date firms up or changes, e.g. "Q2 2027" becomes "Apr 9", a delay, or a release pulled forward
+  - Steam Early Access → 1.0 (full release)
+  - new TV season premieres
+- **Channels:**
+  - an in-app inbox (bell icon with unread count), always on
+  - Web Push to phone or desktop through the installed PWA; per-user, opt-in per device
+  - Push on iPhone only works when the app is added to the home screen (iOS 16.4+)
+- No email for now.
+- **Mechanics:**
+  - a daily cron Edge Function (`refresh-releases`) re-checks every followed, unreleased title
+  - it compares against the stored state and writes events: date_changed, released, left_early_access, new_season
+  - it then fans out notifications to followers and sends Web Push using VAPID keys stored as server secrets
+- **Dedup:** each (user, title, event) is notified once. Release-day and one-week alerts are tied to
+  the specific date, so a delay re-arms them.
+
+### Schema additions (future migration)
+- `titles`: `release_date`, `release_precision`, `release_status` (`announced | early_access | released | cancelled`),
+  `next_season_date`, `release_history jsonb`.
+- `user_items`: `notify_release boolean`, `movie_release_type` (`theatrical | digital`).
+- `notifications`: user inbox (user_id, title_id, kind, payload, created_at, read_at).
+- `push_subscriptions`: Web Push endpoints per user and device.
+- `release_events`: change log written by `refresh-releases`.
+- All new tables need explicit grants (see README).
+
 ## UI
 
 - Plex-style shell: left sidebar (Home, Movies, TV Shows, Games, Books, Collections, Settings), top search bar.
   On phones the sidebar becomes a bottom tab bar.
-- **Home**: horizontal poster rows — Up Next (high priority), In Progress, On Sale, Upcoming, Recently Added.
+- **Home**: horizontal poster rows — Up Next (high priority), In Progress, Coming Soon (countdowns), On Sale, Recently Added.
 - **Category pages**: filterable poster grid. Filters: genre, year, status, priority; games add feature filters
   (co-op online/local, PvP, Steam Deck status, HLTB length).
 - **Theme**: dark by default, optional light. Palette: black, warm grey, lemon yellow.

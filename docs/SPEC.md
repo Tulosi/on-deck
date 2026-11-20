@@ -83,14 +83,47 @@ Prices refresh daily for Wanted/unowned games (cron) and when a game page is ope
 
 ## Tracking model (per user, per title)
 
-- **Owned** — independent toggle.
 - **Progress** — `wanted → in_progress → completed | dropped`.
   Displayed as Watched / Played / Read for the media type.
 - **Verdict** — `liked | disliked` (thumbs only, no numeric score).
 - **All-Time Favourite** — independent ★ toggle.
 - **Priority** — `high | medium | low`, filterable.
 - **Notes** — free text.
-- **TV progress** — current season / episode (shown as `S2 · E4` under the poster).
+- **Title page card "Tracking"** — fields: **Status** (Wanted / In Progress / Watched·Played·Read / Dropped),
+  **Progress** (TV: last episode watched, with a watched / aired completion bar), **Rating** (Liked /
+  Didn't like / ★ All-Time Favourite), **Priority**, **Notes**.
+- **TV progress** — the last episode watched (shown as `S2 · E4` under the poster).
+  Picked with season and episode dropdowns limited to the show's real seasons and episode counts.
+- **Plex watch sync (TV)** — one source of truth at a time, per show (`user_items.plex_sync`, default on).
+  - **Sync on** and the show is on the user's Plex: **Progress** is read-only and mirrors the user's own
+    Plex watch history exactly, forwards or backwards (`plex-watch` function: finds the show on their servers
+    by title, confirms it by TMDB id, reads per-episode view counts). It shows "S1 · E8 · from Plex · <server>",
+    with **Sync from Plex** and **Override** buttons.
+  - **Override** turns sync off for that show: the dropdowns become the only value, with a note showing what
+    Plex says and a **Use Plex sync** button that turns it back on and adopts Plex's value.
+  - **Not on Plex / Plex not linked**: dropdowns only.
+  - Progress while syncing: Wanted becomes In Progress once anything is watched, and Watched once the final
+    episode of an ended or cancelled show is watched. Dropped is never changed.
+- **Plex watch sync (Movies)** — same per-title switch (`plex_sync`), **forward only**: started in Plex
+  (resume point, no completed play) moves Wanted → **In Progress**; finished (view count > 0) moves Wanted or
+  In Progress → **Watched**. It never moves a movie backwards, since it may have been watched outside Plex, and
+  never touches Dropped. A **Progress** row shows "Not started" / "45% watched" / "Watched", from Plex, with a bar,
+  **Sync from Plex** and **Override** / **Use Plex sync**. Hidden when the movie isn't on the user's Plex.
+- **Per-season tracking (TV)** — under Progress, a collapsed-by-default **More options** panel lists each
+  season (aired and watched counts) with **Auto · Watched · Unwatched · Ignore** (`user_items.season_overrides`,
+  `{ "<season>": "watched" | "unwatched" | "ignored" }`; Auto = not listed).
+  - **Auto** follows Progress, and Plex sync.
+  - **Watched / Unwatched** force the whole season.
+  - **Ignore** counts the season as done: it's tallied in the count (e.g. `15 / 15 · 7 ignored`) and drawn in pale
+    orange on the progress bar. It's skipped for "caught up" when marking the show Watched.
+- **Renewing shows (TV)** — a show marked **Watched** counts as caught up as of when it was marked
+  (`completed_at`). Marking it Watched by hand (when Plex isn't syncing it) also sets Progress to the latest
+  aired episode. If an episode airs after `completed_at` (the show's last air date is later), it goes back to
+  **In Progress** automatically. This is checked across the whole list whenever the app loads. To notice new
+  episodes promptly, a show's details are refreshed as soon as its stored "next episode" date has passed,
+  rather than only weekly with the review scores.
+- **In Your Library** — the "owned" flag, for games and books only. Movies and TV show **Available**
+  (on Plex or one of the user's streaming services) or "Not available via any of your sources" instead.
 - **Collections** — user-named lists that can mix media types.
 
 ## Sharing
@@ -144,6 +177,25 @@ never touches On Deck. The token is stored server-side only (`user_integrations`
 
 Users can add titles that aren't out yet and follow their release. "Wanted" plus a future
 release date reads as **Awaiting release**. That label is derived from the data, not a separate status.
+
+### Pre-release flag (built)
+A movie or show is **pre-release** when its release / first-air date is in the future, or when it has no date and
+TMDB lists it as not released (Rumored, Planned, In Production, Post Production). Shown as:
+- **Poster:** a bottom-left chip: `TODAY`, `TOMORROW`, `IN 12 DAYS` (within a month), `DEC 18`, `MAR 14 '27`,
+  or `TBA`.
+- **Title page:** a "Pre-release · Dec 15, 2026 · in 25 days" badge. The side panel says Releases / Premieres
+  instead of Released / First aired.
+- **Home:** a **Coming Soon** row, soonest first, with TBA titles last.
+
+### TV schedule flags (built)
+For released shows with an announced next episode (TMDB `next_episode_to_air`):
+- **Airing** (next episode isn't a premiere), in blue:
+  - poster chip `NEW EP TODAY` / `NEXT EP WED` (within a week) / `NEXT EP DEC 3`
+  - title badge "Airing · Next episode S2 · E8 — Wed, Nov 25 · in 5 days"
+- **New season** (next episode is E1), in yellow:
+  - poster chip `S3 IN 12 DAYS` (within a month) / `S3 · MAR 14`
+  - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
+- A show that hasn't premiered at all shows the pre-release flag instead.
 
 ### Release data
 
@@ -208,6 +260,16 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - Games, **unowned only**: cheapest price (Steam or key shop) with its % off Steam's full price
 - Movies/TV: Plex availability dot (available / requested / missing)
 - Title, year, secondary line (e.g. `S2 · E4`, platform, author)
+
+### Toolbar & poster labels
+Browsing pages (Home, Movies, TV, Games, Books, Collections) have a toolbar row under the search bar. It holds
+view options now; filtering and sorting will move there too.
+- **Poster labels** (the badges on posters: score, status, rating, price, Plex, release …): a compact 3-position
+  switch, a pill with a sliding round knob, with a readout to its right: **Labels shown** (default) ·
+  **Labels on hover** (revealed on hover or keyboard focus) · **Labels hidden**.
+- Click a position to jump to it, or the current one to cycle. Arrow keys work too.
+- Saved to the profile (`profiles.card_chips = {"all": mode}`) when signed in, or kept in the browser when
+  signed out.
 
 ### Title page (click-through)
 Everything else: backdrop, synopsis, all scores, the Steam vs key-shop price breakdown (see Game pricing), HLTB times,

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { ComingSoon } from '../components/PageHeader'
+import { StatusControls } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
 import { useItems, useRemoveItem } from '../lib/library'
+import { releaseInfo, releaseLong, tvSchedule, tvScheduleLong } from '../lib/release'
 import { mediaLabels, type MediaType, type Title } from '../types'
 
 const typeIcon: Record<MediaType, typeof Film> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
@@ -85,6 +87,8 @@ export function TitleDetail() {
   const runtime = typeof d.runtime === 'number' && d.runtime > 0 ? `${d.runtime} min` : undefined
   const seasons = typeof d.number_of_seasons === 'number' ? `${d.number_of_seasons}` : undefined
   const networks = Array.isArray(d.networks) ? (d.networks as string[]).join(', ') : undefined
+  const release = releaseInfo(title)
+  const schedule = release.preRelease ? null : tvSchedule(title)
   const next = d.next_episode_to_air as { air_date?: string; season_number?: number; episode_number?: number } | null
   // Mid-season: the next episode isn't a premiere and hasn't aired yet → the current season is still airing.
   const currentlyAiring =
@@ -140,6 +144,24 @@ export function TitleDetail() {
           <p className="mt-1 font-mono text-sm text-muted">
             {[title.year, title.genres.join(', ')].filter(Boolean).join(' · ')}
           </p>
+          {release.preRelease && (
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/70 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-ink">
+              <CalendarClock className="size-3.5" />
+              Pre-release · {releaseLong(release)}
+            </p>
+          )}
+          {schedule && (
+            <p
+              className={
+                schedule.kind === 'airing'
+                  ? 'mt-3 inline-flex items-center gap-1.5 rounded-full border border-info/60 bg-info/10 px-3 py-1 text-xs font-medium text-info'
+                  : 'mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/70 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-ink'
+              }
+            >
+              {schedule.kind === 'airing' ? <Radio className="size-3.5" /> : <CalendarClock className="size-3.5" />}
+              {schedule.kind === 'airing' ? 'Airing' : 'New season'} · {tvScheduleLong(schedule)}
+            </p>
+          )}
           <ScoreChips title={title} />
         </div>
       </div>
@@ -148,16 +170,21 @@ export function TitleDetail() {
         <div className="space-y-6">
           {typeof d.tagline === 'string' && d.tagline && <p className="text-muted italic">{d.tagline}</p>}
           {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
+          {!isSample && <StatusControls item={item} />}
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
-          <ComingSoon>
-            Next up on this page: status controls (Owned, progress, Liked / Didn’t like, ★ favourite, priority),
-            notes and collections.
-          </ComingSoon>
+          <ComingSoon>Coming soon on this page: adding the title to your collections.</ComingSoon>
         </div>
 
         <aside className="space-y-6">
           <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-            <Fact label={title.mediaType === 'tv' ? 'First aired' : 'Released'} value={formatDate(title.releaseDate)} />
+            <Fact
+              label={
+                release.preRelease
+                  ? title.mediaType === 'tv' ? 'Premieres' : 'Releases'
+                  : title.mediaType === 'tv' ? 'First aired' : 'Released'
+              }
+              value={formatDate(title.releaseDate)}
+            />
             <Fact label="Runtime" value={runtime} />
             <Fact label="Seasons" value={seasons} />
             <Fact label="Network" value={networks} />

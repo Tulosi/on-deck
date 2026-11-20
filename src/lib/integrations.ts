@@ -39,6 +39,8 @@ export interface Profile {
   seerr_url: string | null
   /** Streaming services the user opted in to (normalised names, e.g. "Netflix"). */
   streaming_services: string[]
+  /** Poster chip visibility: { chip: "show" | "hover" | "hide" } (see lib/chips.ts). */
+  card_chips: Record<string, 'show' | 'hover' | 'hide'>
 }
 
 export function useProfile() {
@@ -49,7 +51,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase!
         .from('profiles')
-        .select('country_code, currency, seerr_url, streaming_services')
+        .select('country_code, currency, seerr_url, streaming_services, card_chips')
         .eq('user_id', user!.id)
         .single()
       if (error) throw error
@@ -223,3 +225,67 @@ export function useRequestOnSeerr(title: Title) {
 }
 
 export const supportsWhereToWatch = (mediaType: MediaType) => mediaType === 'movie' || mediaType === 'tv'
+
+export type PlexWatch =
+  | { configured: false }
+  | { configured: true; found: false; reason: 'not_on_plex' | 'no_reachable_server' }
+  | {
+      configured: true
+      found: true
+      server: string
+      /** TV */
+      lastWatched?: { season: number; episode: number } | null
+      watchedCount?: number
+      plexEpisodes?: number
+      /** Movies */
+      movie?: { state: 'watched' | 'in_progress' | 'unwatched'; percent: number }
+    }
+
+/** The user's Plex watch state for a show (last watched episode) or movie. Only runs once Plex is linked. */
+export function usePlexWatch(title: Title) {
+  const { user } = useAuth()
+  const plex = usePlexStatus()
+  const ref = tmdbRef(title)
+  return useQuery({
+    queryKey: ['plex-watch', user?.id, ref?.mediaType, ref?.tmdbId],
+    enabled: !!user && !!ref && !!plex.data?.linked,
+    staleTime: 10 * 60_000,
+    retry: false,
+    queryFn: () =>
+      callFn<PlexWatch>('plex-watch', {
+        action: 'sync',
+        tmdbId: ref!.tmdbId,
+        title: title.title,
+        mediaType: ref!.mediaType,
+      }),
+  })
+}
+
+export type Availability =
+  | { state: 'loading' }
+  | { state: 'no-sources' } // no Plex/Seerr and no streaming services picked
+  | { state: 'available'; via: string[] } // e.g. ["Plex", "Netflix"]
+  | { state: 'unavailable' }
+
+/**
+ * Is this movie/show watchable through any of the user's sources: on their Plex (fully or partly) or on
+ * one of their opted-in streaming services (subscription or free)? Reuses the Where-to-watch queries,
+ * so it costs no extra requests.
+ */
+export function useAvailability(title: Title): Availability {
+  const seerr = useSeerrStatus(title)
+  const providers = useProviders(title)
+  const profile = useProfile()
+
+  const mine = new Set(profile.data?.streaming_services ?? [])
+  const plexConfigured = !!seerr.data?.configured
+  if (profile.isLoading || seerr.isLoading || (mine.size > 0 && providers.isLoading)) return { state: 'loading' }
+  if (!plexConfigured && mine.size === 0) return { state: 'no-sources' }
+
+  const via: string[] = []
+  if (seerr.data?.configured && (seerr.data.status === 'available' || seerr.data.status === 'partial')) via.push('Plex')
+  for (const p of [...(providers.data?.stream ?? []), ...(providers.data?.free ?? [])]) {
+    if (mine.has(p.name) && !via.includes(p.name)) via.push(p.name)
+  }
+  return via.length > 0 ? { state: 'available', via } : { state: 'unavailable' }
+}

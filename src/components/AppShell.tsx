@@ -1,9 +1,13 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { useScoreBackfill } from '../lib/library'
+import { useRenewalCheck, useScoreBackfill } from '../lib/library'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav, Sidebar } from './Sidebar'
+import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
+
+/** Browsing pages get the toolbar row (display options now; filters and sorting later). */
+const TOOLBAR_PATHS = ['/', '/movies', '/tv', '/games', '/books', '/collections']
 
 const bannerClass =
   'border-b border-line bg-surface px-4 py-1.5 text-center font-mono text-[11px] text-muted uppercase md:px-6'
@@ -11,11 +15,14 @@ const bannerClass =
 export function AppShell() {
   const { user, loading } = useAuth()
   useScoreBackfill()
+  useRenewalCheck()
+  const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
+        {TOOLBAR_PATHS.includes(pathname) && <Toolbar />}
         {!isSupabaseConfigured ? (
           <div className={bannerClass}>PREVIEW MODE · sample data · connect Supabase to sign in and save</div>
         ) : (

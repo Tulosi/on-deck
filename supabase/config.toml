@@ -438,3 +438,6 @@ verify_jwt = false
 
 [functions.seerr]
 verify_jwt = false
+
+[functions.plex-watch]
+verify_jwt = false

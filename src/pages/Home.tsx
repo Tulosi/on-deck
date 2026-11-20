@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { useItems } from '../lib/library'
+import { releaseInfo } from '../lib/release'
 
 export function Home() {
   const { items, isLoading, isSample, error } = useItems()
@@ -30,6 +31,12 @@ export function Home() {
   const inProgress = items.filter((i) => i.progress === 'in_progress')
   const onSale = items.filter((i) => i.title.mediaType === 'game' && !i.owned && i.price?.discountPct)
   const finished = items.filter((i) => i.progress === 'completed')
+  // Pre-release movies/shows, soonest first; no date yet (TBA) at the end.
+  const comingSoon = items
+    .map((i) => ({ item: i, release: releaseInfo(i.title) }))
+    .filter((x) => x.release.preRelease)
+    .sort((a, b) => (a.release.date ?? '9999').localeCompare(b.release.date ?? '9999'))
+    .map((x) => x.item)
 
   return (
     <div className="space-y-10">
@@ -37,7 +44,7 @@ export function Home() {
       <PosterRow title="Up Next" hint="High priority, not started" items={upNext} />
       <PosterRow title="In Progress" items={inProgress} />
       <PosterRow title="On Sale" hint="Wanted games with a discount" items={onSale} />
-      {/* "Coming Soon" row arrives with release tracking (docs/SPEC.md). */}
+      <PosterRow title="Coming Soon" hint="Not released yet — soonest first" items={comingSoon} />
       <PosterRow title="Recently Finished" items={finished} />
     </div>
   )

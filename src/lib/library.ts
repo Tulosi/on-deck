@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
-import type { MediaType, Priority, Progress, UserItem, Verdict } from '../types'
+import type { MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
 import { useAuth } from './auth'
 import { supabase } from './supabase'
 
@@ -40,6 +40,9 @@ interface ItemRow {
   notes: string | null
   current_season: number | null
   current_episode: number | null
+  plex_sync: boolean
+  completed_at: string | null
+  season_overrides: Record<string, SeasonOverride> | null
   title: TitleRow
 }
 
@@ -61,6 +64,17 @@ function scoresNeedRefresh(r: TitleRow['ratings']): boolean {
   return Date.now() - at >= (r.imdb ? 7 * DAY_MS : DAY_MS)
 }
 
+/**
+ * TV: the stored "next episode" has aired since we last looked, so episode counts / last air date are out
+ * of date. Refreshing the title (same path as score refresh) picks up the new episodes — which is what
+ * lets a show marked Watched flip back to In Progress when it renews.
+ */
+function airingInfoStale(t: TitleRow): boolean {
+  if (t.media_type !== 'tv') return false
+  const next = t.metadata.next_episode_to_air as { air_date?: string } | null | undefined
+  return !!next?.air_date && next.air_date <= new Date().toISOString().slice(0, 10)
+}
+
 function toUserItem(row: ItemRow): UserItem {
   const t = row.title
   return {
@@ -71,6 +85,9 @@ function toUserItem(row: ItemRow): UserItem {
     favourite: row.favourite,
     priority: row.priority ?? undefined,
     notes: row.notes ?? undefined,
+    plexSync: row.plex_sync ?? true,
+    completedAt: row.completed_at ?? undefined,
+    seasonOverrides: row.season_overrides ?? {},
     tvProgress:
       row.current_season != null ? { season: row.current_season, episode: row.current_episode ?? 1 } : undefined,
     title: {
@@ -93,7 +110,7 @@ function toUserItem(row: ItemRow): UserItem {
         metacritic: t.ratings.metacritic ?? undefined,
         tmdb: t.ratings.tmdb,
       },
-      needsScores: t.source === 'tmdb' && scoresNeedRefresh(t.ratings),
+      needsScores: t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t)),
     },
   }
 }
@@ -115,7 +132,7 @@ export function useItems() {
       const { data, error } = await supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, completed_at, season_overrides, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -205,6 +222,108 @@ export function useScoreBackfill() {
       await queryClient.invalidateQueries({ queryKey: libraryKey(user.id) })
     })()
   }, [items, isSample, user, queryClient])
+}
+
+/** Fields the user can change on their own item. */
+export interface ItemPatch {
+  owned?: boolean
+  progress?: Progress
+  verdict?: Verdict | null
+  favourite?: boolean
+  priority?: Priority | null
+  notes?: string | null
+  tvProgress?: { season: number; episode: number } | null
+  /** TV: true = Watched-up-to mirrors Plex; false = manual override for this show. */
+  plexSync?: boolean
+  /** TV: per-season completion overrides; omitted seasons are auto. */
+  seasonOverrides?: Record<string, SeasonOverride>
+}
+
+/**
+ * Saves changes to one of the user's items. The UI updates immediately (optimistic) and rolls back if
+ * the save fails. Progress changes also stamp started_at / completed_at.
+ */
+export function useUpdateItem() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const key = libraryKey(user?.id)
+
+  return async (item: UserItem, patch: ItemPatch) => {
+    const row: Record<string, unknown> = {}
+    if (patch.owned !== undefined) row.owned = patch.owned
+    if (patch.verdict !== undefined) row.verdict = patch.verdict
+    if (patch.favourite !== undefined) row.favourite = patch.favourite
+    if (patch.priority !== undefined) row.priority = patch.priority
+    if (patch.notes !== undefined) row.notes = patch.notes?.trim() ? patch.notes : null
+    if (patch.plexSync !== undefined) row.plex_sync = patch.plexSync
+    if (patch.seasonOverrides !== undefined) row.season_overrides = patch.seasonOverrides
+    if (patch.tvProgress !== undefined) {
+      row.current_season = patch.tvProgress?.season ?? null
+      row.current_episode = patch.tvProgress?.episode ?? null
+    }
+    if (patch.progress !== undefined) {
+      row.progress = patch.progress
+      const now = new Date().toISOString()
+      if (patch.progress === 'in_progress' && item.progress === 'wanted') row.started_at = now
+      if (patch.progress === 'completed') row.completed_at = now
+      if (patch.progress === 'wanted') {
+        row.started_at = null
+        row.completed_at = null
+      }
+    }
+
+    // Optimistic update of the cached library. Cancel any in-flight refetch first so it can't land
+    // afterwards with older data and overwrite this change.
+    await queryClient.cancelQueries({ queryKey: key })
+    const previous = queryClient.getQueryData<UserItem[]>(key)
+    queryClient.setQueryData<UserItem[]>(key, (items) =>
+      items?.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              ...(patch.owned !== undefined && { owned: patch.owned }),
+              ...(patch.progress !== undefined && { progress: patch.progress }),
+              ...(patch.verdict !== undefined && { verdict: patch.verdict ?? undefined }),
+              ...(patch.favourite !== undefined && { favourite: patch.favourite }),
+              ...(patch.priority !== undefined && { priority: patch.priority ?? undefined }),
+              ...(patch.notes !== undefined && { notes: patch.notes ?? undefined }),
+              ...(patch.tvProgress !== undefined && { tvProgress: patch.tvProgress ?? undefined }),
+              ...(patch.plexSync !== undefined && { plexSync: patch.plexSync }),
+              ...(patch.seasonOverrides !== undefined && { seasonOverrides: patch.seasonOverrides }),
+            }
+          : i,
+      ),
+    )
+
+    const { error } = await supabase!.from('user_items').update(row).eq('id', item.id)
+    if (error) {
+      queryClient.setQueryData(key, previous)
+      throw error
+    }
+    // Re-sync with the database once the write has landed (no-op visually when it matches).
+    void queryClient.invalidateQueries({ queryKey: key })
+  }
+}
+
+/**
+ * Renewing shows: a TV show marked Watched is "caught up" as of when it was marked. If an episode has aired
+ * since then (the show's last air date is after completed_at), it goes back to In Progress. Runs across the
+ * whole list on load (mount once, in AppShell). Shows marked Watched before completed_at existed are skipped.
+ */
+export function useRenewalCheck() {
+  const { items, isSample } = useItems()
+  const update = useUpdateItem()
+
+  useEffect(() => {
+    if (isSample || !supabase) return
+    for (const item of items) {
+      if (item.title.mediaType !== 'tv' || item.progress !== 'completed' || !item.completedAt) continue
+      const lastAir = item.title.details?.last_air_date
+      if (typeof lastAir !== 'string') continue
+      if (lastAir > item.completedAt.slice(0, 10)) void update(item, { progress: 'in_progress' }).catch(() => undefined)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, isSample])
 }
 
 export function useRemoveItem() {

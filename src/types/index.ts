@@ -5,6 +5,7 @@ export type Progress = 'wanted' | 'in_progress' | 'completed' | 'dropped'
 export type Verdict = 'liked' | 'disliked'
 export type Priority = 'high' | 'medium' | 'low'
 export type PlexStatus = 'available' | 'requested' | 'missing'
+export type SeasonOverride = 'watched' | 'unwatched' | 'ignored'
 
 /** Shared, cached metadata for a title (one row per real-world title). */
 export interface Title {
@@ -49,6 +50,12 @@ export interface UserItem {
   priority?: Priority
   notes?: string
   tvProgress?: { season: number; episode: number }
+  /** TV: Watched-up-to mirrors Plex (default) unless the user overrode it for this show. */
+  plexSync?: boolean
+  /** When the user (or sync) marked it Watched/Played/Read. */
+  completedAt?: string
+  /** TV: per-season completion overrides (season number → state); omitted seasons are auto. */
+  seasonOverrides?: Record<string, SeasonOverride>
   /** Games only — best current price across Steam and gg.deals. */
   price?: { amount: string; discountPct?: number }
   /** Movies/TV only — from the user's Seerr instance. */

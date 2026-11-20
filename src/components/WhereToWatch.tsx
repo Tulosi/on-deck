@@ -70,7 +70,7 @@ function PlexRow({ title }: { title: Title }) {
     )
   }
 
-  const { status, requested, plexUrl, seasons } = seerr.data
+  const { status, requested, plexUrl, seerrUrl, seasons } = seerr.data
   const onPlex = status === 'available' || status === 'partial'
   const copy = plexCopy[status]
   // TV decides per season; movies by overall state.
@@ -89,46 +89,76 @@ function PlexRow({ title }: { title: Title }) {
     }
   }
 
+  // One clear secondary line, and a "Requested" badge only when there's nothing left to request.
+  const someSeasonsRequested = !!seasons?.some((s) => s.requested)
+  const note = seasons
+    ? someSeasonsRequested && canRequest
+      ? 'Some seasons requested'
+      : status === 'partial' && requested
+        ? 'The rest has been requested'
+        : null
+    : null
+  // Nothing left to request and not fully on Plex → say so, rather than leaving the user wondering.
+  const showRequestedBadge = !canRequest && status !== 'available' && status !== 'pending' && status !== 'processing'
+  const pill = 'flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs'
+
   return (
     <div className="space-y-2">
-    <div className={box}>
-      {icon}
-      <div className="min-w-0 flex-1">
-        <p className={clsx('flex items-center gap-1.5 text-sm font-medium', copy.tone)}>
-          {onPlex && <Check className="size-4" />}
-          {copy.label}
-        </p>
-        {status === 'partial' && requested && <p className="text-xs text-info">The rest has been requested</p>}
-        {error && <p className="text-xs text-bad">{error}</p>}
+      <div className={box}>
+        {/* Status keeps a minimum width; when space runs out the action group wraps below it as a unit. */}
+        <div className="flex min-w-[12rem] flex-1 items-center gap-3">
+          {icon}
+          <div className="min-w-0">
+            <p className={clsx('flex items-center gap-1.5 text-sm font-medium', copy.tone)}>
+              {onPlex && <Check className="size-4 shrink-0" />}
+              {copy.label}
+            </p>
+            {note && <p className="text-xs text-info">{note}</p>}
+            {error && <p className="text-xs text-bad">{error}</p>}
+          </div>
+        </div>
+        {(onPlex && plexUrl) || seerrUrl || showRequestedBadge || canRequest ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {onPlex && plexUrl && (
+              <a
+                href={plexUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={`${pill} border border-line text-fg hover:border-accent`}
+              >
+                Open in Plex <ExternalLink className="size-3.5" />
+              </a>
+            )}
+            {seerrUrl && (
+              <a
+                href={seerrUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={`${pill} border border-line text-fg hover:border-accent`}
+              >
+                Open in Seerr <ExternalLink className="size-3.5" />
+              </a>
+            )}
+            {showRequestedBadge && (
+              <span className={`${pill} border border-line text-info`}>
+                <Check className="size-3.5" /> Already Requested
+              </span>
+            )}
+            {canRequest && (
+              <button
+                type="button"
+                onClick={() => (seasons ? setPicking((p) => !p) : doRequest())}
+                disabled={requesting}
+                aria-expanded={seasons ? picking : undefined}
+                className={`${pill} bg-accent font-medium text-accent-fg hover:brightness-95 disabled:opacity-60`}
+              >
+                {requesting ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                {seasons ? 'Request seasons' : 'Request on Seerr'}
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
-      {onPlex && plexUrl && (
-        <a
-          href={plexUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
-        >
-          Open in Plex <ExternalLink className="size-3.5" />
-        </a>
-      )}
-      {requested && status !== 'pending' && status !== 'processing' && (
-        <span className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-info">
-          <Check className="size-3.5" /> Requested
-        </span>
-      )}
-      {canRequest && (
-        <button
-          type="button"
-          onClick={() => (seasons ? setPicking((p) => !p) : doRequest())}
-          disabled={requesting}
-          aria-expanded={seasons ? picking : undefined}
-          className="flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg hover:brightness-95 disabled:opacity-60"
-        >
-          {requesting ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-          {seasons ? 'Request seasons' : 'Request on Seerr'}
-        </button>
-      )}
-    </div>
     {seasons && picking && (
       <SeasonPicker seasons={seasons} busy={requesting} onCancel={() => setPicking(false)} onRequest={doRequest} />
     )}
@@ -157,7 +187,7 @@ function SeasonPicker({
   onCancel: () => void
   onRequest: (seasons: number[]) => void
 }) {
-  const open = seasons.filter((s) => (s.status === 'missing' || s.status === 'partial') && !s.requested)
+  const open = seasons.filter((s) => s.requestable)
   const [chosen, setChosen] = useState<Set<number>>(() => new Set(open.map((s) => s.number)))
   const allChosen = open.length > 0 && open.every((s) => chosen.has(s.number))
 

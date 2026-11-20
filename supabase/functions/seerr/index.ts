@@ -1,7 +1,7 @@
 // Per-user Seerr proxy (Overseerr / Jellyseerr / Seerr share this API).
 // Signs in to the user's own Seerr with their linked Plex token, then:
 //   POST { action: 'test', seerrUrl? }               → { ok, seerrUser }  (checks a URL before saving it)
-//   POST { action: 'status', tmdbId, mediaType }     → { configured, status, requested, plexUrl }
+//   POST { action: 'status', tmdbId, mediaType }     → { configured, status, requested, plexUrl, seerrUrl }
 //   POST { action: 'request', tmdbId, mediaType, seasons? } → same shape, re-read from Seerr after requesting.
 //        TV: `seasons` = the season numbers to request; omitted → every season not already on Plex/requested.
 // TV replies also carry `seasons: [{ number, name, episodes, status, requested }]` for the season picker.
@@ -42,7 +42,13 @@ interface SeasonInfo {
   episodes: number | null
   status: string
   requested: boolean
+  requestable: boolean
 }
+
+/** Seerr MediaStatus codes. A season can only be requested while it's UNKNOWN (nothing on Plex) or DELETED —
+ *  Seerr itself silently skips seasons that are pending, processing, partly or fully available. */
+const REQUESTABLE_STATUS = new Set([undefined, 1, 7])
+const AVAILABLE = 5
 
 /** Per-season state for TV (specials / season 0 left out). */
 function seasonList(d: Details): SeasonInfo[] {
@@ -59,31 +65,40 @@ function seasonList(d: Details): SeasonInfo[] {
   return ((d?.seasons ?? []) as { seasonNumber: number; name?: string; episodeCount?: number }[])
     .filter((s) => s.seasonNumber > 0)
     .map((s) => {
-      const status = mapStatus(statusBySeason.get(s.seasonNumber))
+      const code = statusBySeason.get(s.seasonNumber)
+      const status = mapStatus(code)
+      // A fulfilled request (season now fully on Plex) no longer counts as "requested".
+      const requested =
+        code !== AVAILABLE && (requestedSeasons.has(s.seasonNumber) || status === 'pending' || status === 'processing')
       return {
         number: s.seasonNumber,
         name: s.name || `Season ${s.seasonNumber}`,
         episodes: s.episodeCount ?? null,
         status,
-        requested: requestedSeasons.has(s.seasonNumber) || status === 'pending' || status === 'processing',
+        requested,
+        requestable: REQUESTABLE_STATUS.has(code) && !requested,
       }
     })
 }
 
-/** Seasons that can still be requested: not on Plex and not already requested. */
-const requestable = (seasons: SeasonInfo[]) =>
-  seasons.filter((s) => (s.status === 'missing' || s.status === 'partial') && !s.requested).map((s) => s.number)
+/** Seasons that can still be requested: nothing of them on Plex, and not already requested. */
+const requestable = (seasons: SeasonInfo[]) => seasons.filter((s) => s.requestable).map((s) => s.number)
 
-function summarise(d: Details, mediaType: MediaType) {
+function summarise(d: Details, mediaType: MediaType, base: string, tmdbId: number) {
   const info = d?.mediaInfo
   const status = mapStatus(info?.status)
   const openRequest = ((info?.requests ?? []) as { status: number }[]).some((r) => OPEN_REQUEST.has(r.status))
   const seasons = mediaType === 'tv' ? seasonList(d) : undefined
+  // TV: requested if any season still has an open request. Movies: an open request, until it's on Plex.
+  const requested = seasons
+    ? seasons.some((s) => s.requested)
+    : status !== 'available' && (openRequest || status === 'pending' || status === 'processing')
   return {
     configured: true,
     status,
-    requested: openRequest || status === 'pending' || status === 'processing',
+    requested,
     plexUrl: info?.plexUrl ?? info?.mediaUrl ?? null,
+    seerrUrl: `${base}/${mediaType}/${tmdbId}`, // the title's page in the user's own Seerr
     ...(seasons ? { seasons, canRequest: requestable(seasons).length > 0 } : {}),
   }
 }
@@ -146,7 +161,7 @@ serve(async (req) => {
   const cookie = await login(base, integ.plexToken)
   const d = await details(base, cookie, mediaType, tmdbId)
 
-  if (body.action === 'status') return json(summarise(d, mediaType))
+  if (body.action === 'status') return json(summarise(d, mediaType, base, tmdbId))
 
   // Request. TV: only seasons that are still requestable — the ones chosen, or all of them.
   let seasons: number[] | undefined
@@ -154,7 +169,7 @@ serve(async (req) => {
     const open = requestable(seasonList(d))
     const chosen = Array.isArray(body.seasons) ? body.seasons.map(Number).filter(Number.isInteger) : null
     seasons = chosen ? open.filter((n) => chosen.includes(n)) : open
-    if (seasons.length === 0) return json(summarise(d, mediaType)) // nothing left to request
+    if (seasons.length === 0) return json(summarise(d, mediaType, base, tmdbId)) // nothing left to request
   }
   const res = await seerrFetch(base, '/api/v1/request', {
     method: 'POST',
@@ -165,5 +180,5 @@ serve(async (req) => {
   if (!res.ok && res.status !== 409) throw new HttpError(502, `seerr_request_failed_${res.status}`) // 409 = already requested
   // Re-read so the reply carries the full picture (incl. the Plex link), not just the new request.
   const after = await details(base, cookie, mediaType, tmdbId)
-  return json({ ...summarise(after, mediaType), requested: true })
+  return json({ ...summarise(after, mediaType, base, tmdbId), requested: true })
 })

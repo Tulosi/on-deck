@@ -86,6 +86,13 @@ export function TitleDetail() {
   const seasons = typeof d.number_of_seasons === 'number' ? `${d.number_of_seasons}` : undefined
   const networks = Array.isArray(d.networks) ? (d.networks as string[]).join(', ') : undefined
   const next = d.next_episode_to_air as { air_date?: string; season_number?: number; episode_number?: number } | null
+  // Mid-season: the next episode isn't a premiere and hasn't aired yet → the current season is still airing.
+  const currentlyAiring =
+    title.mediaType === 'tv' &&
+    !!next?.air_date &&
+    (next.episode_number ?? 1) > 1 &&
+    next.air_date >= new Date().toISOString().slice(0, 10)
+  const statusText = currentlyAiring ? 'Currently Airing' : typeof d.status === 'string' ? d.status : undefined
 
   async function remove() {
     if (!window.confirm(`Remove “${title.title}” from your deck?`)) return
@@ -162,7 +169,7 @@ export function TitleDetail() {
                   : undefined
               }
             />
-            <Fact label="Status" value={typeof d.status === 'string' ? d.status : undefined} />
+            <Fact label="Status" value={statusText} />
           </dl>
 
           {!isSample && (

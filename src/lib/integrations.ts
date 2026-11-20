@@ -161,6 +161,8 @@ export type SeerrResult =
       /** An open request exists (awaiting approval or downloading) — independent of `status`. */
       requested: boolean
       plexUrl?: string | null
+      /** This title's page in the user's Seerr. */
+      seerrUrl?: string | null
       /** TV only: per-season state for the season picker (specials left out). */
       seasons?: SeasonInfo[]
       /** TV only: at least one season can still be requested. */
@@ -173,6 +175,8 @@ export interface SeasonInfo {
   episodes: number | null
   status: SeerrStatus
   requested: boolean
+  /** Seerr only accepts seasons with nothing on Plex yet that aren't already requested. */
+  requestable: boolean
 }
 
 function tmdbRef(title: Title): { tmdbId: number; mediaType: 'movie' | 'tv' } | null {

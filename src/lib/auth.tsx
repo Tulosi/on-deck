@@ -35,3 +35,6 @@ export const useAuth = () => useContext(AuthContext)
 
 /** Where Supabase should send people back to after confirming their email. */
 export const authRedirectUrl = () => window.location.origin + import.meta.env.BASE_URL
+
+/** Where the password-reset email link lands. */
+export const resetRedirectUrl = () => authRedirectUrl() + 'reset-password'

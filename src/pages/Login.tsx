@@ -3,10 +3,10 @@ import { Navigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2 } from 'lucide-react'
 import { Wordmark } from '../components/Logo'
-import { authRedirectUrl, useAuth } from '../lib/auth'
-import { supabase } from '../lib/supabase'
+import { authRedirectUrl, resetRedirectUrl, useAuth } from '../lib/auth'
+import { requestPasswordReset, supabase } from '../lib/supabase'
 
-type Mode = 'sign-in' | 'sign-up'
+type Mode = 'sign-in' | 'sign-up' | 'forgot'
 
 const inputClass =
   'h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint focus:border-accent'
@@ -22,6 +22,12 @@ export function Login() {
 
   if (!loading && user) return <Navigate to="/" replace />
 
+  function switchMode(next: Mode) {
+    setMode(next)
+    setError(null)
+    setNotice(null)
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
@@ -32,6 +38,10 @@ export function Login() {
       if (mode === 'sign-in') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+      } else if (mode === 'forgot') {
+        await requestPasswordReset(email, resetRedirectUrl())
+        // Same message whether or not the address has an account, so it can't be used to probe for users.
+        setNotice(`If ${email} has an On Deck account, a reset link is on its way.`)
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -59,25 +69,28 @@ export function Login() {
         </p>
       ) : (
         <>
-          <div className="flex gap-1 rounded-lg border border-line bg-bg p-1">
-            {(['sign-in', 'sign-up'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setMode(m)
-                  setError(null)
-                  setNotice(null)
-                }}
-                className={clsx(
-                  'flex-1 rounded-md py-1.5 text-sm transition-colors',
-                  mode === m ? 'bg-raised text-fg' : 'text-muted hover:text-fg',
-                )}
-              >
-                {m === 'sign-in' ? 'Sign in' : 'Create account'}
-              </button>
-            ))}
-          </div>
+          {mode === 'forgot' ? (
+            <div className="space-y-1">
+              <h1 className="text-lg font-semibold tracking-tight text-fg">Reset your password</h1>
+              <p className="text-sm text-muted">We’ll email you a link to set a new one.</p>
+            </div>
+          ) : (
+            <div className="flex gap-1 rounded-lg border border-line bg-bg p-1">
+              {(['sign-in', 'sign-up'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className={clsx(
+                    'flex-1 rounded-md py-1.5 text-sm transition-colors',
+                    mode === m ? 'bg-raised text-fg' : 'text-muted hover:text-fg',
+                  )}
+                >
+                  {m === 'sign-in' ? 'Sign in' : 'Create account'}
+                </button>
+              ))}
+            </div>
+          )}
 
           <form onSubmit={submit} className="space-y-3">
             <label className="block space-y-1.5">
@@ -91,19 +104,32 @@ export function Login() {
                 className={inputClass}
               />
             </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs text-muted">Password</span>
-              <input
-                type="password"
-                required
-                minLength={8}
-                autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-              />
-              {mode === 'sign-up' && <span className="text-xs text-faint">At least 8 characters.</span>}
-            </label>
+            {mode !== 'forgot' && (
+              <label className="block space-y-1.5">
+                <span className="flex items-baseline justify-between">
+                  <span className="text-xs text-muted">Password</span>
+                  {mode === 'sign-in' && (
+                    <button
+                      type="button"
+                      onClick={() => switchMode('forgot')}
+                      className="text-xs text-accent-ink hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </span>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={inputClass}
+                />
+                {mode === 'sign-up' && <span className="text-xs text-faint">At least 8 characters.</span>}
+              </label>
+            )}
 
             {error && <p className="text-sm text-bad">{error}</p>}
             {notice && <p className="text-sm text-good">{notice}</p>}
@@ -114,10 +140,16 @@ export function Login() {
               className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60"
             >
               {busy && <Loader2 className="size-4 animate-spin" />}
-              {mode === 'sign-in' ? 'Sign in' : 'Create account'}
+              {mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Send reset link'}
             </button>
           </form>
 
+          {mode === 'forgot' ? (
+            <button type="button" onClick={() => switchMode('sign-in')} className="text-sm text-muted hover:text-fg">
+              ← Back to sign in
+            </button>
+          ) : (
+          <>
           <div className="flex items-center gap-3 text-xs text-faint">
             <span className="h-px flex-1 bg-line" />
             or
@@ -131,6 +163,8 @@ export function Login() {
           >
             Continue with Google · soon
           </button>
+          </>
+          )}
         </>
       )}
     </div>

@@ -10,6 +10,7 @@ import { Home } from './pages/Home'
 import { CategoryPage } from './pages/CategoryPage'
 import { TitleDetail } from './pages/TitleDetail'
 import { Login } from './pages/Login'
+import { ResetPassword } from './pages/ResetPassword'
 import { Collections, NotFound, Settings, SharedList } from './pages/Placeholders'
 import { AuthProvider } from './lib/auth'
 
@@ -37,6 +38,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="collections" element={<Collections />} />
             <Route path="settings" element={<Settings />} />
             <Route path="login" element={<Login />} />
+            <Route path="reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

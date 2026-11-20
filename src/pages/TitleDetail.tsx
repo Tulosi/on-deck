@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { ComingSoon } from '../components/PageHeader'
 import { useItems, useRemoveItem } from '../lib/library'
-import { mediaLabels, type MediaType } from '../types'
+import { mediaLabels, type MediaType, type Title } from '../types'
 
 const typeIcon: Record<MediaType, typeof Film> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 
@@ -18,6 +18,42 @@ function Fact({ label, value }: { label: string; value?: string | number | null 
     <div>
       <dt className="font-mono text-[11px] tracking-wider text-faint uppercase">{label}</dt>
       <dd className="mt-0.5 text-sm text-fg">{value}</dd>
+    </div>
+  )
+}
+
+function ScoreChips({ title }: { title: Title }) {
+  const r = title.ratings
+  const chips = r
+    ? [
+        r.imdb && { label: 'IMDb', value: r.imdb },
+        r.rottenTomatoes && { label: 'Rotten Tomatoes', value: r.rottenTomatoes },
+        r.rtAudience && { label: 'RT Audience', value: r.rtAudience },
+        // Metacritic only for games; never shown for movies/TV.
+        title.mediaType === 'game' && r.metacritic && { label: 'Metacritic', value: r.metacritic },
+        // TMDB only when nothing better exists.
+        !r.imdb && r.tmdb != null && { label: 'TMDB', value: r.tmdb.toFixed(1) },
+      ].filter((c): c is { label: string; value: string } => !!c)
+    : title.score
+      ? [title.score]
+      : []
+
+  if (chips.length === 0) {
+    return (
+      <p className="mt-3 font-mono text-xs text-faint">{title.needsScores ? 'Fetching scores…' : 'No scores yet'}</p>
+    )
+  }
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {chips.map((c) => (
+        <span
+          key={c.label}
+          className="flex items-baseline gap-1.5 rounded-md border border-line bg-surface/80 px-2 py-1 font-mono text-xs backdrop-blur"
+        >
+          <span className="text-muted">{c.label}</span>
+          <span className="font-semibold text-fg">{c.value}</span>
+        </span>
+      ))}
     </div>
   )
 }
@@ -93,10 +129,9 @@ export function TitleDetail() {
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-fg md:text-4xl">{title.title}</h1>
           <p className="mt-1 font-mono text-sm text-muted">
-            {[title.year, title.genres.join(', '), title.score && `${title.score.label} ${title.score.value}`]
-              .filter(Boolean)
-              .join(' · ')}
+            {[title.year, title.genres.join(', ')].filter(Boolean).join(' · ')}
           </p>
+          <ScoreChips title={title} />
         </div>
       </div>
 
@@ -106,7 +141,7 @@ export function TitleDetail() {
           {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
           <ComingSoon>
             Next up on this page: status controls (Owned, progress, Liked / Didn’t like, ★ favourite, priority),
-            notes, collections, IMDb + Rotten Tomatoes scores and Plex availability.
+            notes, collections and Plex availability.
           </ComingSoon>
         </div>
 

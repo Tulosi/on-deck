@@ -1,9 +1,12 @@
 // Movies + TV via TMDB.
 //   POST { action: 'search', query }            → up to 12 movie/TV matches (nothing is stored)
-//   POST { action: 'add', tmdbId, mediaType }   → fetch full details, upsert into `titles`, return the row
+//   POST { action: 'add', tmdbId, mediaType }   → fetch full details (+ review scores via MDBList/OMDb),
+//                                                 upsert into `titles`, return the row. Also used to refresh
+//                                                 a title that's already cached.
 // The caller then creates their own user_items row (RLS-protected) pointing at that title.
 // Requires secret: TMDB_READ_TOKEN. Caller must be signed in.
 import { admin, HttpError, json, requireUser, secret, serve } from '../_shared/http.ts'
+import { cachedScores, fetchScores, scoresAreFresh } from '../_shared/scores.ts'
 
 const API = 'https://api.themoviedb.org/3'
 const IMG = 'https://image.tmdb.org/t/p'
@@ -81,6 +84,19 @@ async function add(tmdbId: number, mediaType: MediaType) {
     }))
   }
 
+  // Review scores: reuse cached ones if recent, otherwise ask MDBList (OMDb as fallback).
+  const imdbId = d.external_ids?.imdb_id ?? d.imdb_id ?? null
+  const { data: existing } = await admin()
+    .from('titles')
+    .select('ratings')
+    .eq('media_type', mediaType)
+    .eq('source', 'tmdb')
+    .eq('source_id', String(d.id))
+    .maybeSingle()
+  const scores = scoresAreFresh(existing?.ratings)
+    ? cachedScores(existing!.ratings)
+    : { ...(existing?.ratings ? cachedScores(existing.ratings) : {}), ...(await fetchScores(d.id, mediaType, imdbId)) }
+
   const row = {
     media_type: mediaType,
     source: 'tmdb',
@@ -92,10 +108,13 @@ async function add(tmdbId: number, mediaType: MediaType) {
     genres: (d.genres ?? []).map((g: Json) => g.name as string),
     external_ids: {
       tmdb_id: d.id,
-      imdb_id: d.external_ids?.imdb_id ?? d.imdb_id ?? null,
+      imdb_id: imdbId,
       tvdb_id: d.external_ids?.tvdb_id ?? null,
     },
-    ratings: d.vote_count > 0 ? { tmdb: d.vote_average, tmdb_votes: d.vote_count } : {},
+    ratings: {
+      ...(d.vote_count > 0 ? { tmdb: d.vote_average, tmdb_votes: d.vote_count } : {}),
+      ...scores,
+    },
     metadata,
     release_date: releaseDate,
     refreshed_at: new Date().toISOString(),

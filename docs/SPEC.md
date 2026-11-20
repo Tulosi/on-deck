@@ -24,9 +24,9 @@ Supabase URL and the public anon key.
 
 | Category | Metadata / cover art | Scores shown | Extras |
 |---|---|---|---|
-| Movies | TMDB | IMDb + Rotten Tomatoes (OMDb) | Upcoming releases, Plex availability + request via Seerr |
-| TV | TMDB | IMDb + Rotten Tomatoes (OMDb) | Season/episode progress, upcoming seasons, Plex availability + request via Seerr |
-| Games (PC/Steam only) | IGDB | Steam review % | Steam price, gg.deals best price + historical low, co-op details, Steam Deck status, HowLongToBeat |
+| Movies | TMDB | IMDb, Rotten Tomatoes (critics + audience) — MDBList, OMDb fallback | Upcoming releases, Plex availability + request via Seerr |
+| TV | TMDB | IMDb, Rotten Tomatoes (critics + audience) — MDBList, OMDb fallback | Season/episode progress, upcoming seasons, Plex availability + request via Seerr |
+| Games (PC/Steam only) | IGDB | Steam review %, Metacritic | Steam price, gg.deals best price + historical low, co-op details, Steam Deck status, HowLongToBeat |
 | Books | Hardcover | Hardcover rating | — |
 
 Notes:

@@ -25,6 +25,17 @@ export interface Title {
   sourceKey?: string
   /** Type-specific extras from the source (runtime, seasons, networks …). */
   details?: Record<string, unknown>
+  /** All known review scores (the poster shows only `score`). */
+  ratings?: {
+    imdb?: string
+    rottenTomatoes?: string
+    rtAudience?: string
+    /** Games only. */
+    metacritic?: string
+    tmdb?: number
+  }
+  /** Movie/TV whose review scores are missing or stale — the app refreshes them in the background. */
+  needsScores?: boolean
 }
 
 /** A user's tracking state for one title. */

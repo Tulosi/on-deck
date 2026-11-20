@@ -20,8 +20,9 @@ npx supabase secrets set NAME=value
 | Supabase | ✅ Done | — |
 | TMDB | ✅ Done | `TMDB_READ_TOKEN` |
 | IGDB (via Twitch) | ✅ Done | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` |
-| OMDb | ⬜ To do | `OMDB_API_KEY` |
-| Hardcover | ⬜ To do | `HARDCOVER_TOKEN` |
+| MDBList | ✅ Done | `MDBLIST_API_KEY` |
+| OMDb | ✅ Done (fallback) | `OMDB_API_KEY` |
+| Hardcover | ✅ Done (token expires — see below) | `HARDCOVER_TOKEN` |
 | gg.deals | ⬜ To do | `GGDEALS_API_KEY` |
 | Steam | Optional | `STEAM_API_KEY` (only for library import) |
 
@@ -59,13 +60,24 @@ npx supabase secrets set NAME=value
   cd ~/Desktop/"On Deck" && read -rs "S?Twitch client secret: " && echo && npx supabase secrets set TWITCH_CLIENT_SECRET="$S"; unset S
   ```
 
-## 5. OMDb (IMDb + Rotten Tomatoes scores)
-- [ ] https://www.omdbapi.com/apikey.aspx → Free tier (1,000/day) → activate via email.
-  → `OMDB_API_KEY` (server)
+## 5. Review scores — MDBList (primary) + OMDb (fallback) ✅
+- [x] **MDBList** free key (1,000 requests/day) saved as `MDBLIST_API_KEY` (server). One lookup returns IMDb
+      and Rotten Tomatoes critics + audience (Metacritic/Letterboxd are available but not used for movies/TV). Key: https://mdblist.com/preferences/#api
+- [x] **OMDb** free key (1,000 requests/day) saved as `OMDB_API_KEY` (server). Only used if MDBList fails or
+      runs out of quota — its Rotten Tomatoes data is patchy for recent movies and missing for most TV.
+- Scores are cached on each title (re-checked daily until a title has an IMDb score, then weekly), so the
+  daily limits only matter when lots of new titles are added.
+- To replace either: `npx supabase secrets set MDBLIST_API_KEY=…` / `OMDB_API_KEY=…`.
 
-## 6. Hardcover (books)
-- [ ] Account at https://hardcover.app → Settings → API → copy token.
-  → `HARDCOVER_TOKEN` (server). Tokens expire; note the renewal date.
+## 6. Hardcover (books) ✅
+- [x] Personal access token (read-only catalogue access is all On Deck needs) saved as `HARDCOVER_TOKEN` (server).
+- **Tokens expire.** Expiry date: _(fill in from hardcover.app → Settings → API)_. When it lapses, book
+  search stops working until a new token is set.
+- Hardcover's terms: server-side use only (never in the browser) — On Deck only calls it from an Edge Function.
+- To replace it, run in Terminal (keeps it off screen and out of shell history):
+  ```bash
+  cd ~/Desktop/"On Deck" && read -rs "S?Hardcover token: " && echo && npx supabase secrets set HARDCOVER_TOKEN="$S"; unset S
+  ```
 
 ## 7. gg.deals (third-party game prices)
 - [ ] Account at https://gg.deals → find the API section and request a key.

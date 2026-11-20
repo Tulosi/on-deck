@@ -1,5 +1,6 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { useScoreBackfill } from '../lib/library'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav, Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -9,6 +10,7 @@ const bannerClass =
 
 export function AppShell() {
   const { user, loading } = useAuth()
+  useScoreBackfill()
   return (
     <div className="flex min-h-dvh">
       <Sidebar />

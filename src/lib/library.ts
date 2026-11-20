@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
@@ -17,7 +18,14 @@ interface TitleRow {
   cover_url: string | null
   backdrop_url: string | null
   genres: string[]
-  ratings: { tmdb?: number; imdb?: string } & Record<string, unknown>
+  ratings: {
+    tmdb?: number
+    imdb?: string | null
+    rotten_tomatoes?: string | null
+    rt_audience?: string | null
+    metacritic?: string | null
+    scores_checked_at?: string
+  } & Record<string, unknown>
   metadata: Record<string, unknown> & { overview?: string | null }
   release_date: string | null
 }
@@ -39,6 +47,18 @@ function headlineScore(t: TitleRow): UserItem['title']['score'] {
   if (t.ratings.imdb) return { label: 'IMDb', value: String(t.ratings.imdb) }
   if (typeof t.ratings.tmdb === 'number') return { label: 'TMDB', value: t.ratings.tmdb.toFixed(1) }
   return undefined
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * True when review scores are missing or stale. Mirrors scoresAreFresh() in
+ * supabase/functions/_shared/scores.ts: no IMDb score yet → re-check daily; otherwise weekly.
+ */
+function scoresNeedRefresh(r: TitleRow['ratings']): boolean {
+  const at = r.scores_checked_at ? Date.parse(r.scores_checked_at) : NaN
+  if (!Number.isFinite(at)) return true
+  return Date.now() - at >= (r.imdb ? 7 * DAY_MS : DAY_MS)
 }
 
 function toUserItem(row: ItemRow): UserItem {
@@ -66,6 +86,14 @@ function toUserItem(row: ItemRow): UserItem {
       releaseDate: t.release_date ?? undefined,
       sourceKey: `${t.media_type}:${t.source}:${t.source_id}`,
       details: t.metadata,
+      ratings: {
+        imdb: t.ratings.imdb ?? undefined,
+        rottenTomatoes: t.ratings.rotten_tomatoes ?? undefined,
+        rtAudience: t.ratings.rt_audience ?? undefined,
+        metacritic: t.ratings.metacritic ?? undefined,
+        tmdb: t.ratings.tmdb,
+      },
+      needsScores: t.source === 'tmdb' && scoresNeedRefresh(t.ratings),
     },
   }
 }
@@ -144,6 +172,39 @@ export function useAddFromTmdb() {
 
     await queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) })
   }
+}
+
+/** Titles already asked about this session, so a failing lookup isn't retried in a loop. */
+const scoreBackfillAttempted = new Set<string>()
+
+/**
+ * Fills in missing or stale IMDb / Rotten Tomatoes / Metacritic scores, a few at a time, by re-running
+ * the tmdb "add" (which refreshes the cached title). Mount once (AppShell).
+ * Interim: a daily server-side cron will take this over along with release tracking.
+ */
+export function useScoreBackfill() {
+  const { user } = useAuth()
+  const { items, isSample } = useItems()
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (isSample || !supabase || !user) return
+    const todo = items
+      .filter((i) => i.title.needsScores && i.title.sourceKey && !scoreBackfillAttempted.has(i.title.id))
+      .slice(0, 10)
+    if (todo.length === 0) return
+    todo.forEach((i) => scoreBackfillAttempted.add(i.title.id))
+
+    void (async () => {
+      for (const item of todo) {
+        const [mediaType, , tmdbId] = item.title.sourceKey!.split(':')
+        await supabase!.functions
+          .invoke('tmdb', { body: { action: 'add', tmdbId: Number(tmdbId), mediaType } })
+          .catch(() => undefined)
+      }
+      await queryClient.invalidateQueries({ queryKey: libraryKey(user.id) })
+    })()
+  }, [items, isSample, user, queryClient])
 }
 
 export function useRemoveItem() {

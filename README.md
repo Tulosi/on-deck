@@ -32,15 +32,21 @@ supabase/
 
 ## Backend (Supabase)
 
-Requires the Supabase CLI (`brew install supabase/tap/supabase`).
+The Supabase CLI is a dev dependency, so it runs through `npx` (no Homebrew install needed).
+`supabase login` must be run once in a real terminal (it asks for a code from the browser).
 
 ```bash
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase db push                     # apply migrations
-supabase secrets set TMDB_READ_TOKEN=…   # repeat for each server secret in .env.example
-supabase functions deploy            # deploy all Edge Functions
+npx supabase login
+npx supabase link --project-ref fctzvjktqqsgfpfrcdgk
+npx supabase db push --remote                  # apply new migrations to the hosted DB
+npx supabase secrets set TMDB_READ_TOKEN=…     # repeat for each server secret in .env.example
+npx supabase functions deploy                  # deploy all Edge Functions
 ```
+
+**New tables need explicit grants.** This project doesn't auto-grant table privileges to the
+API roles, so every migration that creates a table must also grant access to it
+(see `supabase/migrations/20261120000001_api_grants.sql`). Without that, the table returns
+"permission denied" even for signed-in users.
 
 ## Deploy
 

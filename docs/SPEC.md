@@ -35,6 +35,18 @@ Notes:
 - Price region + currency is a **per-user** setting.
 - Imports (Steam, Letterboxd, Goodreads, Trakt) are out of scope for v1.
 
+## Steam ownership check (Games)
+
+- **No library import.** On Deck only checks whether a manually added game is already owned on Steam.
+- Settings → Steam profile: SteamID64, profile URL or custom URL (resolved to a SteamID64 and stored on the
+  profile).
+- When a game with a Steam app id is added (and when its page is opened, at most once a day), the server
+  calls `GetOwnedGames` filtered to that one app id. If it's owned, the game is marked **Owned**, so the
+  "unowned only" price badge disappears.
+- Needs the user's Steam **Game details** set to Public. If it's private, the check reports that instead of
+  guessing.
+- An Owned flag the user turned off manually isn't switched back on automatically.
+
 ## Tracking model (per user, per title)
 
 - **Owned** — independent toggle.

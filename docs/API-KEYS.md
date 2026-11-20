@@ -23,8 +23,8 @@ npx supabase secrets set NAME=value
 | MDBList | ✅ Done | `MDBLIST_API_KEY` |
 | OMDb | ✅ Done (fallback) | `OMDB_API_KEY` |
 | Hardcover | ✅ Done (token expires — see below) | `HARDCOVER_TOKEN` |
-| gg.deals | ⬜ To do | `GGDEALS_API_KEY` |
-| Steam | Optional | `STEAM_API_KEY` (only for library import) |
+| gg.deals | ✅ Done | `GGDEALS_API_KEY` |
+| Steam | ✅ Done | `STEAM_API_KEY` (ownership check only) |
 
 ## 1. GitHub ✅
 - [x] Repository: **https://github.com/Tulosi/on-deck** (public, required for free GitHub Pages).
@@ -79,15 +79,26 @@ npx supabase secrets set NAME=value
   cd ~/Desktop/"On Deck" && read -rs "S?Hardcover token: " && echo && npx supabase secrets set HARDCOVER_TOKEN="$S"; unset S
   ```
 
-## 7. gg.deals (third-party game prices)
-- [ ] Account at https://gg.deals → find the API section and request a key.
-- [ ] Note the rate limits / terms (to be checked before we build on it).
-  → `GGDEALS_API_KEY` (server)
+## 7. gg.deals (third-party game prices) ✅
+- [x] API key saved as `GGDEALS_API_KEY` (server).
+- Lookup by Steam app id, per region:
+  `https://api.gg.deals/v1/prices/by-steam-app-id/?ids=<appids>&key=…&region=<cc>`. It returns the current and
+  historical-low prices for official stores (`currentRetail`, `historicalRetail`) and key shops
+  (`currentKeyshops`, `historicalKeyshops`) in the region's currency, plus the gg.deals page URL.
+- Takes several app ids per call, which suits the daily price-refresh job.
+- To replace it: `npx supabase secrets set GGDEALS_API_KEY=…`.
 
-## 8. Steam (optional for now)
-- Store prices, review % and Early Access status come from public, keyless Steam endpoints.
-- [ ] Only if we add Steam library import later: https://steamcommunity.com/dev/apikey
-      (domain: `tulosi.github.io`) → `STEAM_API_KEY` (server)
+## 8. Steam ✅
+- [x] Steam Web API key saved as `STEAM_API_KEY` (server).
+- **Used only to check whether a game you add is already owned.** There's no library import.
+  - Each user enters their Steam profile in Settings: a SteamID64, a profile URL, or a custom URL, which is
+    resolved via `ISteamUser/ResolveVanityURL`.
+  - When a game with a Steam app id is added or opened, `IPlayerService/GetOwnedGames` is called with
+    `appids_filter` for just that game, and the game is marked **Owned** if it's in your library.
+- Requires the Steam profile's **Game details** privacy set to Public
+  (Steam → Profile → Edit Profile → Privacy Settings).
+- Store prices, review % and Early Access status still come from public, keyless Steam endpoints.
+- To replace it: https://steamcommunity.com/dev/apikey, then `npx supabase secrets set STEAM_API_KEY=…`.
 
 ## Not needed up front
 - **Plex / Seerr** — each user links these themselves in On Deck's Settings page.

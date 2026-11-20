@@ -12,3 +12,7 @@ Known rough edges to pick up in the full UI/UX/user-flow pass. Add to it as thin
 ## Tracking card — season rows (`src/components/StatusControls.tsx`)
 - Showing the "Watched up to" row pushes the rating buttons down. A quick click can land on the wrong
   control mid-change (seen during testing). Consider reserving the space or animating the row in.
+
+## Toolbar on phones
+- At 375px the Sort menu sits tight against the labels switch. Consider moving Sort/Group into the Filters
+  panel on phones, or letting the toolbar scroll horizontally.

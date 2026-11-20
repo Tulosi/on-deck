@@ -42,6 +42,8 @@ interface ItemRow {
   current_episode: number | null
   plex_sync: boolean
   completed_at: string | null
+  created_at: string
+  updated_at: string
   season_overrides: Record<string, SeasonOverride> | null
   title: TitleRow
 }
@@ -87,6 +89,8 @@ function toUserItem(row: ItemRow): UserItem {
     notes: row.notes ?? undefined,
     plexSync: row.plex_sync ?? true,
     completedAt: row.completed_at ?? undefined,
+    addedAt: row.created_at,
+    updatedAt: row.updated_at,
     seasonOverrides: row.season_overrides ?? {},
     tvProgress:
       row.current_season != null ? { season: row.current_season, episode: row.current_episode ?? 1 } : undefined,
@@ -132,7 +136,7 @@ export function useItems() {
       const { data, error } = await supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, completed_at, season_overrides, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, completed_at, created_at, updated_at, season_overrides, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       if (error) throw error

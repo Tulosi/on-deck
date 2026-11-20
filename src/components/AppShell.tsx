@@ -7,7 +7,7 @@ import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
 
 /** Browsing pages get the toolbar row (display options now; filters and sorting later). */
-const TOOLBAR_PATHS = ['/', '/movies', '/tv', '/games', '/books', '/collections']
+const TOOLBAR_PATHS = ['/', '/library', '/collections']
 
 const bannerClass =
   'border-b border-line bg-surface px-4 py-1.5 text-center font-mono text-[11px] text-muted uppercase md:px-6'

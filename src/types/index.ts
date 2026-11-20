@@ -54,6 +54,9 @@ export interface UserItem {
   plexSync?: boolean
   /** When the user (or sync) marked it Watched/Played/Read. */
   completedAt?: string
+  /** When it was added to the deck / last changed (ISO). */
+  addedAt?: string
+  updatedAt?: string
   /** TV: per-season completion overrides (season number → state); omitted seasons are auto. */
   seasonOverrides?: Record<string, SeasonOverride>
   /** Games only — best current price across Steam and gg.deals. */

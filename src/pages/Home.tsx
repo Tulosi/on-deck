@@ -2,9 +2,13 @@ import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { useItems } from '../lib/library'
 import { releaseInfo } from '../lib/release'
+import { useFilters } from '../lib/useFilters'
 
 export function Home() {
-  const { items, isLoading, isSample, error } = useItems()
+  const { items: allItems, isLoading, isSample, error } = useItems()
+  // Home only takes the type pills from the toolbar (?type=…); the full filters live on the Library page.
+  const [filters] = useFilters()
+  const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
 
   if (isLoading) {
     return (

@@ -9,7 +9,9 @@ import { AppShell } from './components/AppShell'
 import { Home } from './pages/Home'
 import { CategoryPage } from './pages/CategoryPage'
 import { TitleDetail } from './pages/TitleDetail'
-import { Collections, Login, NotFound, Settings, SharedList } from './pages/Placeholders'
+import { Login } from './pages/Login'
+import { Collections, NotFound, Settings, SharedList } from './pages/Placeholders'
+import { AuthProvider } from './lib/auth'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60_000, refetchOnWindowFocus: false } },
@@ -21,6 +23,7 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
       <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/s/:token" element={<SharedList />} />
@@ -38,6 +41,7 @@ createRoot(document.getElementById('root')!).render(
           </Route>
         </Routes>
       </BrowserRouter>
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

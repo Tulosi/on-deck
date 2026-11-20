@@ -2,7 +2,7 @@ import { useState } from 'react'
 import clsx from 'clsx'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
-import { sampleItems } from '../data/sample'
+import { useItems } from '../lib/library'
 import { mediaLabels, type MediaType, type Progress } from '../types'
 
 const progressFilters: { value: Progress | 'all'; label: (t: MediaType) => string }[] = [
@@ -20,7 +20,8 @@ export function CategoryPage({ mediaType }: { mediaType: MediaType }) {
   const [progress, setProgress] = useState<Progress | 'all'>('all')
   const [genre, setGenre] = useState('all')
 
-  const all = sampleItems.filter((i) => i.title.mediaType === mediaType)
+  const { items: allItems, isSample } = useItems()
+  const all = allItems.filter((i) => i.title.mediaType === mediaType)
   const genres = [...new Set(all.flatMap((i) => i.title.genres))].sort()
   const items = all.filter(
     (i) => (progress === 'all' || i.progress === progress) && (genre === 'all' || i.title.genres.includes(genre)),
@@ -56,7 +57,13 @@ export function CategoryPage({ mediaType }: { mediaType: MediaType }) {
       </div>
 
       {items.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted">Nothing here yet.</p>
+        <p className="py-16 text-center text-sm text-muted">
+          {!isSample && all.length === 0 && (mediaType === 'game' || mediaType === 'book')
+            ? `${mediaLabels[mediaType].plural} search is coming next.`
+            : !isSample && all.length === 0
+              ? 'Nothing here yet — use the search bar to add some.'
+              : 'Nothing matches these filters.'}
+        </p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-x-4 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))]">
           {items.map((item) => (

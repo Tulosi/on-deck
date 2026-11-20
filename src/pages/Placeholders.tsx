@@ -1,7 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { ComingSoon, PageHeader } from '../components/PageHeader'
 import { Wordmark } from '../components/Logo'
-import { isSupabaseConfigured } from '../lib/supabase'
 
 export function Collections() {
   return (
@@ -28,25 +27,6 @@ export function Settings() {
         <h2 className="text-sm font-semibold text-fg">Sharing</h2>
         <ComingSoon>Create and revoke read-only share links for your library, a category or a collection.</ComingSoon>
       </section>
-    </div>
-  )
-}
-
-export function Login() {
-  return (
-    <div className="mx-auto mt-10 max-w-sm space-y-6 rounded-xl border border-line bg-surface p-6">
-      <Wordmark />
-      <p className="text-sm text-muted">
-        {isSupabaseConfigured
-          ? 'Sign-in UI coming next: Google, or email + password.'
-          : 'Sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local (see docs/API-KEYS.md).'}
-      </p>
-      <button disabled className="w-full rounded-md border border-line py-2 text-sm text-muted opacity-60">
-        Continue with Google
-      </button>
-      <button disabled className="w-full rounded-md bg-accent py-2 text-sm font-medium text-accent-fg opacity-60">
-        Sign in with email
-      </button>
     </div>
   )
 }

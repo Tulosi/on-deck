@@ -18,6 +18,13 @@ export interface Title {
   score?: { label: string; value: string }
   /** Small line under the year, e.g. author or developer. */
   byline?: string
+  backdropUrl?: string
+  overview?: string
+  releaseDate?: string
+  /** `${mediaType}:${source}:${sourceId}` — matches search results to titles already on deck. */
+  sourceKey?: string
+  /** Type-specific extras from the source (runtime, seasons, networks …). */
+  details?: Record<string, unknown>
 }
 
 /** A user's tracking state for one title. */

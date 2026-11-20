@@ -23,6 +23,7 @@ npx supabase secrets set NAME=value
 | MDBList | ✅ Done | `MDBLIST_API_KEY` |
 | OMDb | ✅ Done (fallback) | `OMDB_API_KEY` |
 | Hardcover | ✅ Done (token expires — see below) | `HARDCOVER_TOKEN` |
+| IsThereAnyDeal | ✅ Done | `ITAD_API_KEY` |
 | gg.deals | ✅ Done | `GGDEALS_API_KEY` |
 | Steam | ✅ Done | `STEAM_API_KEY` (ownership check only) |
 
@@ -78,6 +79,16 @@ npx supabase secrets set NAME=value
   ```bash
   cd ~/Desktop/"On Deck" && read -rs "S?Hardcover token: " && echo && npx supabase secrets set HARDCOVER_TOKEN="$S"; unset S
   ```
+
+## 7a. IsThereAnyDeal (official-store game prices) ✅
+- [x] API key from a registered app (https://isthereanydeal.com/apps/my/) saved as `ITAD_API_KEY` (server).
+  Only the API key is used; there's no OAuth and no user data.
+- `GET /games/lookup/v1?appid=<steam appid>` → ITAD game id.
+- `POST /games/prices/v3?country=<cc>&nondeals=true` with `[ids]` → per-store `price`, `regular`, `cut`,
+  `drm` (key type), `storeLow` and `url`, plus `historyLow`.
+- On Deck keeps **Steam, plus any store whose `drm` includes Steam** (Steam keys). Platform stores like
+  Epic, Microsoft Store and GOG are dropped.
+- To replace it: `npx supabase secrets set ITAD_API_KEY=…`.
 
 ## 7. gg.deals (third-party game prices) ✅
 - [x] API key saved as `GGDEALS_API_KEY` (server).

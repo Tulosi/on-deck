@@ -35,6 +35,40 @@ Notes:
 - Price region + currency is a **per-user** setting.
 - Imports (Steam, Letterboxd, Goodreads, Trakt) are out of scope for v1.
 
+## Game pricing
+
+Two prices per game, both in the user's region currency (Settings → Region):
+
+| Price | Source | Link |
+|---|---|---|
+| **Steam (official)** | IsThereAnyDeal prices for the region: the cheapest offer from **Steam or any store selling a Steam key** (`drm` includes Steam). Steam's own `regular` price is the full price | That store's page (named, e.g. "Fanatical") |
+| **Key shop** | gg.deals `currentKeyshops` (cheapest key-shop offer) | The game's gg.deals page, which lists the shops |
+
+- **Full price** means Steam's standard (undiscounted) price, `initial`. Every discount % is measured against it,
+  including the key-shop price: `round((1 − price ÷ Steam full price) × 100)`.
+- **Historical low:** the current price is at or below the recorded low. The official row is compared with the
+  lowest `storeLow` across Steam-key stores (ITAD), the key-shop row with gg.deals' `historicalKeyshops`.
+- **Other official stores** are allowed when they sell a **Steam key** (e.g. Fanatical, Humble, Green Man Gaming,
+  GamersGate). Platform stores that aren't Steam keys (Epic Games Store, Microsoft Store / Xbox for PC, GOG,
+  EA app, Ubisoft Store) are excluded. The official row shows the cheapest Steam-key offer and names the store.
+  The source is IsThereAnyDeal, which lists each store with its key type (gg.deals' API only gives one unnamed
+  price). If ITAD has no data for a game, the row falls back to Steam's own `appdetails` price.
+- **Free-to-play** games show **"Free-To-Play"** instead of a price, on the card and the title page, with no
+  discount or historical-low marker.
+- If there's only a key-shop price, it's shown without a discount (there's nothing to measure it against).
+
+**Poster card** (unowned games only): one badge with the **cheapest** of the two prices and its discount,
+e.g. `-62% · $14.99`, or "Free-To-Play". A small "low" marker appears if that price is a historical low.
+
+**Title page:** a **Price** block that breaks down both:
+- **Official (Steam key):** current price and store name, `-X%` against Steam's full price (struck through when
+  discounted), a **Historical low** tag when it applies, and a link to that store.
+- **Key shop:** cheapest key-shop price, `-X%` against Steam's full price, a **Historical low** tag when it
+  applies, and a **View on gg.deals** link.
+- The cheaper of the two is highlighted. A small note says key shops are third-party resellers.
+
+Prices refresh daily for Wanted/unowned games (cron) and when a game page is opened, if older than a day.
+
 ## Steam ownership check (Games)
 
 - **No library import.** On Deck only checks whether a manually added game is already owned on Steam.
@@ -171,10 +205,10 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 ### Poster card (Library view)
 - Status + verdict badges (Owned, In Progress / Completed, Liked / Disliked, ★ Favourite)
 - One headline review score (IMDb for film/TV, Steam % for games, Hardcover for books)
-- Games, **unowned only**: sale / best price badge
+- Games, **unowned only**: cheapest price (Steam or key shop) with its % off Steam's full price
 - Movies/TV: Plex availability dot (available / requested / missing)
 - Title, year, secondary line (e.g. `S2 · E4`, platform, author)
 
 ### Title page (click-through)
-Everything else: backdrop, synopsis, all scores, both prices + historical low, HLTB times,
+Everything else: backdrop, synopsis, all scores, the Steam vs key-shop price breakdown (see Game pricing), HLTB times,
 co-op details, Steam Deck status, where-to-request on Plex, status controls, notes, collections.

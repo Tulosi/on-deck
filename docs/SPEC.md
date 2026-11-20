@@ -10,7 +10,7 @@ cut out from the noise.
 |---|---|
 | Frontend | React + TypeScript + Vite, Tailwind CSS v4, TanStack Query, React Router |
 | Hosting | GitHub Pages (static), deployed by GitHub Actions |
-| Auth | Supabase Auth — Google OAuth, email + password |
+| Auth | Supabase Auth — email + password (with password reset) |
 | Database | Supabase Postgres with Row Level Security (users see only their own rows) |
 | Server logic | Supabase Edge Functions (Deno) — proxy every keyed / CORS-blocked API, cache results |
 | Scheduled jobs | Supabase cron (pg_cron) — daily price refresh for Wanted games; daily release check for followed titles |

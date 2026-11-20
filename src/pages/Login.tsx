@@ -144,26 +144,10 @@ export function Login() {
             </button>
           </form>
 
-          {mode === 'forgot' ? (
+          {mode === 'forgot' && (
             <button type="button" onClick={() => switchMode('sign-in')} className="text-sm text-muted hover:text-fg">
               ← Back to sign in
             </button>
-          ) : (
-          <>
-          <div className="flex items-center gap-3 text-xs text-faint">
-            <span className="h-px flex-1 bg-line" />
-            or
-            <span className="h-px flex-1 bg-line" />
-          </div>
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            className="h-10 w-full rounded-md border border-line text-sm text-muted opacity-60"
-          >
-            Continue with Google · soon
-          </button>
-          </>
           )}
         </>
       )}

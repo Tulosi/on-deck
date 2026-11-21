@@ -444,3 +444,6 @@ verify_jwt = false
 
 [functions.availability]
 verify_jwt = false
+
+[functions.igdb]
+verify_jwt = false

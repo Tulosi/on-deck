@@ -2,7 +2,7 @@
 import type { Title } from '../types'
 
 /** TMDB statuses that mean "not out yet". */
-const UNRELEASED_STATUS = new Set(['Rumored', 'Planned', 'In Production', 'Post Production', 'Pilot'])
+const UNRELEASED_STATUS = new Set(['Rumored', 'Planned', 'In Production', 'Post Production', 'Pilot', 'Upcoming'])
 
 export interface ReleaseInfo {
   preRelease: boolean
@@ -21,10 +21,10 @@ function daysBetween(fromIso: string, toIso: string): number {
 
 /**
  * A movie or show is pre-release when its release / first-air date is in the future, or when it has no
- * date yet and TMDB lists it as not released (Planned, In Production …). Games and books: not yet handled.
+ * date yet and TMDB / IGDB lists it as not released (Planned, In Production, Upcoming …). Books: not yet handled.
  */
 export function releaseInfo(title: Title): ReleaseInfo {
-  if (title.mediaType !== 'movie' && title.mediaType !== 'tv') return { preRelease: false }
+  if (title.mediaType === 'book') return { preRelease: false } // books: with Hardcover
   const date = title.releaseDate
   const today = todayIso()
   if (date) {

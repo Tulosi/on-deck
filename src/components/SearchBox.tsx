@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Film, Loader2, Plus, Search, Tv } from 'lucide-react'
+import { Check, Film, Gamepad2, Loader2, Plus, Search, Tv } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { searchTmdb, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
+import { resultKey, searchGames, searchTmdb, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -27,7 +27,7 @@ function ResultRow({
   state?: AddState
   onAdd: () => void
 }) {
-  const TypeIcon = result.mediaType === 'movie' ? Film : Tv
+  const TypeIcon = result.mediaType === 'movie' ? Film : result.mediaType === 'game' ? Gamepad2 : Tv
   const added = onDeck || state === 'added'
   return (
     <li className="flex items-center gap-3 px-3 py-2 hover:bg-raised/60">
@@ -44,9 +44,10 @@ function ResultRow({
         <p className="truncate text-sm font-medium text-fg">{result.title}</p>
         <p className="flex items-center gap-1.5 font-mono text-xs text-muted">
           <TypeIcon className="size-3" />
-          {result.mediaType === 'movie' ? 'Movie' : 'TV'}
+          {result.mediaType === 'movie' ? 'Movie' : result.mediaType === 'game' ? 'Game' : 'TV'}
           {result.year && <span className="text-faint">· {result.year}</span>}
           {result.rating != null && <span className="text-faint">· ★ {result.rating.toFixed(1)}</span>}
+          {result.developer && <span className="truncate text-faint">· {result.developer}</span>}
         </p>
         {typeof state === 'object' && <p className="truncate text-xs text-bad">{state.error}</p>}
       </div>
@@ -73,7 +74,35 @@ function ResultRow({
   )
 }
 
-/** Top-bar search: TMDB movies + TV, with one-click Add. */
+/** One labelled block of results (its own loading / error / empty state). */
+function ResultSection({
+  title,
+  q,
+  empty,
+  render,
+}: {
+  title: string
+  q: { data?: SearchResult[]; error: unknown; isLoading: boolean }
+  empty: string
+  render: (r: SearchResult) => ReactNode
+}) {
+  return (
+    <section className="border-b border-line last:border-b-0">
+      <p className="px-4 pt-3 pb-1 font-mono text-[10px] tracking-wider text-faint uppercase">{title}</p>
+      {q.error ? (
+        <p className="px-4 pb-3 text-sm text-bad">Search failed: {(q.error as Error).message}</p>
+      ) : q.isLoading || !q.data ? (
+        <p className="px-4 pb-3 text-sm text-muted">Searching…</p>
+      ) : q.data.length === 0 ? (
+        <p className="px-4 pb-3 text-sm text-muted">{empty}</p>
+      ) : (
+        <ul className="divide-y divide-line pb-1">{q.data.map(render)}</ul>
+      )}
+    </section>
+  )
+}
+
+/** Top-bar search: movies + TV (TMDB) and PC games (IGDB), searched in parallel, with one-click Add. */
 export function SearchBox() {
   const { user } = useAuth()
   const { items, isSample } = useItems()
@@ -84,12 +113,19 @@ export function SearchBox() {
   const wrapper = useRef<HTMLDivElement>(null)
   const query = useDebounced(text.trim(), 300)
 
-  const search = useQuery({
+  const screen = useQuery({
     queryKey: ['tmdb-search', query],
     queryFn: () => searchTmdb(query),
     enabled: !!user && query.length >= 2,
     staleTime: 10 * 60_000,
   })
+  const games = useQuery({
+    queryKey: ['igdb-search', query],
+    queryFn: () => searchGames(query),
+    enabled: !!user && query.length >= 2,
+    staleTime: 10 * 60_000,
+  })
+  const fetching = screen.isFetching || games.isFetching
 
   // Close on outside click.
   useEffect(() => {
@@ -101,7 +137,7 @@ export function SearchBox() {
   }, [])
 
   const onDeck = new Set(isSample ? [] : items.map((i) => i.title.sourceKey))
-  const keyOf = (r: SearchResult) => `${r.mediaType}:tmdb:${r.tmdbId}`
+  const keyOf = resultKey
 
   async function add(r: SearchResult) {
     const key = keyOf(r)
@@ -119,7 +155,7 @@ export function SearchBox() {
   return (
     <div ref={wrapper} className="relative max-w-md flex-1">
       <label className="flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
-        {search.isFetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
+        {fetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
         <input
           type="search"
           value={text}
@@ -129,7 +165,7 @@ export function SearchBox() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-          placeholder="Add a movie or TV show…"
+          placeholder="Add a movie, show or game…"
           className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
         />
       </label>
@@ -143,27 +179,28 @@ export function SearchBox() {
               </Link>{' '}
               to search and add titles.
             </p>
-          ) : search.error ? (
-            <p className="px-4 py-5 text-sm text-bad">Search failed: {(search.error as Error).message}</p>
-          ) : search.data && search.data.length === 0 ? (
-            <p className="px-4 py-5 text-sm text-muted">No movies or shows match “{query}”.</p>
-          ) : search.data ? (
-            <ul className="divide-y divide-line py-1">
-              {search.data.map((r) => (
-                <ResultRow
-                  key={keyOf(r)}
-                  result={r}
-                  onDeck={onDeck.has(keyOf(r))}
-                  state={addStates[keyOf(r)]}
-                  onAdd={() => add(r)}
-                />
-              ))}
-            </ul>
           ) : (
-            <p className="px-4 py-5 text-sm text-muted">Searching…</p>
+            <>
+              <ResultSection
+                title="Movies & TV"
+                q={screen}
+                empty={`No movies or shows match “${query}”.`}
+                render={(r) => (
+                  <ResultRow key={keyOf(r)} result={r} onDeck={onDeck.has(keyOf(r))} state={addStates[keyOf(r)]} onAdd={() => add(r)} />
+                )}
+              />
+              <ResultSection
+                title="Games"
+                q={games}
+                empty={`No PC games match “${query}”.`}
+                render={(r) => (
+                  <ResultRow key={keyOf(r)} result={r} onDeck={onDeck.has(keyOf(r))} state={addStates[keyOf(r)]} onAdd={() => add(r)} />
+                )}
+              />
+            </>
           )}
           <p className="border-t border-line px-4 py-2 font-mono text-[10px] text-faint">
-            Movie &amp; TV data from TMDB · games and books coming soon
+            Movies &amp; TV from TMDB · games from IGDB · books coming soon
           </p>
         </div>
       )}

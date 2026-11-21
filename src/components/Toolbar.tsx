@@ -323,7 +323,9 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
             </>
           ) : (
             <p className="text-xs text-muted">
-              {LABELS.type[f.type]} filters arrive with {f.type === 'game' ? 'games' : 'books'} search.
+              {f.type === 'game'
+                ? 'Games filters (genre, co-op, Steam Deck, price, length) are next.'
+                : 'Books filters arrive with books search.'}
             </p>
           )}
         </Section>

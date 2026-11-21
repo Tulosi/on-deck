@@ -20,6 +20,7 @@ interface TitleRow {
   genres: string[]
   ratings: {
     tmdb?: number
+    steam?: number
     imdb?: string | null
     rotten_tomatoes?: string | null
     rt_audience?: string | null
@@ -49,6 +50,7 @@ interface ItemRow {
 }
 
 function headlineScore(t: TitleRow): UserItem['title']['score'] {
+  if (typeof t.ratings.steam === 'number') return { label: 'Steam', value: `${t.ratings.steam}%` }
   if (t.ratings.imdb) return { label: 'IMDb', value: String(t.ratings.imdb) }
   if (typeof t.ratings.tmdb === 'number') return { label: 'TMDB', value: t.ratings.tmdb.toFixed(1) }
   return undefined
@@ -63,7 +65,8 @@ const DAY_MS = 24 * 60 * 60 * 1000
 function scoresNeedRefresh(r: TitleRow['ratings']): boolean {
   const at = r.scores_checked_at ? Date.parse(r.scores_checked_at) : NaN
   if (!Number.isFinite(at)) return true
-  return Date.now() - at >= (r.imdb ? 7 * DAY_MS : DAY_MS)
+  // Has a headline score (IMDb, or Steam for games) → weekly; still waiting for one → daily.
+  return Date.now() - at >= (r.imdb || typeof r.steam === 'number' ? 7 * DAY_MS : DAY_MS)
 }
 
 /**
@@ -106,6 +109,11 @@ function toUserItem(row: ItemRow): UserItem {
       overview: t.metadata.overview ?? undefined,
       releaseDate: t.release_date ?? undefined,
       sourceKey: `${t.media_type}:${t.source}:${t.source_id}`,
+      // Games: developer under the year on posters.
+      byline:
+        t.media_type === 'game' && Array.isArray(t.metadata.developer)
+          ? ((t.metadata.developer as string[])[0] ?? undefined)
+          : undefined,
       details: t.metadata,
       ratings: {
         imdb: t.ratings.imdb ?? undefined,
@@ -114,7 +122,9 @@ function toUserItem(row: ItemRow): UserItem {
         metacritic: t.ratings.metacritic ?? undefined,
         tmdb: t.ratings.tmdb,
       },
-      needsScores: t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t)),
+      needsScores:
+        (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t))) ||
+        (t.source === 'igdb' && scoresNeedRefresh(t.ratings)),
     },
   }
 }
@@ -197,13 +207,28 @@ export async function functionError(error: unknown): Promise<Error> {
 }
 
 export interface SearchResult {
-  tmdbId: number
-  mediaType: 'movie' | 'tv'
+  mediaType: 'movie' | 'tv' | 'game'
+  /** Movies/TV (TMDB) */
+  tmdbId?: number
+  /** Games (IGDB) */
+  igdbId?: number
   title: string
   year: number | null
   posterUrl: string | null
-  overview: string
-  rating: number | null
+  overview?: string
+  rating?: number | null
+  /** Games: developer, shown to tell same-named games apart. */
+  developer?: string | null
+}
+
+/** Matches a search result to a title already on deck (`${mediaType}:${source}:${id}`). */
+export const resultKey = (r: SearchResult) =>
+  r.mediaType === 'game' ? `game:igdb:${r.igdbId}` : `${r.mediaType}:tmdb:${r.tmdbId}`
+
+export async function searchGames(query: string): Promise<SearchResult[]> {
+  const { data, error } = await supabase!.functions.invoke('igdb', { body: { action: 'search', query } })
+  if (error) throw await functionError(error)
+  return data.results as SearchResult[]
 }
 
 export async function searchTmdb(query: string): Promise<SearchResult[]> {
@@ -217,9 +242,12 @@ export function useAddFromTmdb() {
   const { user } = useAuth()
 
   return async (result: SearchResult) => {
-    const { data, error } = await supabase!.functions.invoke('tmdb', {
-      body: { action: 'add', tmdbId: result.tmdbId, mediaType: result.mediaType },
-    })
+    const { data, error } =
+      result.mediaType === 'game'
+        ? await supabase!.functions.invoke('igdb', { body: { action: 'add', igdbId: result.igdbId } })
+        : await supabase!.functions.invoke('tmdb', {
+            body: { action: 'add', tmdbId: result.tmdbId, mediaType: result.mediaType },
+          })
     if (error) throw await functionError(error)
 
     // Already on deck → do nothing (unique user_id + title_id).
@@ -294,9 +322,14 @@ export function useScoreBackfill() {
 
     void (async () => {
       for (const item of todo) {
-        const [mediaType, , tmdbId] = item.title.sourceKey!.split(':')
+        const [mediaType, source, id] = item.title.sourceKey!.split(':')
         await supabase!.functions
-          .invoke('tmdb', { body: { action: 'add', tmdbId: Number(tmdbId), mediaType } })
+          .invoke(
+            source === 'igdb' ? 'igdb' : 'tmdb',
+            source === 'igdb'
+              ? { body: { action: 'add', igdbId: Number(id) } }
+              : { body: { action: 'add', tmdbId: Number(id), mediaType } },
+          )
           .catch(() => undefined)
       }
       await queryClient.invalidateQueries({ queryKey: libraryKey(user.id) })

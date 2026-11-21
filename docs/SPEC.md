@@ -35,6 +35,19 @@ Notes:
 - Price region + currency is a **per-user** setting.
 - Imports (Steam, Letterboxd, Goodreads, Trakt) are out of scope for v1.
 
+## Games — data (part 1 built)
+- **Search & add:** IGDB, PC only (`igdb` function). Results show the year and developer.
+- **Stored per game:** cover, artwork, summary, developer / publisher, IGDB genres / themes / modes /
+  perspectives, Steam app id.
+- **From IsThereAnyDeal game info:** Steam review %, Metacritic, Early Access, Steam user tags. The tags are used
+  as the game's genres for filtering (e.g. Roguelike, Hack and Slash).
+- **From the Steam store:** co-op categories (Online / Local co-op, split-screen, PvP) and free-to-play.
+- **From Steam's compatibility report:** Steam Deck status (Verified / Playable / Unsupported).
+- Steam's own reviews endpoint now redirects, so the review % comes from IsThereAnyDeal.
+- Poster score is Steam %. Scores and details refresh weekly (daily until a game has a Steam score).
+- Unreleased games get the pre-release flag.
+- **Part 2 (next):** prices (official Steam-key + key-shop), Steam ownership check, HowLongToBeat, games filters.
+
 ## Game pricing
 
 Two prices per game, both in the user's region currency (Settings → Region):

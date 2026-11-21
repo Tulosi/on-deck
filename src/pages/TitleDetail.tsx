@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarClock, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
+import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { ComingSoon } from '../components/PageHeader'
 import { StatusControls } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
@@ -30,6 +30,8 @@ function ScoreChips({ title }: { title: Title }) {
   const r = title.ratings
   const chips = r
     ? [
+        // Games: Steam review % first.
+        title.mediaType === 'game' && title.score?.label === 'Steam' && { label: 'Steam reviews', value: title.score.value },
         r.imdb && { label: 'IMDb', value: r.imdb },
         r.rottenTomatoes && { label: 'Rotten Tomatoes', value: r.rottenTomatoes },
         r.rtAudience && { label: 'RT Audience', value: r.rtAudience },
@@ -57,6 +59,67 @@ function ScoreChips({ title }: { title: Title }) {
           <span className="text-muted">{c.label}</span>
           <span className="font-semibold text-fg">{c.value}</span>
         </span>
+      ))}
+    </div>
+  )
+}
+
+const DECK_LABEL: Record<string, string> = {
+  verified: 'Verified',
+  playable: 'Playable',
+  unsupported: 'Unsupported',
+  unknown: 'Unknown',
+}
+
+/** Game facts for the side panel (IGDB + Steam + IsThereAnyDeal data stored on the title). */
+function GameFacts({ d }: { d: Record<string, unknown> }) {
+  const list = (v: unknown) => (Array.isArray(v) && v.length ? (v as string[]).join(', ') : undefined)
+  const mp = (d.multiplayer ?? {}) as {
+    online_coop?: boolean
+    local_coop?: boolean
+    split_screen?: boolean
+    pvp?: boolean
+    online_max?: number | null
+    single_player?: boolean
+  }
+  const modes = [
+    mp.single_player && 'Single-player',
+    mp.online_coop && `Online co-op${mp.online_max ? ` (up to ${mp.online_max})` : ''}`,
+    mp.local_coop && 'Local co-op',
+    mp.split_screen && 'Split-screen',
+    mp.pvp && 'PvP',
+  ].filter(Boolean) as string[]
+  return (
+    <>
+      <Fact label="Developer" value={list(d.developer)} />
+      <Fact label="Publisher" value={list(d.publisher)} />
+      <Fact label="Modes" value={modes.length ? modes.join(' · ') : undefined} />
+      <Fact label="Steam Deck" value={typeof d.steam_deck === 'string' ? DECK_LABEL[d.steam_deck] : undefined} />
+      <Fact label="Early Access" value={d.early_access ? 'Yes — not 1.0 yet' : undefined} />
+      <Fact label="Price" value={d.is_free ? 'Free-To-Play' : undefined} />
+      <Fact label="Perspective" value={list(d.perspectives)} />
+    </>
+  )
+}
+
+function GameLinks({ d }: { d: Record<string, unknown> }) {
+  const links = [
+    typeof d.steam_url === 'string' && { href: d.steam_url, label: 'Steam store' },
+    typeof d.igdb_url === 'string' && { href: d.igdb_url, label: 'IGDB' },
+  ].filter(Boolean) as { href: string; label: string }[]
+  if (links.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {links.map((l) => (
+        <a
+          key={l.href}
+          href={l.href}
+          target="_blank"
+          rel="noreferrer"
+          className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+        >
+          {l.label} <ExternalLink className="size-3.5" />
+        </a>
       ))}
     </div>
   )
@@ -196,8 +259,10 @@ export function TitleDetail() {
                   : undefined
               }
             />
-            <Fact label="Status" value={statusText} />
+            <Fact label="Status" value={title.mediaType === 'game' ? undefined : statusText} />
+            {title.mediaType === 'game' && <GameFacts d={d} />}
           </dl>
+          {title.mediaType === 'game' && <GameLinks d={d} />}
 
           {!isSample && (
             <div className="space-y-2">

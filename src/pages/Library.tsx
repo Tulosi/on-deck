@@ -86,7 +86,9 @@ export function Library() {
       {inType.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">
           {!isSample && (f.type === 'game' || f.type === 'book')
-            ? `${LABELS.type[f.type]} search is coming next.`
+            ? f.type === 'book'
+              ? 'Books search is coming next.'
+              : 'No games yet — use the search bar to add one.'
             : 'Nothing here yet — use the search bar to add something.'}
         </p>
       ) : results.length === 0 ? (

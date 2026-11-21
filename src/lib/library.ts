@@ -129,8 +129,8 @@ function toUserItem(row: ItemRow): UserItem {
       },
       needsScores:
         (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t))) ||
-        // Games saved before release-date precision was stored are refreshed once to pick it up.
-        (t.source === 'igdb' && (scoresNeedRefresh(t.ratings) || t.metadata.release_precision === undefined)),
+        // Games saved before release dates (precision, Early Access, 1.0) were stored are refreshed once to pick it up.
+        (t.source === 'igdb' && (scoresNeedRefresh(t.ratings) || t.metadata.release_milestones === undefined)),
     },
   }
 }
@@ -289,8 +289,9 @@ export async function searchGames(query: string): Promise<SearchResult[]> {
   return data.results as SearchResult[]
 }
 
-export async function searchTmdb(query: string): Promise<SearchResult[]> {
-  const { data, error } = await supabase!.functions.invoke('tmdb', { body: { action: 'search', query } })
+/** Movies and/or TV from TMDB. `type` limits it to one. */
+export async function searchTmdb(query: string, type?: 'movie' | 'tv'): Promise<SearchResult[]> {
+  const { data, error } = await supabase!.functions.invoke('tmdb', { body: { action: 'search', query, type } })
   if (error) throw await functionError(error)
   return data.results as SearchResult[]
 }

@@ -37,7 +37,7 @@ export function AppShell() {
               <Link to="/login" className="text-accent-ink hover:underline">
                 sign in
               </Link>{' '}
-              to build your own deck
+              to build your own library
             </div>
           )
         )}

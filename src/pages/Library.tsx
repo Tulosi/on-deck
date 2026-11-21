@@ -129,7 +129,7 @@ export function Library() {
 
       {isSample && (
         <p className="mt-10 text-center text-xs text-faint">
-          Sample data — <Link to="/login" className="text-accent-ink hover:underline">sign in</Link> to filter your own deck.
+          Sample data — <Link to="/login" className="text-accent-ink hover:underline">sign in</Link> to filter your own library.
         </p>
       )}
     </div>

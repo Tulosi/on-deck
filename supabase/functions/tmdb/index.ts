@@ -1,5 +1,6 @@
 // Movies + TV via TMDB.
-//   POST { action: 'search', query }            → up to 12 movie/TV matches (nothing is stored)
+//   POST { action: 'search', query, type? }     → up to 12 matches (nothing is stored); type 'movie' | 'tv'
+//                                                  searches only that type, otherwise both
 //   POST { action: 'add', tmdbId, mediaType }   → fetch full details (+ review scores via MDBList/OMDb),
 //                                                 upsert into `titles`, return the row. Also used to refresh
 //                                                 a title that's already cached.
@@ -33,11 +34,17 @@ const img = (path: string | null | undefined, size: string) => (path ? `${IMG}/$
 const yearOf = (date: string | null | undefined) => (date ? Number(date.slice(0, 4)) || null : null)
 const dateOrNull = (date: string | null | undefined) => (date ? date : null)
 
-async function search(query: string) {
+async function search(query: string, type: MediaType | null) {
   const q = query.trim()
   if (q.length < 2) return json({ results: [] })
-  const data = await tmdb('/search/multi', { query: q, include_adult: 'false', language: 'en-US', page: '1' })
+  const data = await tmdb(type ? `/search/${type}` : '/search/multi', {
+    query: q,
+    include_adult: 'false',
+    language: 'en-US',
+    page: '1',
+  })
   const results = (data.results as Json[])
+    .map((r) => (type ? { ...r, media_type: type } : r))
     .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
     .slice(0, 12)
     .map((r) => {
@@ -164,7 +171,8 @@ serve(async (req) => {
   await requireUser(req)
 
   const body = (await req.json().catch(() => null)) as Json | null
-  if (body?.action === 'search' && typeof body.query === 'string') return search(body.query)
+  if (body?.action === 'search' && typeof body.query === 'string')
+    return search(body.query, body.type === 'movie' || body.type === 'tv' ? body.type : null)
   if (body?.action === 'provider-list') {
     const country = typeof body.country === 'string' && /^[A-Z]{2}$/.test(body.country) ? body.country : 'US'
     return providerList(country)

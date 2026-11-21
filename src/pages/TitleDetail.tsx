@@ -142,7 +142,7 @@ export function TitleDetail() {
   }
 
   const item = items.find((i) => i.title.id === id)
-  if (!item) return <p className="py-16 text-center text-sm text-muted">This title isn’t on your deck.</p>
+  if (!item) return <p className="py-16 text-center text-sm text-muted">This title isn’t in your library.</p>
 
   const { title } = item
   const Icon = typeIcon[title.mediaType]
@@ -162,7 +162,7 @@ export function TitleDetail() {
   const statusText = currentlyAiring ? 'Currently Airing' : typeof d.status === 'string' ? d.status : undefined
 
   async function remove() {
-    if (!window.confirm(`Remove “${title.title}” from your deck?`)) return
+    if (!window.confirm(`Remove “${title.title}” from your library?`)) return
     setRemoving(true)
     setError(null)
     try {
@@ -274,7 +274,7 @@ export function TitleDetail() {
                 className="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm text-muted hover:border-bad hover:text-bad disabled:opacity-60"
               >
                 {removing ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-                Remove from deck
+                Remove from library
               </button>
               {error && <p className="text-sm text-bad">{error}</p>}
             </div>

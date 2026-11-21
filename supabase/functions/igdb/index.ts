@@ -85,17 +85,12 @@ async function steamDeck(steamAppId: string) {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-/**
- * From IGDB's human-readable release date ("Mar 14, 2027", "Mar 2027", "Q2 2027", "2027", "TBD") for the PC
- * release (earliest one otherwise) → precision + a display label ("March 2027").
- */
-function releasePrecisionOf(g: Json): { precision: 'day' | 'month' | 'quarter' | 'year' | 'tbd'; label: string | null } {
-  const dates = ((g.release_dates ?? []) as Json[]).filter((r) => typeof r.human === 'string')
-  const pc = dates.filter((r) => r.platform === PC)
-  const pick = (pc.length ? pc : dates).sort((a, b) => (a.date ?? Infinity) - (b.date ?? Infinity))[0]
-  if (!pick) return { precision: g.first_release_date ? 'day' : 'tbd', label: null }
-  const h = String(pick.human).trim()
-  if (/^tb[ad]$/i.test(h)) return { precision: 'tbd', label: 'TBA' }
+type Precision = 'day' | 'month' | 'quarter' | 'year' | 'tbd'
+
+/** IGDB's human-readable date ("Mar 14, 2027", "Mar 2027", "Q2 2027", "2027", "TBD") → precision + label. */
+function precisionOf(human: unknown): { precision: Precision; label: string | null } {
+  const h = typeof human === 'string' ? human.trim() : ''
+  if (!h || /^tb[ad]$/i.test(h)) return { precision: 'tbd', label: 'TBA' }
   if (/^Q[1-4] \d{4}$/i.test(h)) return { precision: 'quarter', label: h.toUpperCase() }
   if (/^\d{4}$/.test(h)) return { precision: 'year', label: h }
   const m = h.match(/^([A-Za-z]{3,9}) (\d{4})$/)
@@ -106,12 +101,53 @@ function releasePrecisionOf(g: Json): { precision: 'day' | 'month' | 'quarter' |
   return { precision: 'day', label: null }
 }
 
+/**
+ * The game's release dates (PC ones when there are any). Fetched separately and best-effort, so a problem here
+ * never stops a game being added. Tries with release status (Early Access / Full Release …), then without.
+ */
+async function releaseDates(igdbId: number): Promise<Json[]> {
+  for (const fields of ['date,human,platform,status.name', 'date,human,platform']) {
+    try {
+      const rows = await igdb('release_dates', `fields ${fields}; where game = ${igdbId}; limit 100;`)
+      const pc = rows.filter((r) => r.platform === PC)
+      return (pc.length ? pc : rows).sort((a, b) => (a.date ?? Infinity) - (b.date ?? Infinity))
+    } catch {
+      // try the next field set
+    }
+  }
+  return []
+}
+
+export interface Milestone {
+  /** early_access = Early Access launch; release = full release (1.0 when it follows Early Access). */
+  kind: 'early_access' | 'release'
+  date: string | null
+  precision: Precision
+  label: string | null
+}
+
+const SKIP_STATUS = /alpha|beta|offline|cancel|advanced access/i
+
+/** The Early Access launch (if any) and the full release, each the earliest matching date. */
+function milestonesOf(dates: Json[]): Milestone[] {
+  const toMilestone = (kind: Milestone['kind'], r: Json | undefined): Milestone | null => {
+    if (!r) return null
+    const { precision, label } = precisionOf(r.human)
+    const date = typeof r.date === 'number' ? new Date(r.date * 1000).toISOString().slice(0, 10) : null
+    return { kind, date: precision === 'tbd' ? null : date, precision: date ? precision : 'tbd', label }
+  }
+  const status = (r: Json) => (typeof r.status?.name === 'string' ? (r.status.name as string) : '')
+  const ea = dates.find((r) => /early access/i.test(status(r)))
+  const full = dates.find((r) => !/early access/i.test(status(r)) && !SKIP_STATUS.test(status(r)))
+  return [toMilestone('early_access', ea), toMilestone('release', full)].filter((m): m is Milestone => !!m)
+}
+
 // ─── Add / refresh ─────────────────────────────────────────────────────────
 
 async function add(igdbId: number) {
   const [g] = await igdb(
     'games',
-    `fields name,summary,first_release_date,release_dates.human,release_dates.date,release_dates.platform,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,themes.name,game_modes.name,player_perspectives.name,multiplayer_modes.*,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,external_games.uid,external_games.external_game_source,url; where id = ${igdbId};`,
+    `fields name,summary,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,themes.name,game_modes.name,player_perspectives.name,multiplayer_modes.*,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,external_games.uid,external_games.external_game_source,url; where id = ${igdbId};`,
   )
   if (!g) throw new HttpError(404, 'igdb_not_found')
 
@@ -137,7 +173,12 @@ async function add(igdbId: number) {
   }
 
   const releaseIso = g.first_release_date ? new Date(g.first_release_date * 1000).toISOString().slice(0, 10) : null
-  const { precision: releasePrecision, label: releaseLabel } = releasePrecisionOf(g)
+  const dates = await releaseDates(g.id as number)
+  const milestones = milestonesOf(dates)
+  // Precision of the first release (the date IGDB's first_release_date points at).
+  const { precision: releasePrecision, label: releaseLabel } = dates.length
+    ? precisionOf(dates[0].human)
+    : { precision: (releaseIso ? 'day' : 'tbd') as Precision, label: null }
   const companies = (g.involved_companies ?? []) as Json[]
   const art = (g.artworks?.[0] ?? g.screenshots?.[0])?.image_id
   const igdbGenres = ((g.genres ?? []) as Json[]).map((x) => x.name as string)
@@ -181,6 +222,8 @@ async function add(igdbId: number) {
       // How exact the release date is (IGDB stores "2027" as Dec 31, 2027): day | month | quarter | year | tbd.
       release_precision: releasePrecision,
       release_label: releasePrecision === 'day' ? null : releaseLabel,
+      // Early Access launch and full release (1.0), for the Waitlist and calendar feeds.
+      release_milestones: milestones,
     },
     release_date: releaseIso,
     refreshed_at: nowIso,

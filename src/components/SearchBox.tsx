@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Film, Gamepad2, Loader2, Plus, Search, Tv } from 'lucide-react'
+import clsx from 'clsx'
+import { BookOpen, Check, Film, Gamepad2, Layers, Loader2, Plus, Search, Tv, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { resultKey, searchGames, searchTmdb, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
 
@@ -15,6 +16,27 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 type AddState = 'adding' | 'added' | { error: string }
+
+/** What the search looks for. One type at a time keeps results relevant; "All" is there when unsure. */
+type SearchType = 'movie' | 'tv' | 'game' | 'book' | 'all'
+const SEARCH_TYPES: { value: SearchType; label: string; icon: LucideIcon; placeholder: string }[] = [
+  { value: 'movie', label: 'Movies', icon: Film, placeholder: 'Search movies…' },
+  { value: 'tv', label: 'TV', icon: Tv, placeholder: 'Search TV shows…' },
+  { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search PC games…' },
+  { value: 'book', label: 'Books', icon: BookOpen, placeholder: 'Search books…' },
+  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search movies, TV and games…' },
+]
+const TYPE_KEY = 'ondeck.searchType'
+const isSearchType = (v: unknown): v is SearchType => SEARCH_TYPES.some((t) => t.value === v)
+
+function savedType(): SearchType {
+  try {
+    const v = localStorage.getItem(TYPE_KEY)
+    return isSearchType(v) ? v : 'movie'
+  } catch {
+    return 'movie'
+  }
+}
 
 function ResultRow({
   result,
@@ -68,7 +90,7 @@ function ResultRow({
         ) : (
           <Plus className="size-3.5" />
         )}
-        {added ? 'On deck' : 'Add'}
+        {added ? 'Added' : 'Add'}
       </button>
     </li>
   )
@@ -102,7 +124,11 @@ function ResultSection({
   )
 }
 
-/** Top-bar search: movies + TV (TMDB) and PC games (IGDB), searched in parallel, with one-click Add. */
+/**
+ * Top-bar search with a type picker (Movies · TV · Games · Books · All). Only the chosen type's source is
+ * searched: TMDB for movies / TV, IGDB for PC games. The type follows the Library page you're on, else your
+ * last choice.
+ */
 export function SearchBox() {
   const { user } = useAuth()
   const { items, isSample } = useItems()
@@ -112,20 +138,41 @@ export function SearchBox() {
   const [addStates, setAddStates] = useState<Record<string, AddState>>({})
   const wrapper = useRef<HTMLDivElement>(null)
   const query = useDebounced(text.trim(), 300)
+  const input = useRef<HTMLInputElement>(null)
 
+  // Type: the Library's type when you're browsing one, otherwise your last pick.
+  const { pathname, search } = useLocation()
+  const pageType = pathname === '/library' ? new URLSearchParams(search).get('type') : null
+  const [type, setTypeState] = useState<SearchType>(savedType)
+  useEffect(() => {
+    if (isSearchType(pageType)) setTypeState(pageType)
+  }, [pageType])
+  const setType = (t: SearchType) => {
+    setTypeState(t)
+    try {
+      localStorage.setItem(TYPE_KEY, t)
+    } catch {
+      // remembering is optional
+    }
+    input.current?.focus()
+  }
+
+  const ready = !!user && query.length >= 2
+  const screenType = type === 'movie' || type === 'tv' ? type : undefined
   const screen = useQuery({
-    queryKey: ['tmdb-search', query],
-    queryFn: () => searchTmdb(query),
-    enabled: !!user && query.length >= 2,
+    queryKey: ['tmdb-search', query, screenType ?? 'both'],
+    queryFn: () => searchTmdb(query, screenType),
+    enabled: ready && (type === 'movie' || type === 'tv' || type === 'all'),
     staleTime: 10 * 60_000,
   })
   const games = useQuery({
     queryKey: ['igdb-search', query],
     queryFn: () => searchGames(query),
-    enabled: !!user && query.length >= 2,
+    enabled: ready && (type === 'game' || type === 'all'),
     staleTime: 10 * 60_000,
   })
   const fetching = screen.isFetching || games.isFetching
+  const current = SEARCH_TYPES.find((t) => t.value === type)!
 
   // Close on outside click.
   useEffect(() => {
@@ -150,13 +197,18 @@ export function SearchBox() {
     }
   }
 
-  const showPanel = open && text.trim().length >= 2
+  const hasQuery = text.trim().length >= 2
+  const showPanel = open
+  const row = (r: SearchResult) => (
+    <ResultRow key={keyOf(r)} result={r} onDeck={onDeck.has(keyOf(r))} state={addStates[keyOf(r)]} onAdd={() => add(r)} />
+  )
 
   return (
     <div ref={wrapper} className="relative max-w-md flex-1">
       <label className="flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
         {fetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
         <input
+          ref={input}
           type="search"
           value={text}
           onChange={(e) => {
@@ -165,13 +217,38 @@ export function SearchBox() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-          placeholder="Add a movie, show or game…"
+          placeholder={current.placeholder}
+          aria-label={current.placeholder.replace('…', '')}
           className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
         />
       </label>
 
       {showPanel && (
         <div className="absolute inset-x-0 top-11 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14">
+          {/* Type picker */}
+          <div role="radiogroup" aria-label="Search for" className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2 [scrollbar-width:none]">
+            {SEARCH_TYPES.map((t) => {
+              const Icon = t.icon
+              const active = t.value === type
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setType(t.value)}
+                  className={clsx(
+                    'flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors sm:px-3',
+                    active ? 'border-accent bg-accent text-accent-fg' : 'border-line text-muted hover:text-fg',
+                  )}
+                >
+                  <Icon className="size-3.5 max-sm:hidden" />
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+
           {!user ? (
             <p className="px-4 py-5 text-sm text-muted">
               <Link to="/login" onClick={() => setOpen(false)} className="text-accent-ink hover:underline">
@@ -179,28 +256,27 @@ export function SearchBox() {
               </Link>{' '}
               to search and add titles.
             </p>
+          ) : type === 'book' ? (
+            <p className="px-4 py-5 text-sm text-muted">Books are coming soon. For now you can add movies, TV and games.</p>
+          ) : !hasQuery ? (
+            <p className="px-4 py-4 text-sm text-faint">Type a title to search {current.label === 'All' ? 'everything' : current.label.toLowerCase()}.</p>
           ) : (
             <>
-              <ResultSection
-                title="Movies & TV"
-                q={screen}
-                empty={`No movies or shows match “${query}”.`}
-                render={(r) => (
-                  <ResultRow key={keyOf(r)} result={r} onDeck={onDeck.has(keyOf(r))} state={addStates[keyOf(r)]} onAdd={() => add(r)} />
-                )}
-              />
-              <ResultSection
-                title="Games"
-                q={games}
-                empty={`No PC games match “${query}”.`}
-                render={(r) => (
-                  <ResultRow key={keyOf(r)} result={r} onDeck={onDeck.has(keyOf(r))} state={addStates[keyOf(r)]} onAdd={() => add(r)} />
-                )}
-              />
+              {(type === 'movie' || type === 'tv' || type === 'all') && (
+                <ResultSection
+                  title={type === 'movie' ? 'Movies' : type === 'tv' ? 'TV shows' : 'Movies & TV'}
+                  q={screen}
+                  empty={`No ${type === 'movie' ? 'movies' : type === 'tv' ? 'shows' : 'movies or shows'} match “${query}”.`}
+                  render={row}
+                />
+              )}
+              {(type === 'game' || type === 'all') && (
+                <ResultSection title="Games" q={games} empty={`No PC games match “${query}”.`} render={row} />
+              )}
             </>
           )}
           <p className="border-t border-line px-4 py-2 font-mono text-[10px] text-faint">
-            Movies &amp; TV from TMDB · games from IGDB · books coming soon
+            {type === 'game' ? 'PC games from IGDB' : type === 'all' ? 'Movies & TV from TMDB · games from IGDB' : type === 'book' ? 'Books coming soon' : 'From TMDB'}
           </p>
         </div>
       )}

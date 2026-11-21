@@ -204,6 +204,9 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
+**Wording:** the app is called On Deck, but in the interface the user's collection is always "your library",
+never "your deck".
+
 ### Waitlist & calendar
 Rules live in `supabase/functions/_shared/releases.ts`, shared by the app and the feed so they always agree.
 Dropped titles are left out everywhere.
@@ -216,11 +219,22 @@ Dropped titles are left out everywhere.
   stored in `calendar_feeds`: 64 random hex characters per user, and "New link" revokes the old one.
   - Works with Google Calendar ("Add to Google Calendar" opens its subscribe screen), Apple Calendar and
     Outlook (via a `webcal://` link).
+  - **What's included** is chosen per link with the `only` URL parameter (one token, so each option is its own
+    calendar and you can add several):
+    - `new` (**default**, "New releases"): new movies, series and season premieres, game launches (Early Access
+      and 1.0) and book releases. No individual episodes.
+    - Under **More options**: `all` (everything, including the next episode of airing shows), and `movie`,
+      `tv`, `game` or `book` (everything for that type).
   - Events are all-day, for exact dates only: releases, premieres, new seasons and the next episode. Each
     show has one "next episode" event that moves forward as episodes air. Releases from the last 60 days are
     kept so they don't vanish.
   - Google refreshes subscribed calendars on its own schedule, which can take up to a day.
   - Found on the Waitlist page ("Add to your calendar") and in Settings.
+- **Games' Early Access and 1.0:** from IGDB's release dates (PC entries, by release status), stored as
+  `metadata.release_milestones`: the Early Access launch and the full release, each with its own precision.
+  A game in Early Access shows its upcoming **Full release (1.0)**; one not out yet shows its **Early Access
+  launch** and, when announced, its 1.0. The dates are fetched in a separate, best-effort IGDB call, so they
+  can never stop a game being added.
 - **Games' fuzzy dates:** IGDB's release date text ("Q2 2027", "2027", "TBD") is stored as
   `metadata.release_precision` / `release_label`. Without it, IGDB's stand-in date (e.g. Dec 31) would look
   exact.
@@ -276,6 +290,10 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 ## UI
 
 - Plex-style shell: left sidebar (Home, Movies, TV Shows, Games, Books, Collections, Settings), top search bar.
+- **Search** searches one type at a time, picked with chips at the top of its panel (Movies · TV · Games · Books ·
+  All). It follows the Library type you're browsing, otherwise your last pick (default Movies). Only that
+  type's source is queried: TMDB's movie or TV search, or IGDB. Books show "coming soon" until Hardcover is
+  wired up.
   On phones the sidebar becomes a bottom tab bar.
 - **Home**: "what's next, and what's changed". Rows: Continue · New for you · This week · Ready to start · Deals.
   Browsing, filtering and sorting live on the **Library** page (see docs/FILTERING.md). Full design: docs/HOME.md

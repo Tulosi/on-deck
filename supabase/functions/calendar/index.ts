@@ -1,11 +1,22 @@
 // Private calendar feed (iCalendar / .ics) of a user's upcoming releases. No sign-in: the secret token in the
 // URL identifies the user (see migration 20261122000000_calendar_feeds.sql).
-//   GET ?token=<64 hex chars> → text/calendar
+//   GET ?token=<64 hex chars>[&only=new|all|movie|tv|game|book] → text/calendar
+// `only` (default new) picks what's in the feed; see FeedFilter in _shared/releases.ts. One token, so each
+// filter is just a different URL — you can subscribe to several.
 // Events (all-day): movie / game releases, series premieres, new seasons and the next announced episode,
 // for everything on the deck except Dropped titles. Only exact dates. Same rules as the app's Calendar
 // (_shared/releases.ts). Recent releases (last 60 days) stay on, so past events don't vanish from the calendar.
 import { admin, corsHeaders, serve } from '../_shared/http.ts'
-import { daysBetween, eventLabel, upcomingEvents, type ReleaseEvent, type ReleaseInput } from '../_shared/releases.ts'
+import {
+  daysBetween,
+  eventLabel,
+  FEED_FILTERS,
+  inFeed,
+  upcomingEvents,
+  type FeedFilter,
+  type ReleaseEvent,
+  type ReleaseInput,
+} from '../_shared/releases.ts'
 
 // deno-lint-ignore no-explicit-any
 type Json = Record<string, any>
@@ -13,6 +24,14 @@ type Json = Record<string, any>
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://tulosi.github.io/on-deck').replace(/\/$/, '')
 const KEEP_PAST_DAYS = 60
 const TYPE_NAME: Record<string, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
+const FEED_NAME: Record<FeedFilter, string> = {
+  new: 'On Deck · New releases',
+  all: 'On Deck',
+  movie: 'On Deck · Movies',
+  tv: 'On Deck · TV',
+  game: 'On Deck · Games',
+  book: 'On Deck · Books',
+}
 
 const notFound = () => new Response('Not found', { status: 404, headers: corsHeaders })
 
@@ -48,7 +67,10 @@ function nextDay(iso: string): string {
 
 serve(async (req) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405 })
-  const token = new URL(req.url).searchParams.get('token') ?? ''
+  const params = new URL(req.url).searchParams
+  const token = params.get('token') ?? ''
+  const onlyParam = params.get('only') ?? 'new'
+  const only: FeedFilter = (FEED_FILTERS as string[]).includes(onlyParam) ? (onlyParam as FeedFilter) : 'new'
   if (!/^[0-9a-f]{64}$/.test(token)) return notFound()
 
   const db = admin()
@@ -72,7 +94,7 @@ serve(async (req) => {
     'PRODID:-//On Deck//Waitlist//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:On Deck',
+    fold(`X-WR-CALNAME:${esc(FEED_NAME[only])}`),
     'X-WR-CALDESC:Upcoming releases from your On Deck waitlist',
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
     'X-PUBLISHED-TTL:PT6H',
@@ -83,12 +105,20 @@ serve(async (req) => {
     if (!t || row.progress === 'dropped') continue
     const input: ReleaseInput = { mediaType: t.media_type, releaseDate: t.release_date, details: t.metadata }
     const events: ReleaseEvent[] = upcomingEvents(input, today)
-    // Recently released → keep its release / premiere on the calendar.
-    if (
+    // Recently released (last 60 days) → keep its release / premiere / launch on the calendar.
+    const recent = (date: string | null | undefined) =>
+      !!date && date < today && daysBetween(date, today) <= KEEP_PAST_DAYS
+    const milestones = Array.isArray(t.metadata?.release_milestones) ? (t.metadata.release_milestones as Json[]) : []
+    if (t.media_type === 'game' && milestones.length) {
+      const hadEarlyAccess = milestones.some((m) => m.kind === 'early_access')
+      for (const m of milestones) {
+        if (m.precision !== 'day' || !recent(m.date)) continue
+        const kind = m.kind === 'early_access' ? 'early_access' : hadEarlyAccess ? 'full_release' : 'release'
+        events.push({ kind, date: m.date, precision: 'day' })
+      }
+    } else if (
       events.every((e) => e.kind !== 'release' && e.kind !== 'premiere') &&
-      t.release_date &&
-      t.release_date < today &&
-      daysBetween(t.release_date, today) <= KEEP_PAST_DAYS &&
+      recent(t.release_date) &&
       (t.metadata?.release_precision ?? 'day') === 'day' &&
       t.media_type !== 'book'
     ) {
@@ -96,7 +126,7 @@ serve(async (req) => {
     }
 
     for (const e of events) {
-      if (!e.date || e.precision !== 'day') continue
+      if (!e.date || e.precision !== 'day' || !inFeed(only, t.media_type, e)) continue
       const label = eventLabel(e)
       // Episode events share one UID per show, so the next episode replaces the last instead of piling up.
       const uid = e.kind === 'episode' ? `${t.id}-next-episode@on-deck` : `${t.id}-${e.kind}${e.season ? `-s${e.season}` : ''}@on-deck`

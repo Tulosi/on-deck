@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { ComingSoon } from '../components/PageHeader'
+import { GamePrices } from '../components/GamePrices'
 import { StatusControls } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
@@ -96,7 +97,6 @@ function GameFacts({ d }: { d: Record<string, unknown> }) {
       <Fact label="Modes" value={modes.length ? modes.join(' · ') : undefined} />
       <Fact label="Steam Deck" value={typeof d.steam_deck === 'string' ? DECK_LABEL[d.steam_deck] : undefined} />
       <Fact label="Early Access" value={d.early_access ? 'Yes — not 1.0 yet' : undefined} />
-      <Fact label="Price" value={d.is_free ? 'Free-To-Play' : undefined} />
       <Fact label="Perspective" value={list(d.perspectives)} />
     </>
   )
@@ -235,6 +235,7 @@ export function TitleDetail() {
           {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
           {!isSample && <StatusControls item={item} />}
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
+          {!isSample && title.mediaType === 'game' && <GamePrices item={item} />}
           <ComingSoon>Coming soon on this page: adding the title to your collections.</ComingSoon>
         </div>
 

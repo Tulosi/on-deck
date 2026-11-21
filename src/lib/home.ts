@@ -1,6 +1,7 @@
 // Home rows — "what's next, and what's changed" (docs/HOME.md). Step 1: Continue, This week, Ready to start,
 // computed from data the app already has. "New for you", stored availability and Deals come later.
 import { isAvailable } from './filters'
+import { cheapest } from './prices'
 import { releaseInfo, tvSchedule } from './release'
 import type { UserItem } from '../types'
 
@@ -121,4 +122,17 @@ export function readyToStart(items: UserItem[]): UserItem[] {
     .filter((i) => isAvailable(i) !== false)
     .sort((a, b) => Date.parse(b.addedAt ?? '0') - Date.parse(a.addedAt ?? '0'))
     .slice(0, 10)
+}
+
+/**
+ * 5. Deals — games you don't own (not Played / Dropped) that are at a historical low or ≥ 50 % off Steam's
+ * full price, cheapest first.
+ */
+export function deals(items: UserItem[]): UserItem[] {
+  return items
+    .filter((i) => i.title.mediaType === 'game' && !i.owned && i.progress !== 'completed' && i.progress !== 'dropped')
+    .map((i) => ({ i, best: i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null }))
+    .filter((x) => x.best && (x.best.atLow || (x.best.discountPct ?? 0) >= 50))
+    .sort((a, b) => a.best!.price - b.best!.price)
+    .map((x) => x.i)
 }

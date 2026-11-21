@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
-import { continueItems, continueLine, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
+import { continueItems, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
 import { useFilters } from '../lib/useFilters'
 
@@ -41,6 +41,7 @@ export function Home() {
   const week = thisWeek(items)
   const weekById = new Map(week.map((u) => [u.item.id, u]))
   const ready = readyToStart(items)
+  const onDeal = deals(items)
   const nothingGoingOn = cont.length === 0 && week.length === 0
 
   return (
@@ -81,6 +82,12 @@ export function Home() {
         hint="High priority and already out"
         items={ready}
         href={`/library?status=wanted&priority=high&release=released${typeParam}`}
+      />
+      <PosterRow
+        title="Deals"
+        hint="Games at a historical low or 50%+ off"
+        items={onDeal}
+        href="/library?type=game&deal=on_sale&sort=price"
       />
     </div>
   )

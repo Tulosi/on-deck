@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { useAvailabilityRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
+import { useAvailabilityRefresh, usePriceRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
 import { useSteamOwnershipCheck } from '../lib/steam'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav, Sidebar } from './Sidebar'
@@ -18,6 +18,7 @@ export function AppShell() {
   useScoreBackfill()
   useRenewalCheck()
   useAvailabilityRefresh()
+  usePriceRefresh()
   useSteamOwnershipCheck()
   const { pathname } = useLocation()
   return (

@@ -46,9 +46,11 @@ Notes:
 - Steam's own reviews endpoint now redirects, so the review % comes from IsThereAnyDeal.
 - Poster score is Steam %. Scores and details refresh weekly (daily until a game has a Steam score).
 - Unreleased games get the pre-release flag.
-- **Part 2 (next):** prices (official Steam-key + key-shop), Steam ownership check, HowLongToBeat, games filters.
+- **Part 2 (built):** prices (`prices` function → shared `game_prices` cache per region, refreshed every 12 h),
+  Steam ownership + playtime, games filters (genre/tags, co-op, Steam Deck, Early Access, deals, max price),
+  Sort: Price, and a Home **Deals** row. **Still to do:** HowLongToBeat + a length filter.
 
-## Game pricing
+## Game pricing (built)
 
 Two prices per game, both in the user's region currency (Settings → Region):
 
@@ -212,6 +214,18 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - poster chip `S3 IN 12 DAYS` (within a month) / `S3 · MAR 14`
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
+
+### Waitlist & calendar (planned — not built)
+- **Waitlist page:** every pre-release title on your deck (movies, shows, games, and new seasons of shows you
+  follow), soonest first, with release dates prominent and TBA titles last.
+- **Calendar view:** a month grid of upcoming releases, premieres and new episodes. Click a day to see what's
+  out.
+- **Calendar feed:** a private subscription link (`.ics`, iCalendar) served by an Edge Function. Each user gets a
+  secret token URL they can revoke and regenerate. Works with Google Calendar ("From URL"), Apple Calendar and
+  Outlook. Events: releases, premieres, new episodes (all-day events; title + type in the summary, link back to
+  On Deck).
+  - Caveat: Google Calendar refreshes subscribed feeds on its own schedule (typically every several hours to
+    a day), so changes show up with a delay.
 
 ### Release data
 

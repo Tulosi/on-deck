@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
-import type { MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
+import type { GamePrice, MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
+import { cheapest, formatPrice } from './prices'
 import { useAuth } from './auth'
 import { supabase } from './supabase'
 
@@ -173,6 +174,46 @@ function withAvailability(item: UserItem, a: AvailabilityRow | undefined): UserI
   }
 }
 
+interface PriceRow {
+  title_id: string
+  currency: string
+  is_free: boolean
+  official_shop: string | null
+  official_price: number | null
+  official_url: string | null
+  official_low: number | null
+  steam_regular: number | null
+  keyshop_price: number | null
+  keyshop_low: number | null
+  keyshop_url: string | null
+  fetched_at: string
+}
+
+const num = (v: unknown) => (v == null || v === '' ? null : Number(v))
+
+function withPrice(item: UserItem, r: PriceRow | undefined): UserItem {
+  if (!r || item.title.mediaType !== 'game') return item
+  const gamePrice: GamePrice = {
+    currency: r.currency,
+    isFree: r.is_free,
+    official:
+      r.official_price != null
+        ? { shop: r.official_shop, price: num(r.official_price), url: r.official_url, low: num(r.official_low) }
+        : null,
+    steamRegular: num(r.steam_regular),
+    keyshop: r.keyshop_price != null ? { price: num(r.keyshop_price), low: num(r.keyshop_low), url: r.keyshop_url } : null,
+    fetchedAt: r.fetched_at,
+  }
+  const best = cheapest(gamePrice)
+  return {
+    ...item,
+    gamePrice,
+    price: best
+      ? { amount: formatPrice(best.price, r.currency), discountPct: best.discountPct ?? undefined, atLow: best.atLow }
+      : undefined,
+  }
+}
+
 export function useItems() {
   const { user, loading: authLoading } = useAuth()
   const query = useQuery({
@@ -191,7 +232,16 @@ export function useItems() {
         .from('user_availability')
         .select('title_id, plex_status, streaming, available, became_available_at, checked_at')
       const byTitle = new Map(((avail ?? []) as AvailabilityRow[]).map((a) => [a.title_id, a]))
-      return (data as unknown as ItemRow[]).map((row) => withAvailability(toUserItem(row), byTitle.get(row.title.id)))
+      // Game prices for the user's region (shared cache written by the `prices` function).
+      const { data: prof } = await supabase!.from('profiles').select('country_code').eq('user_id', user!.id).maybeSingle()
+      const { data: priceRows } = await supabase!
+        .from('game_prices')
+        .select('*')
+        .eq('country_code', ((prof?.country_code as string | undefined) ?? 'US').toUpperCase())
+      const priceByTitle = new Map(((priceRows ?? []) as PriceRow[]).map((p) => [p.title_id, p]))
+      return (data as unknown as ItemRow[]).map((row) =>
+        withPrice(withAvailability(toUserItem(row), byTitle.get(row.title.id)), priceByTitle.get(row.title.id)),
+      )
     },
   })
 
@@ -264,7 +314,10 @@ export function useAddFromTmdb() {
     // Background follow-ups, then refresh the list: where to watch (movies/TV), already owned (games).
     const follow =
       result.mediaType === 'game'
-        ? supabase!.functions.invoke('steam', { body: { action: 'owned', titleIds: [data.title.id] } })
+        ? Promise.all([
+            supabase!.functions.invoke('steam', { body: { action: 'owned', titleIds: [data.title.id] } }),
+            refreshPrices({ titleIds: [data.title.id] }),
+          ])
         : refreshAvailability({ titleIds: [data.title.id] })
     void Promise.resolve(follow)
       .catch(() => undefined)
@@ -278,6 +331,37 @@ export async function refreshAvailability(opts: { titleIds?: string[]; before?: 
   const { data, error } = await supabase.functions.invoke('availability', { body: { action: 'refresh', ...opts } })
   if (error) throw await functionError(error)
   return (data?.remaining as number) ?? 0
+}
+
+/** Asks the server to (re)fetch game prices. Returns how many are still due. */
+export async function refreshPrices(opts: { titleIds?: string[]; before?: string } = {}): Promise<number> {
+  if (!supabase) return 0
+  const { data, error } = await supabase.functions.invoke('prices', { body: { action: 'refresh', ...opts } })
+  if (error) throw await functionError(error)
+  return (data?.remaining as number) ?? 0
+}
+
+const pricesStarted = new Set<string>()
+
+/** Refreshes stale game prices (older than 12 h) on app load, then reloads the list. Mount once (AppShell). */
+export function usePriceRefresh() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!user || !supabase || pricesStarted.has(user.id)) return
+    pricesStarted.add(user.id)
+    void (async () => {
+      try {
+        for (let i = 0; i < 5; i++) {
+          const remaining = await refreshPrices()
+          await queryClient.invalidateQueries({ queryKey: libraryKey(user.id) })
+          if (remaining === 0) break
+        }
+      } catch (err) {
+        console.warn('price refresh failed', err)
+      }
+    })()
+  }, [user, queryClient])
 }
 
 /** Availability refreshes already started per user this session (so it runs once per app load). */

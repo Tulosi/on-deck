@@ -177,7 +177,7 @@ const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x
 function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
   const { items } = useItems()
   const genres =
-    f.type === 'movie' || f.type === 'tv'
+    f.type === 'movie' || f.type === 'tv' || f.type === 'game'
       ? [...new Set(items.filter((i) => i.title.mediaType === f.type).flatMap((i) => i.title.genres))].sort()
       : []
   const years = items.map((i) => i.title.year).filter((y): y is number => !!y)
@@ -321,12 +321,64 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
               )}
               <p className="text-[11px] text-faint">More filters (runtime, Plex, streaming service …) are on the way.</p>
             </>
+          ) : f.type === 'game' ? (
+            <>
+              <OptionGroup
+                label="Genre & tags"
+                options={genres}
+                selected={f.genre}
+                render={(v) => v}
+                onToggle={(v) => set({ ...f, genre: toggle(f.genre, v) })}
+              />
+              <OptionGroup
+                label="Co-op & multiplayer"
+                options={LABELS.options.COOP}
+                selected={f.coop}
+                render={(v) => LABELS.coop[v]}
+                onToggle={(v) => set({ ...f, coop: toggle(f.coop, v) })}
+              />
+              <OptionGroup
+                label="Steam Deck"
+                options={LABELS.options.DECK}
+                selected={f.deck}
+                render={(v) => LABELS.deck[v]}
+                onToggle={(v) => set({ ...f, deck: toggle(f.deck, v) })}
+              />
+              <OptionGroup
+                label="Release state"
+                options={LABELS.options.ACCESS}
+                selected={f.access}
+                render={(v) => LABELS.access[v]}
+                onToggle={(v) => set({ ...f, access: toggle(f.access, v) })}
+              />
+              <OptionGroup
+                label="Deals"
+                options={LABELS.options.DEAL}
+                selected={f.deal}
+                render={(v) => LABELS.deal[v]}
+                onToggle={(v) => set({ ...f, deal: toggle(f.deal, v) })}
+              />
+              <label className="space-y-1.5">
+                <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Max price</span>
+                <select
+                  value={f.maxPrice ?? ''}
+                  onChange={(e) => set({ ...f, maxPrice: e.target.value ? Number(e.target.value) : null })}
+                  className={selectClass}
+                >
+                  <option value="">Any</option>
+                  {[5, 10, 20, 30, 50].map((n) => (
+                    <option key={n} value={n}>
+                      Under {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-[11px] text-faint">
+                Prices are the cheapest of Steam-key stores and key shops, in your region’s currency.
+              </p>
+            </>
           ) : (
-            <p className="text-xs text-muted">
-              {f.type === 'game'
-                ? 'Games filters (genre, co-op, Steam Deck, price, length) are next.'
-                : 'Books filters arrive with books search.'}
-            </p>
+            <p className="text-xs text-muted">Books filters arrive with books search.</p>
           )}
         </Section>
       ) : (

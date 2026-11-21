@@ -59,7 +59,9 @@ export function PosterCard({
   const chipClass = chipVisibility(chipMode ?? savedMode)
   /** Visibility classes for chips, or null when chips are hidden. One global setting for all chip types. */
   const vis = (_key: string) => chipClass
-  const showPrice = title.mediaType === 'game' && !item.owned && item.price
+  // Games you don't own: cheapest price, or Free-To-Play. (An unreleased game shows its release chip instead.)
+  const isFree = title.mediaType === 'game' && !!item.gamePrice?.isFree
+  const showPrice = title.mediaType === 'game' && !item.owned && (item.price || isFree)
   const showPlex = (title.mediaType === 'movie' || title.mediaType === 'tv') && item.plex
   const release = releaseInfo(title)
   const schedule = release.preRelease ? null : tvSchedule(title)
@@ -110,17 +112,25 @@ export function PosterCard({
         )}
 
         {/* Price — games the user doesn't own yet */}
-        {showPrice && vis('price') !== null && (
+        {showPrice && !release.preRelease && vis('price') !== null && (
           <span
+            title={item.price?.atLow ? 'Historical low' : undefined}
             className={clsx(
               'absolute bottom-1.5 left-1.5 flex overflow-hidden rounded-md font-mono text-[11px] font-semibold',
               vis('price'),
             )}
           >
-            {item.price!.discountPct ? (
-              <span className="bg-accent px-1.5 py-0.5 text-[#0c0b0a]">-{item.price!.discountPct}%</span>
-            ) : null}
-            <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
+            {isFree ? (
+              <span className="bg-black/75 px-1.5 py-0.5 text-good">FREE-TO-PLAY</span>
+            ) : (
+              <>
+                {item.price!.discountPct ? (
+                  <span className="bg-accent px-1.5 py-0.5 text-[#0c0b0a]">-{item.price!.discountPct}%</span>
+                ) : null}
+                <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
+                {item.price!.atLow && <span className="bg-good px-1 py-0.5 text-[#0c0b0a]">LOW</span>}
+              </>
+            )}
           </span>
         )}
 

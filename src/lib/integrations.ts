@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MediaType, Title } from '../types'
 import { useAuth } from './auth'
-import { functionError, refreshAvailability } from './library'
+import { functionError, refreshAvailability, refreshPrices } from './library'
 import { supabase } from './supabase'
 
 async function callFn<T>(name: string, body: Record<string, unknown>): Promise<T> {
@@ -81,6 +81,10 @@ export function useUpdateProfile() {
           const before = new Date().toISOString()
           let remaining = await refreshAvailability({ before })
           for (let i = 0; i < 10 && remaining > 0; i++) remaining = await refreshAvailability({ before })
+          if ('country_code' in patch) {
+            let left = await refreshPrices({ before })
+            for (let i = 0; i < 5 && left > 0; i++) left = await refreshPrices({ before })
+          }
         } finally {
           await queryClient.invalidateQueries({ queryKey: ['library', user?.id] })
         }

@@ -62,8 +62,10 @@ export interface UserItem {
   updatedAt?: string
   /** TV: per-season completion overrides (season number → state); omitted seasons are auto. */
   seasonOverrides?: Record<string, SeasonOverride>
-  /** Games only — best current price across Steam and gg.deals. */
-  price?: { amount: string; discountPct?: number }
+  /** Games only — poster badge: the cheapest current price (formatted) and its % off Steam's full price. */
+  price?: { amount: string; discountPct?: number; atLow?: boolean }
+  /** Games only — full price data for the user's region (official Steam-key vs key shop). */
+  gamePrice?: GamePrice
   /** Movies/TV only — from the user's Seerr instance. */
   plex?: PlexStatus
   /** Movies/TV: on Plex or one of the user's streaming services (stored; undefined = not checked yet). */
@@ -79,4 +81,17 @@ export const mediaLabels: Record<MediaType, { singular: string; plural: string; 
   tv: { singular: 'TV Show', plural: 'TV Shows', done: 'Watched' },
   game: { singular: 'Game', plural: 'Games', done: 'Played' },
   book: { singular: 'Book', plural: 'Books', done: 'Read' },
+}
+
+/** A game's prices in one region (from `game_prices`). */
+export interface GamePrice {
+  currency: string
+  isFree: boolean
+  /** Cheapest offer from Steam or a store selling a Steam key. */
+  official: { shop: string | null; price: number | null; url: string | null; low: number | null } | null
+  /** Steam's own full (undiscounted) price — all discounts are measured against it. */
+  steamRegular: number | null
+  /** Cheapest key-shop offer (gg.deals). */
+  keyshop: { price: number | null; low: number | null; url: string | null } | null
+  fetchedAt: string
 }

@@ -87,7 +87,9 @@ export const mediaLabels: Record<MediaType, { singular: string; plural: string; 
 export interface GamePrice {
   currency: string
   isFree: boolean
-  /** Cheapest offer from Steam or a store selling a Steam key. */
+  /** Steam's own price for the region (always shown); `low` = Steam's lowest-ever. */
+  steam: { price: number; low: number | null } | null
+  /** Cheapest *other* store selling a Steam key — only shown when cheaper than Steam. */
   official: { shop: string | null; price: number | null; url: string | null; low: number | null } | null
   /** Steam's own full (undiscounted) price — all discounts are measured against it. */
   steamRegular: number | null

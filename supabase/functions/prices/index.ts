@@ -2,15 +2,18 @@
 //   POST { action: 'refresh', titleIds?: string[], before?: ISO timestamp } → { checked, remaining }
 // Prices are the same for everyone in a region, so they're cached per (title, country) in `game_prices` and
 // shared. Due = not fetched in the last 12 h (or fetched before `before`, after a region change).
-//   Official: cheapest offer from Steam or a store selling a Steam key (IsThereAnyDeal; DRM = Steam).
-//             Platform stores (Epic, Microsoft, GOG …) are excluded. Steam's own regular price = full price.
-//   Key shop: cheapest key-shop offer (gg.deals), with its historical low.
+//   Steam:    Steam's own price, read straight from the Steam store for the region (always shown).
+//   Official: cheapest *other* store selling a Steam key (IsThereAnyDeal; DRM = Steam). Platform stores
+//             (Epic, Microsoft, GOG …) are excluded. The app shows it only when cheaper than Steam.
+//   Key shop: cheapest key-shop offer (gg.deals), with its historical low — also shown only when cheaper.
 import { admin, HttpError, json, requireUser, serve } from '../_shared/http.ts'
 
 // deno-lint-ignore no-explicit-any
 type Json = Record<string, any>
 
 const STALE_MS = 12 * 60 * 60 * 1000
+/** Rows cached before Steam's own price was stored are refetched (pricing rules changed then). */
+const RULES_SINCE = Date.parse('2026-11-21T03:02:40Z')
 const BATCH = 100 // gg.deals takes up to 100 app ids per call; ITAD up to 200 ids
 
 async function postJson(url: string, body: unknown): Promise<Json | null> {
@@ -84,7 +87,7 @@ serve(async (req) => {
   const due = all.filter((g) => {
     if (wanted) return wanted.has(g.titleId)
     const at = fetched.get(g.titleId)
-    if (at == null) return true
+    if (at == null || at < RULES_SINCE) return true
     return before != null ? at < before : now - at > STALE_MS
   })
   const batch = due.slice(0, BATCH)
@@ -95,7 +98,8 @@ serve(async (req) => {
 
   // ── IsThereAnyDeal: official stores (Steam + Steam-key resellers) ──
   const itadKey = Deno.env.get('ITAD_API_KEY')
-  const official = new Map<string, { shop: string; price: number; url: string; low: number | null; steamRegular: number | null; currency: string }>()
+  const official = new Map<string, { shop: string; price: number; url: string; low: number | null; currency: string } | null>()
+  const steamLow = new Map<string, number | null>()
   if (itadKey && paid.length) {
     // Resolve missing ITAD ids by Steam app id.
     for (const g of paid.filter((x) => !x.itadId)) {
@@ -108,17 +112,39 @@ serve(async (req) => {
       : null
     for (const entry of (Array.isArray(res) ? res : []) as Json[]) {
       const deals = ((entry.deals ?? []) as Json[]).filter(isSteamKey)
-      if (deals.length === 0) continue
-      const best = deals.reduce((a, b) => (b.price.amount < a.price.amount ? b : a))
-      const steam = deals.find((d) => d.shop?.name === 'Steam')
-      const lows = deals.map((d) => d.storeLow?.amount).filter((n): n is number => typeof n === 'number')
+      const steamDeal = deals.find((d) => d.shop?.name === 'Steam')
+      steamLow.set(entry.id, steamDeal?.storeLow?.amount ?? null)
+      const others = deals.filter((d) => d.shop?.name !== 'Steam')
+      if (others.length === 0) {
+        official.set(entry.id, null)
+        continue
+      }
+      const best = others.reduce((a, b) => (b.price.amount < a.price.amount ? b : a))
+      const lows = others.map((d) => d.storeLow?.amount).filter((n): n is number => typeof n === 'number')
       official.set(entry.id, {
         shop: best.shop.name,
         price: best.price.amount,
         url: best.url,
         low: lows.length ? Math.min(...lows) : null,
-        steamRegular: steam?.regular?.amount ?? best.regular?.amount ?? null,
         currency: best.price.currency,
+      })
+    }
+  }
+
+  // ── Steam store: Steam's own price for the region (authoritative) ──
+  const steamPrice = new Map<string, { price: number; regular: number; discount: number; currency: string }>()
+  if (paid.length) {
+    const d = await getJson(
+      `https://store.steampowered.com/api/appdetails?appids=${paid.map((g) => g.steamAppId).join(',')}&cc=${country.toLowerCase()}&filters=price_overview`,
+    )
+    for (const [appId, v] of Object.entries((d ?? {}) as Record<string, Json>)) {
+      const po = v?.success ? v.data?.price_overview : null
+      if (!po) continue
+      steamPrice.set(appId, {
+        price: po.final / 100,
+        regular: po.initial / 100,
+        discount: po.discount_percent ?? 0,
+        currency: po.currency,
       })
     }
   }
@@ -145,16 +171,20 @@ serve(async (req) => {
   const rows = batch.map((g) => {
     const o = g.itadId ? official.get(g.itadId) : undefined
     const k = keyshop.get(g.steamAppId)
+    const st = steamPrice.get(g.steamAppId)
     return {
       title_id: g.titleId,
       country_code: country,
-      currency: o?.currency ?? k?.currency ?? '',
+      currency: st?.currency ?? o?.currency ?? k?.currency ?? '',
       is_free: g.isFree,
+      steam_price: g.isFree ? null : (st?.price ?? null),
+      steam_discount: g.isFree ? null : (st?.discount ?? null),
+      steam_regular: g.isFree ? null : (st?.regular ?? null),
+      steam_low: g.isFree ? null : ((g.itadId ? steamLow.get(g.itadId) : null) ?? null),
       official_shop: g.isFree ? null : (o?.shop ?? null),
       official_price: g.isFree ? null : (o?.price ?? null),
       official_url: g.isFree ? null : (o?.url ?? null),
       official_low: g.isFree ? null : (o?.low ?? null),
-      steam_regular: g.isFree ? null : (o?.steamRegular ?? null),
       keyshop_price: g.isFree ? null : (k?.price ?? null),
       keyshop_low: g.isFree ? null : (k?.low ?? null),
       keyshop_url: g.isFree ? null : (k?.url ?? null),

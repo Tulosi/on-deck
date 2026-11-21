@@ -52,37 +52,26 @@ Notes:
 
 ## Game pricing (built)
 
-Two prices per game, both in the user's region currency (Settings → Region):
+**Rule: Steam first.** Steam's own price is always shown. Other sources appear **only when strictly cheaper
+than Steam**, and Steam wins ties.
 
-| Price | Source | Link |
+| Row | Source | Shown when |
 |---|---|---|
-| **Steam (official)** | IsThereAnyDeal prices for the region: the cheapest offer from **Steam or any store selling a Steam key** (`drm` includes Steam). Steam's own `regular` price is the full price | That store's page (named, e.g. "Fanatical") |
-| **Key shop** | gg.deals `currentKeyshops` (cheapest key-shop offer) | The game's gg.deals page, which lists the shops |
+| **Steam** | Steam store `appdetails` for the user's region (`price_overview`: current, full price, discount) | Always, if Steam has a price |
+| **Cheaper Steam key** | IsThereAnyDeal: cheapest *other* store selling a Steam key (DRM = Steam). Platform stores (Epic, Microsoft, GOG, EA, Ubisoft) are excluded | Cheaper than Steam |
+| **Cheaper on key shops** | gg.deals: cheapest key-shop offer | Cheaper than Steam |
 
-- **Full price** means Steam's standard (undiscounted) price, `initial`. Every discount % is measured against it,
-  including the key-shop price: `round((1 − price ÷ Steam full price) × 100)`.
-- **Historical low:** the current price is at or below the recorded low. The official row is compared with the
-  lowest `storeLow` across Steam-key stores (ITAD), the key-shop row with gg.deals' `historicalKeyshops`.
-- **Other official stores** are allowed when they sell a **Steam key** (e.g. Fanatical, Humble, Green Man Gaming,
-  GamersGate). Platform stores that aren't Steam keys (Epic Games Store, Microsoft Store / Xbox for PC, GOG,
-  EA app, Ubisoft Store) are excluded. The official row shows the cheapest Steam-key offer and names the store.
-  The source is IsThereAnyDeal, which lists each store with its key type (gg.deals' API only gives one unnamed
-  price). If ITAD has no data for a game, the row falls back to Steam's own `appdetails` price.
-- **Free-to-play** games show **"Free-To-Play"** instead of a price, on the card and the title page, with no
-  discount or historical-low marker.
-- If there's only a key-shop price, it's shown without a discount (there's nothing to measure it against).
-
-**Poster card** (unowned games only): one badge with the **cheapest** of the two prices and its discount,
-e.g. `-62% · $14.99`, or "Free-To-Play". A small "low" marker appears if that price is a historical low.
-
-**Title page:** a **Price** block that breaks down both:
-- **Official (Steam key):** current price and store name, `-X%` against Steam's full price (struck through when
-  discounted), a **Historical low** tag when it applies, and a link to that store.
-- **Key shop:** cheapest key-shop price, `-X%` against Steam's full price, a **Historical low** tag when it
-  applies, and a **View on gg.deals** link.
-- The cheaper of the two is highlighted. A small note says key shops are third-party resellers.
-
-Prices refresh daily for Wanted/unowned games (cron) and when a game page is opened, if older than a day.
+- **Discount %** is always measured against Steam's full price.
+- **Historical low:** each row is compared with its own source's lowest-ever (Steam's own low, the lowest
+  among Steam-key stores, or gg.deals' key-shop low).
+- **Free-to-play** games show "Free-To-Play". With no Steam price yet (e.g. pre-order), any alternative is
+  shown on its own.
+- **Poster** (unowned games): the cheapest shown option, e.g. `-62% · $14.99 · LOW`, or `FREE-TO-PLAY`.
+  Unreleased games show their release chip instead.
+- **Title page:** the Steam row, plus cheaper rows under it, each linked. The cheapest is highlighted when
+  there's more than one.
+- **Refresh:** a shared cache per (title, region) in `game_prices`, refreshed every 12 h, after adding a game,
+  and in full on region change.
 
 ## Steam ownership check (Games) — built
 - **No library import.** On Deck only checks whether games on your deck are already owned.

@@ -178,6 +178,8 @@ interface PriceRow {
   title_id: string
   currency: string
   is_free: boolean
+  steam_price: number | null
+  steam_low: number | null
   official_shop: string | null
   official_price: number | null
   official_url: string | null
@@ -196,6 +198,7 @@ function withPrice(item: UserItem, r: PriceRow | undefined): UserItem {
   const gamePrice: GamePrice = {
     currency: r.currency,
     isFree: r.is_free,
+    steam: r.steam_price != null ? { price: Number(r.steam_price), low: num(r.steam_low) } : null,
     official:
       r.official_price != null
         ? { shop: r.official_shop, price: num(r.official_price), url: r.official_url, low: num(r.official_low) }

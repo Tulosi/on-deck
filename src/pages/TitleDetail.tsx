@@ -31,8 +31,9 @@ function ScoreChips({ title }: { title: Title }) {
   const r = title.ratings
   const chips = r
     ? [
-        // Games: Steam review % first.
+        // Games: Steam review % first. Books: Hardcover's average (out of 5).
         title.mediaType === 'game' && title.score?.label === 'Steam' && { label: 'Steam reviews', value: title.score.value },
+        title.mediaType === 'book' && title.score?.label === 'Hardcover' && { label: 'Hardcover', value: `${title.score.value} / 5` },
         r.imdb && { label: 'IMDb', value: r.imdb },
         r.rottenTomatoes && { label: 'Rotten Tomatoes', value: r.rottenTomatoes },
         r.rtAudience && { label: 'RT Audience', value: r.rtAudience },
@@ -102,10 +103,27 @@ function GameFacts({ d }: { d: Record<string, unknown> }) {
   )
 }
 
+function BookFacts({ d }: { d: Record<string, unknown> }) {
+  const authors = Array.isArray(d.authors) && d.authors.length ? (d.authors as string[]).join(', ') : undefined
+  const series = d.series as { name?: string; position?: number | null } | null | undefined
+  return (
+    <>
+      <Fact label={Array.isArray(d.authors) && d.authors.length > 1 ? 'Authors' : 'Author'} value={authors} />
+      <Fact label="Series" value={series?.name ? `${series.name}${series.position ? ` · #${series.position}` : ''}` : undefined} />
+      <Fact label="Pages" value={typeof d.pages === 'number' ? d.pages.toLocaleString() : undefined} />
+      <Fact
+        label="Readers on Hardcover"
+        value={typeof d.readers === 'number' && d.readers > 0 ? d.readers.toLocaleString() : undefined}
+      />
+    </>
+  )
+}
+
 function GameLinks({ d }: { d: Record<string, unknown> }) {
   const links = [
     typeof d.steam_url === 'string' && { href: d.steam_url, label: 'Steam store' },
     typeof d.igdb_url === 'string' && { href: d.igdb_url, label: 'IGDB' },
+    typeof d.hardcover_url === 'string' && { href: d.hardcover_url, label: 'Hardcover' },
   ].filter(Boolean) as { href: string; label: string }[]
   if (links.length === 0) return null
   return (
@@ -244,10 +262,10 @@ export function TitleDetail() {
             <Fact
               label={
                 release.preRelease
-                  ? title.mediaType === 'tv' ? 'Premieres' : 'Releases'
-                  : title.mediaType === 'tv' ? 'First aired' : 'Released'
+                  ? title.mediaType === 'tv' ? 'Premieres' : title.mediaType === 'book' ? 'Publishes' : 'Releases'
+                  : title.mediaType === 'tv' ? 'First aired' : title.mediaType === 'book' ? 'Published' : 'Released'
               }
-              value={formatDate(title.releaseDate)}
+              value={release.fuzzyLabel ?? formatDate(title.releaseDate)}
             />
             <Fact label="Runtime" value={runtime} />
             <Fact label="Seasons" value={seasons} />
@@ -260,10 +278,11 @@ export function TitleDetail() {
                   : undefined
               }
             />
-            <Fact label="Status" value={title.mediaType === 'game' ? undefined : statusText} />
+            <Fact label="Status" value={title.mediaType === 'game' || title.mediaType === 'book' ? undefined : statusText} />
             {title.mediaType === 'game' && <GameFacts d={d} />}
+            {title.mediaType === 'book' && <BookFacts d={d} />}
           </dl>
-          {title.mediaType === 'game' && <GameLinks d={d} />}
+          {(title.mediaType === 'game' || title.mediaType === 'book') && <GameLinks d={d} />}
 
           {!isSample && (
             <div className="space-y-2">

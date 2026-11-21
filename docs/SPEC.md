@@ -204,6 +204,18 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
+### Books (Hardcover)
+- The `hardcover` Edge Function handles search and add. Hardcover's GraphQL API is used server-side only, as
+  its terms require.
+  - Search uses Hardcover's search index (Book). Study guides and summaries are filtered out.
+  - Add reads `books_by_pk` and stores: authors, pages, series and position, genres (Hardcover's Genre tags),
+    moods, reader count, rating (out of 5), description and a hardcover.app link.
+- **Poster:** byline = first author; headline score = the Hardcover rating.
+- **Title page:** Author(s), Series, Pages, Readers on Hardcover, plus a Hardcover link.
+- **Release dates:** Hardcover's date. A future Jan 1 is treated as a year-only placeholder ("2027"). Books feed
+  the Waitlist, the Calendar and the books calendar link like any other type.
+- **Refresh:** scores are refreshed weekly, like games.
+
 **Wording:** the app is called On Deck, but in the interface the user's collection is always "your library",
 never "your deck".
 
@@ -292,8 +304,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - Plex-style shell: left sidebar (Home, Movies, TV Shows, Games, Books, Collections, Settings), top search bar.
 - **Search** searches one type at a time, picked with chips at the top of its panel (Movies · TV · Games · Books ·
   All). It follows the Library type you're browsing, otherwise your last pick (default Movies). Only that
-  type's source is queried: TMDB's movie or TV search, or IGDB. Books show "coming soon" until Hardcover is
-  wired up.
+  type's source is queried: TMDB's movie or TV search, IGDB, or Hardcover.
   On phones the sidebar becomes a bottom tab bar.
 - **Home**: "what's next, and what's changed". Rows: Continue · New for you · This week · Ready to start · Deals.
   Browsing, filtering and sorting live on the **Library** page (see docs/FILTERING.md). Full design: docs/HOME.md

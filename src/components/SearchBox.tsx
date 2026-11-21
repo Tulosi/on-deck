@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import { BookOpen, Check, Film, Gamepad2, Layers, Loader2, Plus, Search, Tv, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { resultKey, searchGames, searchTmdb, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
+import { resultKey, searchBooks, searchGames, searchTmdb, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -24,7 +24,7 @@ const SEARCH_TYPES: { value: SearchType; label: string; icon: LucideIcon; placeh
   { value: 'tv', label: 'TV', icon: Tv, placeholder: 'Search TV shows…' },
   { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search PC games…' },
   { value: 'book', label: 'Books', icon: BookOpen, placeholder: 'Search books…' },
-  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search movies, TV and games…' },
+  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search movies, TV, games and books…' },
 ]
 const TYPE_KEY = 'ondeck.searchType'
 const isSearchType = (v: unknown): v is SearchType => SEARCH_TYPES.some((t) => t.value === v)
@@ -49,7 +49,8 @@ function ResultRow({
   state?: AddState
   onAdd: () => void
 }) {
-  const TypeIcon = result.mediaType === 'movie' ? Film : result.mediaType === 'game' ? Gamepad2 : Tv
+  const TypeIcon =
+    result.mediaType === 'movie' ? Film : result.mediaType === 'game' ? Gamepad2 : result.mediaType === 'book' ? BookOpen : Tv
   const added = onDeck || state === 'added'
   return (
     <li className="flex items-center gap-3 px-3 py-2 hover:bg-raised/60">
@@ -66,8 +67,9 @@ function ResultRow({
         <p className="truncate text-sm font-medium text-fg">{result.title}</p>
         <p className="flex items-center gap-1.5 font-mono text-xs text-muted">
           <TypeIcon className="size-3" />
-          {result.mediaType === 'movie' ? 'Movie' : result.mediaType === 'game' ? 'Game' : 'TV'}
+          {result.mediaType === 'movie' ? 'Movie' : result.mediaType === 'game' ? 'Game' : result.mediaType === 'book' ? 'Book' : 'TV'}
           {result.year && <span className="text-faint">· {result.year}</span>}
+          {result.author && <span className="truncate text-faint">· {result.author}</span>}
           {result.rating != null && <span className="text-faint">· ★ {result.rating.toFixed(1)}</span>}
           {result.developer && <span className="truncate text-faint">· {result.developer}</span>}
         </p>
@@ -171,7 +173,13 @@ export function SearchBox() {
     enabled: ready && (type === 'game' || type === 'all'),
     staleTime: 10 * 60_000,
   })
-  const fetching = screen.isFetching || games.isFetching
+  const books = useQuery({
+    queryKey: ['hardcover-search', query],
+    queryFn: () => searchBooks(query),
+    enabled: ready && (type === 'book' || type === 'all'),
+    staleTime: 10 * 60_000,
+  })
+  const fetching = screen.isFetching || games.isFetching || books.isFetching
   const current = SEARCH_TYPES.find((t) => t.value === type)!
 
   // Close on outside click.
@@ -256,8 +264,6 @@ export function SearchBox() {
               </Link>{' '}
               to search and add titles.
             </p>
-          ) : type === 'book' ? (
-            <p className="px-4 py-5 text-sm text-muted">Books are coming soon. For now you can add movies, TV and games.</p>
           ) : !hasQuery ? (
             <p className="px-4 py-4 text-sm text-faint">Type a title to search {current.label === 'All' ? 'everything' : current.label.toLowerCase()}.</p>
           ) : (
@@ -273,10 +279,19 @@ export function SearchBox() {
               {(type === 'game' || type === 'all') && (
                 <ResultSection title="Games" q={games} empty={`No PC games match “${query}”.`} render={row} />
               )}
+              {(type === 'book' || type === 'all') && (
+                <ResultSection title="Books" q={books} empty={`No books match “${query}”.`} render={row} />
+              )}
             </>
           )}
           <p className="border-t border-line px-4 py-2 font-mono text-[10px] text-faint">
-            {type === 'game' ? 'PC games from IGDB' : type === 'all' ? 'Movies & TV from TMDB · games from IGDB' : type === 'book' ? 'Books coming soon' : 'From TMDB'}
+            {type === 'game'
+              ? 'PC games from IGDB'
+              : type === 'book'
+                ? 'Books from Hardcover'
+                : type === 'all'
+                  ? 'Movies & TV from TMDB · games from IGDB · books from Hardcover'
+                  : 'From TMDB'}
           </p>
         </div>
       )}

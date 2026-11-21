@@ -26,10 +26,9 @@ function daysBetween(fromIso: string, toIso: string): number {
 
 /**
  * A title is pre-release when its release / first-air date is in the future, or when it has no date yet (or
- * only a fuzzy one, like "2027") and TMDB / IGDB lists it as not released. Books: not yet handled.
+ * only a fuzzy one, like "2027") and TMDB / IGDB / Hardcover lists it as not released.
  */
 export function releaseInfo(title: Title): ReleaseInfo {
-  if (title.mediaType === 'book') return { preRelease: false } // books: with Hardcover
   const date = title.releaseDate
   const today = todayIso()
   const status = title.details?.status

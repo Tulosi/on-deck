@@ -92,7 +92,7 @@ export function Library() {
         <p className="py-16 text-center text-sm text-muted">
           {!isSample && (f.type === 'game' || f.type === 'book')
             ? f.type === 'book'
-              ? 'Books search is coming next.'
+              ? 'No books yet — use the search bar to add one.'
               : 'No games yet — use the search bar to add one.'
             : 'Nothing here yet — use the search bar to add something.'}
         </p>

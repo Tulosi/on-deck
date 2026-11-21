@@ -93,6 +93,12 @@ function TypePills({ value, onChange }: { value: MediaType | null; onChange: (t:
     { value: null, label: 'All' },
     ...TYPES.map((t) => ({ value: t, label: LABELS.type[t] })),
   ]
+  // When the pills overflow and scroll sideways, keep the selected one in view.
+  const pills = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = pills.current?.querySelector<HTMLElement>('[aria-checked="true"]')
+    if (el && pills.current) pills.current.scrollLeft = el.offsetLeft - pills.current.offsetLeft - 8
+  }, [value])
   return (
     <>
       {/* Phones: a compact dropdown, so the selected type is always visible. */}
@@ -108,7 +114,7 @@ function TypePills({ value, onChange }: { value: MediaType | null; onChange: (t:
           </option>
         ))}
       </select>
-    <div role="radiogroup" aria-label="Media type" className="no-scrollbar hidden gap-1 overflow-x-auto sm:flex">
+    <div ref={pills} role="radiogroup" aria-label="Media type" className="no-scrollbar hidden gap-1 overflow-x-auto sm:flex">
       {options.map((o) => (
         <button
           key={o.label}

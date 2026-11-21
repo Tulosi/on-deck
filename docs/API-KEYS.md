@@ -90,7 +90,8 @@ If the key ever leaks, delete it in Supabase (step 1's page) and repeat steps 1�
 - [x] Personal access token (read-only catalogue access is all On Deck needs) saved as `HARDCOVER_TOKEN` (server).
 - **Tokens expire.** Expiry date: _(fill in from hardcover.app → Settings → API)_. When it lapses, book
   search stops working until a new token is set.
-- Hardcover's terms: server-side use only (never in the browser) — On Deck only calls it from an Edge Function.
+- Hardcover's terms: server-side use only (never in the browser) — On Deck only calls it from the `hardcover`
+  Edge Function (book search + add). If the token lapses, book search shows an error (`hardcover_token_expired`).
 - To replace it, run in Terminal (keeps it off screen and out of shell history):
   ```bash
   cd ~/Desktop/"On Deck" && read -rs "S?Hardcover token: " && echo && npx supabase secrets set HARDCOVER_TOKEN="$S"; unset S

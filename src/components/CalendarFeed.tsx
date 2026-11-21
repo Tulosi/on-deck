@@ -17,7 +17,7 @@ const MORE: { value: FeedFilter; label: string; hint: string }[] = [
   { value: 'movie', label: 'Movies only', hint: 'Movie releases.' },
   { value: 'tv', label: 'TV only', hint: 'Premieres, new seasons and next episodes.' },
   { value: 'game', label: 'Games only', hint: 'Releases, Early Access launches and 1.0 releases.' },
-  { value: 'book', label: 'Books only', hint: 'Book release dates (once books can be added).' },
+  { value: 'book', label: 'Books only', hint: 'Book publication dates.' },
 ]
 const FILTER_KEY = 'ondeck.calendarFeedFilter'
 

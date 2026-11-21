@@ -31,7 +31,7 @@ export function Home() {
         <p className="font-mono text-xs tracking-wider text-accent-ink uppercase">Your library is empty</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fg">What do you want to get to?</h1>
         <p className="mt-2 text-sm text-muted">
-          Use the search bar above to add a movie, show or game. Books are coming next.
+          Use the search bar above to add a movie, show, game or book.
         </p>
       </div>
     )

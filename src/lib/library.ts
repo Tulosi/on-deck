@@ -26,6 +26,7 @@ interface TitleRow {
     rotten_tomatoes?: string | null
     rt_audience?: string | null
     metacritic?: string | null
+    hardcover?: number
     scores_checked_at?: string
   } & Record<string, unknown>
   metadata: Record<string, unknown> & { overview?: string | null }
@@ -54,6 +55,7 @@ interface ItemRow {
 
 function headlineScore(t: TitleRow): UserItem['title']['score'] {
   if (typeof t.ratings.steam === 'number') return { label: 'Steam', value: `${t.ratings.steam}%` }
+  if (typeof t.ratings.hardcover === 'number') return { label: 'Hardcover', value: t.ratings.hardcover.toFixed(1) }
   if (t.ratings.imdb) return { label: 'IMDb', value: String(t.ratings.imdb) }
   if (typeof t.ratings.tmdb === 'number') return { label: 'TMDB', value: t.ratings.tmdb.toFixed(1) }
   return undefined
@@ -69,7 +71,7 @@ function scoresNeedRefresh(r: TitleRow['ratings']): boolean {
   const at = r.scores_checked_at ? Date.parse(r.scores_checked_at) : NaN
   if (!Number.isFinite(at)) return true
   // Has a headline score (IMDb, or Steam for games) → weekly; still waiting for one → daily.
-  return Date.now() - at >= (r.imdb || typeof r.steam === 'number' ? 7 * DAY_MS : DAY_MS)
+  return Date.now() - at >= (r.imdb || typeof r.steam === 'number' || typeof r.hardcover === 'number' ? 7 * DAY_MS : DAY_MS)
 }
 
 /**
@@ -114,11 +116,13 @@ function toUserItem(row: ItemRow): UserItem {
       overview: t.metadata.overview ?? undefined,
       releaseDate: t.release_date ?? undefined,
       sourceKey: `${t.media_type}:${t.source}:${t.source_id}`,
-      // Games: developer under the year on posters.
+      // Games: developer under the year on posters. Books: author.
       byline:
         t.media_type === 'game' && Array.isArray(t.metadata.developer)
           ? ((t.metadata.developer as string[])[0] ?? undefined)
-          : undefined,
+          : t.media_type === 'book' && Array.isArray(t.metadata.authors)
+            ? ((t.metadata.authors as string[])[0] ?? undefined)
+            : undefined,
       details: t.metadata,
       ratings: {
         imdb: t.ratings.imdb ?? undefined,
@@ -130,7 +134,8 @@ function toUserItem(row: ItemRow): UserItem {
       needsScores:
         (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t))) ||
         // Games saved before release dates (precision, Early Access, 1.0) were stored are refreshed once to pick it up.
-        (t.source === 'igdb' && (scoresNeedRefresh(t.ratings) || t.metadata.release_milestones === undefined)),
+        (t.source === 'igdb' && (scoresNeedRefresh(t.ratings) || t.metadata.release_milestones === undefined)) ||
+        (t.source === 'hardcover' && scoresNeedRefresh(t.ratings)),
     },
   }
 }
@@ -265,7 +270,7 @@ export async function functionError(error: unknown): Promise<Error> {
 }
 
 export interface SearchResult {
-  mediaType: 'movie' | 'tv' | 'game'
+  mediaType: 'movie' | 'tv' | 'game' | 'book'
   /** Movies/TV (TMDB) */
   tmdbId?: number
   /** Games (IGDB) */
@@ -277,11 +282,25 @@ export interface SearchResult {
   rating?: number | null
   /** Games: developer, shown to tell same-named games apart. */
   developer?: string | null
+  /** Books (Hardcover) */
+  hardcoverId?: number
+  author?: string | null
+  series?: string | null
 }
 
 /** Matches a search result to a title already on deck (`${mediaType}:${source}:${id}`). */
 export const resultKey = (r: SearchResult) =>
-  r.mediaType === 'game' ? `game:igdb:${r.igdbId}` : `${r.mediaType}:tmdb:${r.tmdbId}`
+  r.mediaType === 'game'
+    ? `game:igdb:${r.igdbId}`
+    : r.mediaType === 'book'
+      ? `book:hardcover:${r.hardcoverId}`
+      : `${r.mediaType}:tmdb:${r.tmdbId}`
+
+export async function searchBooks(query: string): Promise<SearchResult[]> {
+  const { data, error } = await supabase!.functions.invoke('hardcover', { body: { action: 'search', query } })
+  if (error) throw await functionError(error)
+  return data.results as SearchResult[]
+}
 
 export async function searchGames(query: string): Promise<SearchResult[]> {
   const { data, error } = await supabase!.functions.invoke('igdb', { body: { action: 'search', query } })
@@ -304,7 +323,9 @@ export function useAddFromTmdb() {
     const { data, error } =
       result.mediaType === 'game'
         ? await supabase!.functions.invoke('igdb', { body: { action: 'add', igdbId: result.igdbId } })
-        : await supabase!.functions.invoke('tmdb', {
+        : result.mediaType === 'book'
+          ? await supabase!.functions.invoke('hardcover', { body: { action: 'add', hardcoverId: result.hardcoverId } })
+          : await supabase!.functions.invoke('tmdb', {
             body: { action: 'add', tmdbId: result.tmdbId, mediaType: result.mediaType },
           })
     if (error) throw await functionError(error)
@@ -317,6 +338,7 @@ export function useAddFromTmdb() {
 
     await queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) })
     // Background follow-ups, then refresh the list: where to watch (movies/TV), already owned (games).
+    if (result.mediaType === 'book') return // nothing to follow up for books yet
     const follow =
       result.mediaType === 'game'
         ? Promise.all([
@@ -422,10 +444,12 @@ export function useScoreBackfill() {
         const [mediaType, source, id] = item.title.sourceKey!.split(':')
         await supabase!.functions
           .invoke(
-            source === 'igdb' ? 'igdb' : 'tmdb',
+            source === 'igdb' ? 'igdb' : source === 'hardcover' ? 'hardcover' : 'tmdb',
             source === 'igdb'
               ? { body: { action: 'add', igdbId: Number(id) } }
-              : { body: { action: 'add', tmdbId: Number(id), mediaType } },
+              : source === 'hardcover'
+                ? { body: { action: 'add', hardcoverId: Number(id) } }
+                : { body: { action: 'add', tmdbId: Number(id), mediaType } },
           )
           .catch(() => undefined)
       }

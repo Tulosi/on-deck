@@ -57,7 +57,6 @@ export function daysBetween(fromIso: string, toIso: string): number {
 
 /** Every upcoming event for a title, soonest first. `today` is YYYY-MM-DD in the viewer's time zone. */
 export function upcomingEvents(t: ReleaseInput, today: string): ReleaseEvent[] {
-  if (t.mediaType === 'book') return [] // books: with Hardcover
   const d = t.details ?? {}
   const out: ReleaseEvent[] = []
 

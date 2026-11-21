@@ -21,17 +21,15 @@ export interface WaitlistEntry {
 
 /**
  * Upcoming events for everything on the deck except Dropped titles, soonest first (exact dates, then
- * fuzzy ones, then TBA).
- *  - `episodes: false` (Waitlist): releases, series premieres and new seasons.
- *  - `episodes: true` (Calendar): also the next announced episode of shows that are airing.
+ * fuzzy ones, then TBA): releases, series premieres, new seasons and the next announced episode of shows that
+ * are airing. The list and calendar views show the same entries.
  */
-export function waitlistEntries(items: UserItem[], { episodes }: { episodes: boolean }): WaitlistEntry[] {
+export function waitlistEntries(items: UserItem[]): WaitlistEntry[] {
   const today = todayIso()
   const out: WaitlistEntry[] = []
   for (const item of items) {
     if (item.progress === 'dropped') continue
     for (const event of upcomingEvents(item.title, today)) {
-      if (event.kind === 'episode' && !episodes) continue
       out.push({
         item,
         event,

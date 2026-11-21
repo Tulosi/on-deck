@@ -207,11 +207,10 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
 ### Waitlist & calendar
 Rules live in `supabase/functions/_shared/releases.ts`, shared by the app and the feed so they always agree.
 Dropped titles are left out everywhere.
-- **Waitlist page** (`/waitlist`, in the nav): pre-release movies, games and shows, plus new seasons of shows
-  on your deck. Sorted soonest first in sections: *Next 7 days*, one per month, *Date not final* (quarter or
+- **Waitlist page** (`/waitlist`, in the nav): pre-release movies, games and shows, new seasons, and the
+  next announced episode of shows that are airing. The list and calendar views always show the same entries. Sorted soonest first in sections: *Next 7 days*, one per month, *Date not final* (quarter or
   year only), then *Date TBA*. Each row shows the date and a countdown ("In 12 days"). You can filter by type.
-- **Calendar view** (`/waitlist?view=calendar`): a month grid that also includes the next announced episode
-  of shows that are airing. On a phone, days show dots and tapping a day lists what's out below the grid. Only
+- **Calendar view** (`/waitlist?view=calendar`): the same entries on a month grid. On a phone, days show dots and tapping a day lists what's out below the grid. Only
   exact dates go on the calendar; the rest appear only in the list.
 - **Calendar feed:** a private `.ics` subscription link, served by the `calendar` Edge Function. Tokens are
   stored in `calendar_feeds`: 64 random hex characters per user, and "New link" revokes the old one.

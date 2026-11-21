@@ -341,8 +341,7 @@ export function Waitlist() {
       { replace: true },
     )
 
-  // The list is about what's coming out; the calendar also shows the next episode of airing shows.
-  const entries = waitlistEntries(items, { episodes: view === 'calendar' }).filter(
+  const entries = waitlistEntries(items).filter(
     (e) => !type || e.item.title.mediaType === type,
   )
 
@@ -386,8 +385,8 @@ export function Waitlist() {
         <CalendarView entries={entries} month={month} setMonth={(ym) => set('month', ym === todayIso().slice(0, 7) ? null : ym)} />
       ) : entries.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-          Nothing upcoming{type ? ' of this type' : ''}. Add an unreleased movie, show or game, or a show with a new
-          season announced, and it’ll show up here with its release date.
+          Nothing upcoming{type ? ' of this type' : ''}. Add an unreleased movie, show or game, or a show that’s
+          airing or has a new season announced, and it’ll show up here with its date.
         </div>
       ) : (
         <ListView entries={entries} />

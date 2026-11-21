@@ -54,6 +54,16 @@ function deviceLabel(): string {
   return `${os} · ${browser}`
 }
 
+/** Brave exposes navigator.brave.isBrave(); its user agent looks like Chrome. */
+async function isBrave(): Promise<boolean> {
+  try {
+    const b = (navigator as Navigator & { brave?: { isBrave?: () => Promise<boolean> } }).brave
+    return !!(await b?.isBrave?.())
+  } catch {
+    return false
+  }
+}
+
 async function registration(): Promise<ServiceWorkerRegistration> {
   // The service worker only exists in the built app (not the dev server); don't wait forever.
   const reg = await Promise.race([
@@ -80,6 +90,8 @@ export function usePush() {
   const [devices, setDevices] = useState<PushDevice[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Technical detail for the error (browser's own message), shown small under it. */
+  const [detail, setDetail] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!user || !supabase) return
@@ -112,34 +124,66 @@ export function usePush() {
 
   const enable = async () => {
     setError(null)
+    setDetail(null)
     setBusy(true)
+    const brave = await isBrave()
+    const android = /Android/.test(navigator.userAgent)
+    const browser = brave ? 'Brave' : 'your browser'
     try {
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') throw new Error('permission_denied')
-      const reg = await registration()
-      const sub =
-        (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64url(VAPID_PUBLIC_KEY) }))
+      // 1. Permission (asks only if it hasn't been decided yet).
+      const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission()
+      if (permission !== 'granted') {
+        setDetail(`Notification permission: ${permission}`)
+        setError(
+          android
+            ? `${brave ? 'Brave' : 'The browser'} reports notifications as blocked. Check both: this site's permission (tap the icon left of the address → Permissions/Notifications → Allow), and Android Settings → Apps → ${brave ? 'Brave' : 'your browser'} → Notifications → on. Then try again.`
+            : `Notifications are blocked for this site. Allow them in ${browser}'s site settings (the icon left of the address), then try again.`,
+        )
+        return
+      }
+
+      // 2. Service worker (only on the live site / installed app).
+      let reg: ServiceWorkerRegistration
+      try {
+        reg = await registration()
+      } catch {
+        setError('Push needs the installed app or the live site (it doesn’t work on the local dev server).')
+        return
+      }
+
+      // 3. Subscribe with the browser's push service.
+      let sub: PushSubscription
+      try {
+        sub =
+          (await reg.pushManager.getSubscription()) ??
+          (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64url(VAPID_PUBLIC_KEY) }))
+      } catch (err) {
+        const e = err as DOMException
+        setDetail(`${e?.name ?? 'Error'}: ${e?.message ?? String(err)}`)
+        setError(
+          brave
+            ? 'Brave blocks web push by default. In Brave, open Settings → Privacy and security → turn on “Use Google services for push messaging”, restart Brave, then try again.'
+            : 'Notifications are allowed, but the browser’s push service refused to register this device. Check that push isn’t disabled in your browser’s privacy settings, then try again.',
+        )
+        return
+      }
+
+      // 4. Save it.
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
       const { error: insertError } = await supabase!.from('push_subscriptions').insert({
         user_id: user!.id,
         endpoint: json.endpoint,
         p256dh: json.keys.p256dh,
         auth: json.keys.auth,
-        device: deviceLabel(),
+        device: `${deviceLabel()}${brave ? ' (Brave)' : ''}`,
       })
       // Already saved (same endpoint) is fine.
-      if (insertError && insertError.code !== '23505') throw insertError
+      if (insertError && insertError.code !== '23505') {
+        setDetail(insertError.message)
+        setError('Couldn’t save this device. Please try again.')
+        return
+      }
       await load()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setError(
-        msg === 'permission_denied'
-          ? 'Notifications are blocked for this site. Allow them in your browser or system settings, then try again.'
-          : msg === 'no_service_worker'
-            ? 'Push needs the installed app or the live site (it doesn’t work on the local dev server).'
-            : 'Couldn’t turn on push notifications. Please try again.',
-      )
     } finally {
       setBusy(false)
     }
@@ -176,5 +220,5 @@ export function usePush() {
     return data as { sent: number; devices: number }
   }
 
-  return { support, enabled, endpoint, devices, busy, error, enable, disable, removeDevice, test }
+  return { support, enabled, endpoint, devices, busy, error, detail, enable, disable, removeDevice, test }
 }

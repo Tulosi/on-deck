@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { BookOpen, Check, Film, Gamepad2, Layers, Loader2, Plus, Search, Tv, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, BookOpen, Check, ChevronRight, Film, Gamepad2, Layers, Loader2, Plus, Search, Star, Tv, X, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { resultKey, searchBooks, searchGames, searchTmdb, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
 
@@ -38,63 +39,173 @@ function savedType(): SearchType {
   }
 }
 
+const typeIcon = (t: SearchResult['mediaType']): LucideIcon =>
+  t === 'movie' ? Film : t === 'game' ? Gamepad2 : t === 'book' ? BookOpen : Tv
+const typeName = (t: SearchResult['mediaType']) => (t === 'movie' ? 'Movie' : t === 'game' ? 'Game' : t === 'book' ? 'Book' : 'TV')
+
+function Cover({ result, className }: { result: SearchResult; className: string }) {
+  const Icon = typeIcon(result.mediaType)
+  return (
+    <div className={clsx('shrink-0 overflow-hidden rounded bg-raised', className)}>
+      {result.posterUrl ? (
+        <img src={result.posterUrl} alt="" loading="lazy" className="size-full object-cover" />
+      ) : (
+        <div className="grid size-full place-items-center">
+          <Icon className="size-4 text-faint" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Add / Added button, shared by result rows and the preview. */
+function AddButton({ added, state, onAdd, large }: { added: boolean; state?: AddState; onAdd: () => void; large?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={added || state === 'adding'}
+      className={clsx(
+        'flex shrink-0 items-center gap-1 rounded-full font-medium',
+        large ? 'h-10 px-5 text-sm' : 'h-8 px-3 text-xs',
+        added ? 'text-good' : 'bg-accent text-accent-fg hover:brightness-95 disabled:opacity-60',
+      )}
+    >
+      {state === 'adding' ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : added ? (
+        <Check className="size-3.5" />
+      ) : (
+        <Plus className="size-3.5" />
+      )}
+      {added ? 'Added' : 'Add'}
+    </button>
+  )
+}
+
 function ResultRow({
   result,
   onDeck,
   state,
   onAdd,
+  onPreview,
 }: {
   result: SearchResult
   onDeck: boolean
   state?: AddState
   onAdd: () => void
+  onPreview: () => void
 }) {
-  const TypeIcon =
-    result.mediaType === 'movie' ? Film : result.mediaType === 'game' ? Gamepad2 : result.mediaType === 'book' ? BookOpen : Tv
+  const TypeIcon = typeIcon(result.mediaType)
   const added = onDeck || state === 'added'
+  const credit = result.author ?? result.developer
   return (
     <li className="flex items-center gap-3 px-3 py-2 hover:bg-raised/60">
-      <div className="h-[60px] w-10 shrink-0 overflow-hidden rounded bg-raised">
-        {result.posterUrl ? (
-          <img src={result.posterUrl} alt="" loading="lazy" className="size-full object-cover" />
-        ) : (
-          <div className="grid size-full place-items-center">
-            <TypeIcon className="size-4 text-faint" />
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-fg">{result.title}</p>
-        <p className="flex items-center gap-1.5 font-mono text-xs text-muted">
-          <TypeIcon className="size-3" />
-          {result.mediaType === 'movie' ? 'Movie' : result.mediaType === 'game' ? 'Game' : result.mediaType === 'book' ? 'Book' : 'TV'}
-          {result.year && <span className="text-faint">· {result.year}</span>}
-          {result.author && <span className="truncate text-faint">· {result.author}</span>}
-          {result.rating != null && <span className="text-faint">· ★ {result.rating.toFixed(1)}</span>}
-          {result.developer && <span className="truncate text-faint">· {result.developer}</span>}
-        </p>
-        {typeof state === 'object' && <p className="truncate text-xs text-bad">{state.error}</p>}
-      </div>
+      {/* Tap the cover or title for a quick synopsis before adding. */}
       <button
         type="button"
-        onClick={onAdd}
-        disabled={added || state === 'adding'}
-        className={
-          added
-            ? 'flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-medium text-good'
-            : 'flex h-8 shrink-0 items-center gap-1 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg hover:brightness-95 disabled:opacity-60'
-        }
+        onClick={onPreview}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        aria-label={`${result.title}: show details`}
       >
-        {state === 'adding' ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : added ? (
-          <Check className="size-3.5" />
-        ) : (
-          <Plus className="size-3.5" />
-        )}
-        {added ? 'Added' : 'Add'}
+        <Cover result={result} className="h-[60px] w-10" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-fg">{result.title}</span>
+          {/* One line that never wraps: fixed bits keep their size, the credit is cut short. */}
+          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden font-mono text-xs whitespace-nowrap text-muted">
+            <TypeIcon className="size-3 shrink-0" />
+            <span className="shrink-0">{typeName(result.mediaType)}</span>
+            {result.year && <span className="shrink-0 text-faint">· {result.year}</span>}
+            {result.rating != null && <span className="shrink-0 text-faint">· ★ {result.rating.toFixed(1)}</span>}
+            {credit && <span className="min-w-0 truncate text-faint">· {credit}</span>}
+          </span>
+          {typeof state === 'object' && <span className="block truncate text-xs text-bad">{state.error}</span>}
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-faint max-sm:hidden" />
       </button>
+      <AddButton added={added} state={state} onAdd={onAdd} />
     </li>
+  )
+}
+
+/** Short synopsis of a search result, to check it's the right title before adding. */
+function Preview({
+  result,
+  added,
+  state,
+  libraryId,
+  onAdd,
+  onBack,
+  onOpen,
+}: {
+  result: SearchResult
+  added: boolean
+  state?: AddState
+  libraryId?: string
+  onAdd: () => void
+  onBack: () => void
+  onOpen: () => void
+}) {
+  const [more, setMore] = useState(false)
+  const credit = result.author ?? result.developer
+  const rating =
+    result.rating == null
+      ? null
+      : result.mediaType === 'book'
+        ? `★ ${result.rating.toFixed(1)} / 5 on Hardcover`
+        : result.mediaType === 'game'
+          ? null
+          : `★ ${result.rating.toFixed(1)} / 10 on TMDB`
+  const overview = result.overview?.trim()
+  const long = (overview?.length ?? 0) > 420
+  return (
+    <div className="p-4">
+      <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-xs text-muted hover:text-fg">
+        <ArrowLeft className="size-3.5" /> Results
+      </button>
+      <div className="flex gap-4">
+        <Cover result={result} className="h-36 w-24 rounded-md" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-base leading-snug font-semibold text-fg">{result.title}</p>
+          <p className="font-mono text-xs text-muted">
+            {[typeName(result.mediaType), result.year, result.pages ? `${result.pages} pages` : null].filter(Boolean).join(' · ')}
+          </p>
+          {credit && <p className="text-sm text-muted">{result.mediaType === 'book' ? 'by ' : ''}{credit}</p>}
+          {result.series && <p className="text-xs text-faint">{result.series}</p>}
+          {rating && (
+            <p className="flex items-center gap-1 font-mono text-xs text-faint">
+              <Star className="size-3" /> {rating.replace('★ ', '')}
+            </p>
+          )}
+        </div>
+      </div>
+      {overview ? (
+        <div className="mt-4">
+          <p className={clsx('text-sm leading-relaxed whitespace-pre-line text-fg/90', !more && long && 'line-clamp-6')}>{overview}</p>
+          {long && (
+            <button type="button" onClick={() => setMore((m) => !m)} className="mt-1 text-xs text-accent-ink hover:underline">
+              {more ? 'Less' : 'More'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-faint">No synopsis available.</p>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {libraryId ? (
+          <Link
+            to={`/title/${libraryId}`}
+            onClick={onOpen}
+            className="flex h-10 items-center gap-1.5 rounded-full border border-line px-5 text-sm text-fg hover:border-accent"
+          >
+            <Check className="size-4 text-good" /> In your library — open
+          </Link>
+        ) : (
+          <AddButton added={added} state={state} onAdd={onAdd} large />
+        )}
+        {typeof state === 'object' && <p className="text-xs text-bad">{state.error}</p>}
+      </div>
+    </div>
   )
 }
 
@@ -138,6 +249,7 @@ export function SearchBox() {
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const [addStates, setAddStates] = useState<Record<string, AddState>>({})
+  const [preview, setPreview] = useState<SearchResult | null>(null)
   const wrapper = useRef<HTMLDivElement>(null)
   const query = useDebounced(text.trim(), 300)
   const input = useRef<HTMLInputElement>(null)
@@ -182,16 +294,32 @@ export function SearchBox() {
   const fetching = screen.isFetching || games.isFetching || books.isFetching
   const current = SEARCH_TYPES.find((t) => t.value === type)!
 
-  // Close on outside click.
+  const close = () => {
+    setOpen(false)
+    setPreview(null)
+    input.current?.blur()
+  }
+
+  // Close on a click / tap outside, and whenever you go to another page.
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!wrapper.current?.contains(e.target as Node)) setOpen(false)
+      if (!wrapper.current?.contains(e.target as Node)) {
+        setOpen(false)
+        setPreview(null)
+      }
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [])
+  useEffect(() => {
+    setOpen(false)
+    setPreview(null)
+  }, [pathname])
+  // A new search goes back to the results.
+  useEffect(() => setPreview(null), [query, type])
 
   const onDeck = new Set(isSample ? [] : items.map((i) => i.title.sourceKey))
+  const libraryIdOf = new Map(isSample ? [] : items.map((i) => [i.title.sourceKey, i.title.id]))
   const keyOf = resultKey
 
   async function add(r: SearchResult) {
@@ -208,7 +336,14 @@ export function SearchBox() {
   const hasQuery = text.trim().length >= 2
   const showPanel = open
   const row = (r: SearchResult) => (
-    <ResultRow key={keyOf(r)} result={r} onDeck={onDeck.has(keyOf(r))} state={addStates[keyOf(r)]} onAdd={() => add(r)} />
+    <ResultRow
+      key={keyOf(r)}
+      result={r}
+      onDeck={onDeck.has(keyOf(r))}
+      state={addStates[keyOf(r)]}
+      onAdd={() => add(r)}
+      onPreview={() => setPreview(r)}
+    />
   )
 
   return (
@@ -224,17 +359,29 @@ export function SearchBox() {
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Escape') return
+            if (preview) setPreview(null)
+            else close()
+          }}
           placeholder={current.placeholder}
           aria-label={current.placeholder.replace('…', '')}
           className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
         />
       </label>
 
+      {/* Phones: dim the page behind the panel; tapping it closes search. */}
+      {/* (Rendered on <body>: the top bar's backdrop blur would otherwise trap a fixed element inside the bar.) */}
+      {showPanel &&
+        createPortal(
+          <div className="fixed inset-x-0 top-14 bottom-0 z-10 bg-black/60 sm:hidden" onClick={close} aria-hidden="true" />,
+          document.body,
+        )}
       {showPanel && (
         <div className="absolute inset-x-0 top-11 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14">
-          {/* Type picker */}
-          <div role="radiogroup" aria-label="Search for" className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2 [scrollbar-width:none]">
+          {/* Type picker + close */}
+          <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-surface py-2 pr-2 pl-3">
+          <div role="radiogroup" aria-label="Search for" className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
             {SEARCH_TYPES.map((t) => {
               const Icon = t.icon
               const active = t.value === type
@@ -256,6 +403,15 @@ export function SearchBox() {
               )
             })}
           </div>
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close search"
+              className="grid size-8 shrink-0 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
 
           {!user ? (
             <p className="px-4 py-5 text-sm text-muted">
@@ -264,6 +420,16 @@ export function SearchBox() {
               </Link>{' '}
               to search and add titles.
             </p>
+          ) : preview ? (
+            <Preview
+              result={preview}
+              added={onDeck.has(keyOf(preview)) || addStates[keyOf(preview)] === 'added'}
+              state={addStates[keyOf(preview)]}
+              libraryId={libraryIdOf.get(keyOf(preview))}
+              onAdd={() => add(preview)}
+              onBack={() => setPreview(null)}
+              onOpen={close}
+            />
           ) : !hasQuery ? (
             <p className="px-4 py-4 text-sm text-faint">Type a title to search {current.label === 'All' ? 'everything' : current.label.toLowerCase()}.</p>
           ) : (

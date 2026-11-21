@@ -67,6 +67,8 @@ async function search(query: string) {
       author: ((d.author_names ?? []) as string[]).slice(0, 2).join(', ') || null,
       series: ((d.series_names ?? []) as string[])[0] ?? null,
       rating: typeof d.rating === 'number' && d.ratings_count > 0 ? d.rating : null,
+      overview: typeof d.description === 'string' ? d.description : null,
+      pages: typeof d.pages === 'number' ? d.pages : null,
     }))
   return json({ results })
 }

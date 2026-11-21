@@ -14,7 +14,7 @@ async function search(query: string) {
   if (q.length < 2) return json({ results: [] })
   const games = await igdb(
     'games',
-    `search "${q}"; fields name,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where platforms = (${PC}) & version_parent = null; limit 12;`,
+    `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where platforms = (${PC}) & version_parent = null; limit 12;`,
   )
   const results = games.map((g) => ({
     igdbId: g.id as number,
@@ -22,6 +22,7 @@ async function search(query: string) {
     title: g.name as string,
     year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : null,
     posterUrl: igdbImage(g.cover?.image_id, 't_cover_small'),
+    overview: (g.summary as string | undefined) ?? null,
     developer:
       ((g.involved_companies ?? []) as Json[]).find((c) => c.developer)?.company?.name ?? null,
   }))

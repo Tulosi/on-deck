@@ -550,6 +550,7 @@ function PushControls() {
         </div>
       )}
       {push.error && <p className="text-sm text-bad">{push.error}</p>}
+      {push.error && push.detail && <p className="font-mono text-[11px] text-faint">{push.detail}</p>}
     </div>
   )
 }

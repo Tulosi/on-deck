@@ -250,7 +250,7 @@ export interface SearchResult {
   title: string
   year: number | null
   posterUrl: string | null
-  overview?: string
+  overview?: string | null
   rating?: number | null
   /** Games: developer, shown to tell same-named games apart. */
   developer?: string | null
@@ -258,6 +258,8 @@ export interface SearchResult {
   hardcoverId?: number
   author?: string | null
   series?: string | null
+  /** Books: page count (search preview). */
+  pages?: number | null
 }
 
 /** Matches a search result to a title already on deck (`${mediaType}:${source}:${id}`). */

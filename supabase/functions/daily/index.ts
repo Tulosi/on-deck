@@ -17,6 +17,7 @@ import {
 } from '../_shared/releases.ts'
 import { cheapest, gamePriceFromRow, type PriceRow } from '../_shared/prices.ts'
 import { pushToUser, type PushMessage } from '../_shared/push.ts'
+import { finalSeasonOf, plexPatch, type Progress } from '../_shared/plexApply.ts'
 
 // deno-lint-ignore no-explicit-any
 type Json = Record<string, any>
@@ -137,6 +138,66 @@ async function inChunks<T>(ids: string[], size: number, load: (chunk: string[]) 
   return out
 }
 
+/** Plex titles checked per user per run (each read takes a few seconds). */
+const PLEX_PER_RUN = 6
+
+/**
+ * Reads Plex watch history for a user's movies / shows that Plex can still move along (Wanted / In Progress /
+ * Caught up, sync not switched off), oldest-checked first, and saves the resulting changes. Returns how many
+ * were checked.
+ */
+async function syncPlex(db: ReturnType<typeof admin>, userId: string, hasTime: () => boolean): Promise<number> {
+  const { data } = await db
+    .from('user_items')
+    .select('id, progress, current_season, current_episode, plex_sync, title:titles(title, media_type, source, source_id, metadata)')
+    .eq('user_id', userId)
+    .neq('plex_sync', false)
+    .in('progress', ['wanted', 'in_progress', 'caught_up'])
+    .order('plex_checked_at', { ascending: true, nullsFirst: true })
+    .limit(40)
+  const rows = ((data ?? []) as unknown as Json[]).filter(
+    (r) =>
+      r.title?.source === 'tmdb' &&
+      (r.title.media_type === 'tv' || (r.title.media_type === 'movie' && r.progress !== 'caught_up')),
+  )
+  let n = 0
+  for (const r of rows.slice(0, PLEX_PER_RUN)) {
+    if (!hasTime()) break
+    const t = r.title
+    const w = await callFn('plex-watch', { action: 'sync', tmdbId: Number(t.source_id), title: t.title, mediaType: t.media_type }, userId)
+    n++
+    const nowIso = new Date().toISOString()
+    const row: Json = { plex_checked_at: nowIso }
+    if (w && w.configured === false) {
+      // Plex isn't linked for this user: nothing to check.
+      await db.from('user_items').update(row).eq('id', r.id)
+      break
+    }
+    const patch = plexPatch(
+      {
+        mediaType: t.media_type,
+        progress: r.progress as Progress,
+        tvProgress: r.current_season != null ? { season: r.current_season, episode: r.current_episode ?? 1 } : null,
+        plexSync: r.plex_sync !== false,
+        showStatus: t.metadata?.status ?? null,
+        finalSeason: finalSeasonOf(t.metadata),
+      },
+      w,
+    )
+    if (patch?.tvProgress !== undefined) {
+      row.current_season = patch.tvProgress?.season ?? null
+      row.current_episode = patch.tvProgress?.episode ?? null
+    }
+    if (patch?.progress) {
+      row.progress = patch.progress
+      if (patch.progress === 'in_progress' && r.progress === 'wanted') row.started_at = nowIso
+      if (patch.progress === 'completed') row.completed_at = nowIso
+    }
+    await db.from('user_items').update(row).eq('id', r.id)
+  }
+  return n
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'method_not_allowed')
   if (!isJob(req)) throw new HttpError(401, 'not_allowed')
@@ -202,6 +263,7 @@ serve(async (req) => {
   const { data: profiles } = await db.from('profiles').select('user_id, timezone, country_code, daily_checked_at, alert_settings').in('user_id', users)
   const profileOf = new Map(((profiles ?? []) as Json[]).map((p) => [p.user_id as string, p]))
   let alertsWritten = 0
+  let plexChecked = 0
   let pushesSent = 0
   let usersDone = 0
 
@@ -223,6 +285,9 @@ serve(async (req) => {
       const r = await callFn('prices', { action: 'refresh' }, userId)
       if (!r || !r.remaining) break
     }
+
+    // Plex watch history → Watched-up-to and status, for the titles checked longest ago (same rules as the app).
+    plexChecked += await syncPlex(db, userId, () => elapsed() < BUDGET_MS)
 
     // Releases: changes found above, plus one-week and release-day reminders.
     for (const item of mine) {
@@ -430,6 +495,7 @@ serve(async (req) => {
     usersDone,
     alertsWritten,
     pushesSent,
+    plexChecked,
     seconds: Math.round(elapsed() / 1000),
   })
 })

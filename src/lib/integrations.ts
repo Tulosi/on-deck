@@ -5,7 +5,7 @@ import { useAuth } from './auth'
 import { functionError, refreshAvailability, refreshPrices } from './library'
 import { supabase } from './supabase'
 
-async function callFn<T>(name: string, body: Record<string, unknown>): Promise<T> {
+export async function callFn<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase!.functions.invoke(name, { body })
   if (error) throw await functionError(error)
   return data as T
@@ -208,7 +208,7 @@ export interface SeasonInfo {
   requestable: boolean
 }
 
-function tmdbRef(title: Title): { tmdbId: number; mediaType: 'movie' | 'tv' } | null {
+export function tmdbRef(title: Title): { tmdbId: number; mediaType: 'movie' | 'tv' } | null {
   if (!title.sourceKey) return null
   const [mediaType, source, id] = title.sourceKey.split(':')
   if (source !== 'tmdb' || (mediaType !== 'movie' && mediaType !== 'tv')) return null

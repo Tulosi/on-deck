@@ -204,6 +204,21 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
+### Plex watch sync
+- Watched-up-to (shows) and status (shows and movies) follow your Plex watch history. The rules live in
+  `_shared/plexApply.ts`, shared by all three places that use them:
+  - **Title page:** checks Plex when you open it.
+  - **Background, in the app** (`usePlexBackgroundSync`): on load and whenever the library changes, 6
+    titles per pass. Just-added titles go first, so a new title syncs right after you add it; then
+    In Progress / Caught up shows; then the rest. Each title is checked once per session.
+  - **Server, every 3 hours** (`daily` job): 6 titles per user per run, the ones checked longest ago first
+    (`user_items.plex_checked_at`), so it stays current even when the app is closed.
+- Covers Wanted / In Progress / Caught up titles with Plex sync on. Never touches Dropped, or titles with
+  sync switched off.
+- TV rules: Watched-up-to mirrors Plex. Wanted → In Progress once anything is watched; Watched once the final
+  episode of an ended show is watched. The Caught up moves then follow on the next app load.
+- Movie rules: started → In Progress, finished → Watched (forward only).
+
 ### Caught up (shows)
 - A status for shows only: **Caught up** = every episode aired so far is watched (ignored seasons count as
   done), and the show is ongoing (TMDB Returning Series / In Production / Planned / Pilot, or a next

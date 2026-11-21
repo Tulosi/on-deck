@@ -1,3 +1,4 @@
+import { usePlexBackgroundSync } from '../lib/plexSync'
 import { useSmartCollectionSync } from '../lib/collections'
 import { useTimezoneSync } from '../lib/notifications'
 import { Link, Outlet, useLocation } from 'react-router-dom'
@@ -25,6 +26,7 @@ export function AppShell() {
   useSteamOwnershipCheck()
   useTimezoneSync()
   useSmartCollectionSync()
+  usePlexBackgroundSync()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

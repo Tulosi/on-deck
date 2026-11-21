@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronRight, Library, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { friendlyError, useAvailability, usePlexWatch, type PlexWatch } from '../lib/integrations'
 import { useUpdateItem, type ItemPatch } from '../lib/library'
+import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
+import { plexStateOf } from '../lib/plexSync'
 import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
 import { mediaLabels, type Priority, type Progress, type SeasonOverride, type UserItem } from '../types'
 
@@ -606,19 +608,8 @@ export function StatusControls({ item }: { item: UserItem }) {
     if (lastApplied.current === key) return
     lastApplied.current = key
 
-    const patch: ItemPatch = { tvProgress: target ? { season: target.season, episode: target.episode } : null }
-    if (target && item.progress !== 'dropped') {
-      const final = seasons[seasons.length - 1]
-      const status = item.title.details?.status
-      const finishedShow =
-        (status === 'Ended' || status === 'Canceled') &&
-        !!final &&
-        target.season === final.season_number &&
-        target.episode >= final.episode_count
-      if (finishedShow) patch.progress = 'completed'
-      else if (item.progress === 'wanted') patch.progress = 'in_progress'
-    }
-    void save(patch)
+    const patch = plexPatch(plexStateOf(item), w)
+    if (patch) void save(patch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plexWatch.data, item.id, item.tvProgress, item.progress, item.plexSync])
 
@@ -628,9 +619,7 @@ export function StatusControls({ item }: { item: UserItem }) {
   useEffect(() => {
     const w = plexWatch.data
     if (type !== 'movie' || !w || !w.configured || !w.found || !w.movie || item.plexSync === false) return
-    let next: Progress | null = null
-    if (w.movie.state === 'watched' && (item.progress === 'wanted' || item.progress === 'in_progress')) next = 'completed'
-    else if (w.movie.state === 'in_progress' && item.progress === 'wanted') next = 'in_progress'
+    const next = plexPatch(plexStateOf(item), w)?.progress ?? null
     if (!next) return
     const key = `${item.id}:${w.movie.state}<-${item.progress}`
     if (lastApplied.current === key) return

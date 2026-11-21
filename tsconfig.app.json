@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "supabase/functions/_shared/releases.ts", "supabase/functions/_shared/prices.ts"]
+  "include": ["src", "supabase/functions/_shared/releases.ts", "supabase/functions/_shared/prices.ts", "supabase/functions/_shared/plexApply.ts"]
 }

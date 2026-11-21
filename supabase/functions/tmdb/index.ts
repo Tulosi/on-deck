@@ -83,6 +83,13 @@ async function add(tmdbId: number, mediaType: MediaType) {
     metadata.number_of_seasons = d.number_of_seasons ?? null
     metadata.number_of_episodes = d.number_of_episodes ?? null
     metadata.next_episode_to_air = d.next_episode_to_air ?? null
+    metadata.last_episode_to_air = d.last_episode_to_air
+      ? {
+          air_date: d.last_episode_to_air.air_date ?? null,
+          season_number: d.last_episode_to_air.season_number ?? null,
+          episode_number: d.last_episode_to_air.episode_number ?? null,
+        }
+      : null
     metadata.last_air_date = d.last_air_date ?? null
     metadata.networks = (d.networks ?? []).map((n: Json) => n.name)
     metadata.created_by = (d.created_by ?? []).map((c: Json) => c.name)

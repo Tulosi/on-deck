@@ -26,16 +26,20 @@ Things you're in the middle of, with **the next concrete step**.
 - Each card links to the title. Later: a one-tap "Watched E5" that advances Progress (only when Plex sync is off
   for that show).
 
-### 2. New for you
-Changes since your **last visit** to Home (per-user `last_seen_home_at`). Every card carries a reason label:
+### 2. New for you ✅ built
+Changes since your **previous visit** (`profiles.last_seen_home_at`: read once per app session, then moved to
+now; a first-ever visit shows the last 7 days). Built from the daily job's alerts plus new episodes, worked out
+from each show's last aired episode (`metadata.last_episode_to_air`). **Clear** empties the row for this
+session. Implementation: `src/lib/newForYou.ts`. Every card carries a reason label:
 - **New episodes:** an episode aired for a show you're following (In Progress, or Wanted + caught up).
   Includes renewals that flipped Watched back to In Progress.
 - **Season premiere:** a new season started.
 - **Now available:** a Wanted title that just became available on your Plex or one of your streaming services.
 - **Released:** a pre-release title came out (theatrical / digital per the release-tracking spec).
-- **Price drop** (games, later): a Wanted game hit a historical low.
-- One card per title, with the strongest reason winning. A **Dismiss** removes a card early. Otherwise cards
-  clear on the next visit.
+- **Price drop:** a Wanted game hit its lowest price ever, or a deep discount ("51% off").
+- **Date news:** a new season or release date was announced, or a date moved (weakest reason).
+- One card per title, with the strongest reason winning. Strongest first: released / premiered → now
+  available → new episode → lowest price → deep discount → date news. Cards clear on the next visit.
 
 ### 3. This week
 Releases in the next **7 days**, soonest first, with countdown labels: releases, premieres and new episodes for

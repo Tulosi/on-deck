@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { UserItem } from '../types'
@@ -11,6 +11,7 @@ export function PosterRow({
   hint,
   href,
   subline,
+  action,
 }: {
   title: string
   items: UserItem[]
@@ -19,6 +20,8 @@ export function PosterRow({
   href?: string
   /** Per-card line under the year. */
   subline?: (item: UserItem) => string | undefined
+  /** Extra control in the header, e.g. "Clear". */
+  action?: ReactNode
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   if (items.length === 0) return null
@@ -41,6 +44,7 @@ export function PosterRow({
           </h2>
           <span className="font-mono text-xs text-faint">{items.length}</span>
           {hint && <span className="hidden text-xs text-faint sm:inline">{hint}</span>}
+          {action}
         </div>
         <div className="hidden gap-1 md:flex">
           <button type="button" onClick={() => scroll(-1)} aria-label={`Scroll ${title} left`} className="grid size-7 place-items-center rounded-full border border-line text-muted hover:border-accent hover:text-fg">

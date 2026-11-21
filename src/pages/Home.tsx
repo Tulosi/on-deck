@@ -3,11 +3,12 @@ import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { continueItems, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
+import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
- * everything lives on the Library page. Step 1 rows: Continue · This week · Ready to start.
+ * everything lives on the Library page. Rows: Continue · New for you · This week · Ready to start · Deals.
  */
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
@@ -15,6 +16,8 @@ export function Home() {
   const [filters] = useFilters()
   const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
   const typeParam = filters.type ? `&type=${filters.type}` : ''
+  const fresh = useNewForYou(isSample ? [] : items)
+  const freshById = new Map(fresh.entries.map((e) => [e.item.id, e]))
 
   if (isLoading) {
     return (
@@ -67,6 +70,17 @@ export function Home() {
         items={cont}
         subline={continueLine}
         href={`/library?status=in_progress${typeParam}`}
+      />
+      <PosterRow
+        title="New for you"
+        hint="Since your last visit"
+        items={fresh.entries.map((e) => e.item)}
+        subline={(item) => freshById.get(item.id)?.label}
+        action={
+          <button type="button" onClick={fresh.clear} className="text-xs text-muted hover:text-fg">
+            Clear
+          </button>
+        }
       />
       <PosterRow
         title="This week"

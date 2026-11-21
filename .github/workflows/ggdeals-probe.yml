@@ -1,0 +1,31 @@
+# One-off test: can GitHub's servers reach the gg.deals API? (Supabase's servers can't — requests time out.)
+# Run manually from the Actions tab. Prints only the HTTP status, timing and the price fields — never the key.
+name: gg.deals reachability test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call gg.deals (STALKER 2, Hollow Knight — Canada)
+        env:
+          GGDEALS_API_KEY: ${{ secrets.GGDEALS_API_KEY }}
+        run: |
+          set +e
+          curl -s -o body.json -w "status=%{http_code} time=%{time_total}s\n" --max-time 20 \
+            "https://api.gg.deals/v1/prices/by-steam-app-id/?ids=1643320,367520&key=${GGDEALS_API_KEY}&region=ca"
+          echo "curl exit code: $?"
+          python3 - <<'EOF'
+          import json
+          try:
+              d = json.load(open('body.json'))
+              for app, v in (d.get('data') or {}).items():
+                  print(app, v and v.get('title'), v and v.get('prices'))
+          except Exception as e:
+              print('not JSON:', e, open('body.json').read()[:200] if __import__('os').path.exists('body.json') else '')
+          EOF

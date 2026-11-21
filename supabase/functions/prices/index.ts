@@ -30,9 +30,9 @@ async function postJson(url: string, body: unknown): Promise<Json | null> {
   }
 }
 
-async function getJson(url: string): Promise<Json | null> {
+async function getJson(url: string, timeoutMs = 10000): Promise<Json | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json' } })
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), headers: { Accept: 'application/json' } })
     return res.ok ? await res.json() : null
   } catch {
     return null
@@ -152,10 +152,15 @@ serve(async (req) => {
   // ── gg.deals: key shops ──
   const ggKey = Deno.env.get('GGDEALS_API_KEY')
   const keyshop = new Map<string, { price: number | null; low: number | null; url: string | null; currency: string | null }>()
+  // gg.deals currently doesn't answer requests from Supabase's servers (they time out), so this is best-effort:
+  // when it doesn't answer, existing key-shop values are kept rather than wiped.
+  let ggAnswered = false
   if (ggKey && paid.length) {
     const d = await getJson(
       `https://api.gg.deals/v1/prices/by-steam-app-id/?ids=${paid.map((g) => g.steamAppId).join(',')}&key=${ggKey}&region=${country.toLowerCase()}`,
+      4000,
     )
+    ggAnswered = !!d?.success
     for (const [appId, v] of Object.entries((d?.data ?? {}) as Record<string, Json | null>)) {
       if (!v) continue
       const num = (x: unknown) => (x != null && x !== '' && Number.isFinite(Number(x)) ? Number(x) : null)
@@ -185,9 +190,14 @@ serve(async (req) => {
       official_price: g.isFree ? null : (o?.price ?? null),
       official_url: g.isFree ? null : (o?.url ?? null),
       official_low: g.isFree ? null : (o?.low ?? null),
-      keyshop_price: g.isFree ? null : (k?.price ?? null),
-      keyshop_low: g.isFree ? null : (k?.low ?? null),
-      keyshop_url: g.isFree ? null : (k?.url ?? null),
+      // Only overwrite key-shop values when gg.deals actually answered.
+      ...(ggAnswered || g.isFree
+        ? {
+            keyshop_price: g.isFree ? null : (k?.price ?? null),
+            keyshop_low: g.isFree ? null : (k?.low ?? null),
+            keyshop_url: g.isFree ? null : (k?.url ?? null),
+          }
+        : {}),
       fetched_at: nowIso,
     }
   })

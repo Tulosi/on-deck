@@ -90,8 +90,11 @@ Prices refresh daily for Wanted/unowned games (cron) and when a game page is ope
 - **When it checks:** right after a game is added, once per app load, and from Settings → **Check Steam
   library**. It uses `GetOwnedGames` (Steam Web API key, server-side) and marks matching games (by Steam app
   id) **In Your Library**.
-- **Manual changes win:** changing In Your Library yourself sets `user_items.owned_locked`, and the check
-  never touches that game again.
+- **Playtime → In Progress:** the same check stores each game's Steam playtime and last-played date
+  (`steam_playtime_minutes`, `steam_last_played`, shown on the Tracking card). Any playtime moves a **Wanted**
+  game to **In Progress**. This is forward only: it never touches other statuses.
+- **Manual changes win:** changing In Your Library yourself sets `user_items.owned_locked`, and changing Status
+  sets `progress_locked`. The check never overrides either again.
 - **Privacy:** needs the Steam profile's **Game details** set to Public. When it's private, Settings says so.
 
 ## Tracking model (per user, per title)

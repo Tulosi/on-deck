@@ -49,6 +49,7 @@ export const unlinkSteam = () => call<{ linked: false }>({ action: 'unlink' })
 export interface OwnedResult {
   checked: number
   newlyOwned: number
+  newlyStarted?: number
   linked: boolean
   private?: boolean
 }
@@ -58,15 +59,16 @@ export const checkSteamOwned = (titleIds?: string[]) => call<OwnedResult>({ acti
 
 const ownershipStarted = new Set<string>()
 
-/** Once per app load: picks up games bought on Steam since last time. Mount once (AppShell). */
+/** Once per app load: picks up games bought or started on Steam since last time. Mount once (AppShell). */
 export function useSteamOwnershipCheck() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   useEffect(() => {
     if (!user || !supabase || ownershipStarted.has(user.id)) return
     ownershipStarted.add(user.id)
+    // Also refreshes playtime, so always reload the list afterwards.
     checkSteamOwned()
-      .then((r) => (r.newlyOwned > 0 ? queryClient.invalidateQueries({ queryKey: libraryKey(user.id) }) : undefined))
+      .then((r) => (r.linked ? queryClient.invalidateQueries({ queryKey: libraryKey(user.id) }) : undefined))
       .catch(() => undefined)
   }, [user, queryClient])
 }

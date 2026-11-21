@@ -54,6 +54,9 @@ export interface UserItem {
   plexSync?: boolean
   /** When the user (or sync) marked it Watched/Played/Read. */
   completedAt?: string
+  /** Games: playtime and last played, from the linked Steam account. */
+  steamPlaytimeMinutes?: number
+  steamLastPlayed?: string
   /** When it was added to the deck / last changed (ISO). */
   addedAt?: string
   updatedAt?: string

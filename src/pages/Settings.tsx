@@ -209,9 +209,13 @@ function SteamSection() {
     } else {
       setMessage({
         ok: true,
-        text: r.newlyOwned
-          ? `Marked ${r.newlyOwned} game${r.newlyOwned === 1 ? '' : 's'} as In Your Library.`
-          : 'Library checked — nothing new to mark.',
+        text:
+          [
+            r.newlyOwned ? `Marked ${r.newlyOwned} game${r.newlyOwned === 1 ? '' : 's'} as In Your Library.` : '',
+            r.newlyStarted ? `Moved ${r.newlyStarted} to In Progress (played on Steam).` : '',
+          ]
+            .filter(Boolean)
+            .join(' ') || 'Library checked — nothing new to mark.',
       })
     }
   }
@@ -250,7 +254,7 @@ function SteamSection() {
   return (
     <Section
       title="Steam"
-      description="Connect Steam so games you add that you already own are marked In Your Library."
+      description="Connect Steam so games you own are marked In Your Library, and games you’ve played move to In Progress."
     >
       {profile.isLoading ? (
         <Loader2 className="size-4 animate-spin text-muted" />
@@ -285,7 +289,7 @@ function SteamSection() {
       )}
       <p className="text-xs text-faint">
         You sign in on steamcommunity.com — On Deck never sees your Steam password. Your Steam profile’s
-        Game details must be Public. Games you mark In Your Library yourself are never changed by the check.
+        Game details must be Public. Anything you change yourself (In Your Library or Status) is never changed by the check.
       </p>
       {message && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
     </Section>

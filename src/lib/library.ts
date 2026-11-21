@@ -46,6 +46,8 @@ interface ItemRow {
   created_at: string
   updated_at: string
   season_overrides: Record<string, SeasonOverride> | null
+  steam_playtime_minutes: number | null
+  steam_last_played: string | null
   title: TitleRow
 }
 
@@ -95,6 +97,8 @@ function toUserItem(row: ItemRow): UserItem {
     addedAt: row.created_at,
     updatedAt: row.updated_at,
     seasonOverrides: row.season_overrides ?? {},
+    steamPlaytimeMinutes: row.steam_playtime_minutes ?? undefined,
+    steamLastPlayed: row.steam_last_played ?? undefined,
     tvProgress:
       row.current_season != null ? { season: row.current_season, episode: row.current_episode ?? 1 } : undefined,
     title: {
@@ -178,7 +182,7 @@ export function useItems() {
       const { data, error } = await supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, completed_at, created_at, updated_at, season_overrides, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -383,6 +387,7 @@ export function useUpdateItem() {
     }
     if (patch.progress !== undefined) {
       row.progress = patch.progress
+      row.progress_locked = true // games: the Steam playtime check won't change a status set here
       const now = new Date().toISOString()
       if (patch.progress === 'in_progress' && item.progress === 'wanted') row.started_at = now
       if (patch.progress === 'completed') row.completed_at = now

@@ -46,8 +46,8 @@ export function navItem(key: NavKey): NavItem {
 
 /** The phone bar shows up to this many chosen tabs, plus More. */
 export const MAX_TABS = 5
-/** The four media types by default; Home, Library, Calendar and Collections live under More. */
-export const DEFAULT_TABS: NavKey[] = ['movie', 'tv', 'game', 'book']
+/** Home on the left, then the four media types; Library, Calendar and Collections live under More. */
+export const DEFAULT_TABS: NavKey[] = ['home', 'movie', 'tv', 'game', 'book']
 
 /** The chosen tabs (saved order, known keys, at most MAX_TABS), or the default. */
 export function tabsFrom(saved: string[] | undefined): NavKey[] {

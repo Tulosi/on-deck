@@ -382,7 +382,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   rearranged by drag and drop, or with Alt + ↑/↓ on a focused item, within its own section: the main items,
   the types inside Library, and the collections. Nothing crosses the divider. The order is saved to
   `profiles.nav_layout` (signed out: this browser). Implementation: `src/lib/navLayout.ts`, `Sidebar.tsx`.
-- **Phone tab bar:** up to 5 tabs you choose (default: the four media types, Movies · TV · Games · Books) plus **More**, which holds Home, Library, Calendar and the rest. (The On Deck logo in the top bar also goes Home.) More
+- **Phone tab bar:** up to 5 tabs you choose (default: Home, then the four media types: Home · Movies · TV · Games · Books) plus **More**, which holds Library, Calendar and the rest. More
   opens a sheet with the remaining pages, your collections below a divider, Settings and "Customize tab bar".
   More is highlighted when you're on a page that isn't a tab.
   - **Settings → Navigation** (`#navigation`): pick and order the tabs. Rows drag by their handle (mouse or

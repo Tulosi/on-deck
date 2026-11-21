@@ -136,7 +136,9 @@ function toUserItem(row: ItemRow): UserItem {
       needsScores:
         (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t))) ||
         // Games saved before release dates (precision, Early Access, 1.0) were stored are refreshed once to pick it up.
-        (t.source === 'igdb' && (scoresNeedRefresh(t.ratings) || t.metadata.release_milestones === undefined)) ||
+        // Games saved before time-to-beat was stored are refreshed once to pick it up.
+        (t.source === 'igdb' &&
+          (scoresNeedRefresh(t.ratings) || t.metadata.release_milestones === undefined || t.metadata.time_to_beat === undefined)) ||
         (t.source === 'hardcover' && scoresNeedRefresh(t.ratings)),
     },
   }

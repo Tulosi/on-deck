@@ -204,6 +204,18 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
+### Game length (time to beat)
+- Source: IGDB's `game_time_to_beats`, player-submitted times in seconds. These are stored as hours in
+  `metadata.time_to_beat` = `{ rushed, normal, full, players }`, or `null` when IGDB has no data.
+  - HowLongToBeat has no official API, so it isn't used.
+  - A "100%" time more than 5× the normal one is dropped as an outlier.
+  - The lookup is best-effort and never blocks adding a game.
+  - Games saved before this are refreshed once to pick it up.
+- Game page: "Time to beat: About 36h · rushed 16h · 100% 71h (32 players)", or "No data yet".
+- Library (Games): **Length** filter by the normal time: Short (under 10h), Medium (10–30h), Long (30–60h),
+  Epic (60h+). **Sort: Length** puts the shortest first, unknown last. The Price and Length sorts are only
+  offered for Games and All.
+
 ### Books (Hardcover)
 - The `hardcover` Edge Function handles search and add. Hardcover's GraphQL API is used server-side only, as
   its terms require.

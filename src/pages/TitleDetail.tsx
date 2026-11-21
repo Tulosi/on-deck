@@ -75,6 +75,21 @@ const DECK_LABEL: Record<string, string> = {
 }
 
 /** Game facts for the side panel (IGDB + Steam + IsThereAnyDeal data stored on the title). */
+/** "About 36h · rushed 16h · 100% 71h (32 players)", from IGDB; "No data yet" when IGDB has none. */
+function timeToBeatText(d: Record<string, unknown>): string | undefined {
+  if (!('time_to_beat' in d)) return undefined // not fetched yet (refreshes shortly)
+  const t = d.time_to_beat as { rushed?: number | null; normal?: number | null; full?: number | null; players?: number | null } | null
+  if (!t) return 'No data yet'
+  const h = (n: number) => (n < 10 ? `${n.toFixed(1).replace(/\.0$/, '')}h` : `${Math.round(n)}h`)
+  const parts = [
+    t.normal != null ? `About ${h(t.normal)}` : null,
+    t.rushed != null ? `rushed ${h(t.rushed)}` : null,
+    t.full != null ? `100% ${h(t.full)}` : null,
+  ].filter(Boolean) as string[]
+  if (!parts.length) return 'No data yet'
+  return `${parts.join(' · ')}${t.players ? ` (${t.players} player${t.players === 1 ? '' : 's'})` : ''}`
+}
+
 function GameFacts({ d }: { d: Record<string, unknown> }) {
   const list = (v: unknown) => (Array.isArray(v) && v.length ? (v as string[]).join(', ') : undefined)
   const mp = (d.multiplayer ?? {}) as {
@@ -97,6 +112,7 @@ function GameFacts({ d }: { d: Record<string, unknown> }) {
       <Fact label="Developer" value={list(d.developer)} />
       <Fact label="Publisher" value={list(d.publisher)} />
       <Fact label="Modes" value={modes.length ? modes.join(' · ') : undefined} />
+      <Fact label="Time to beat" value={timeToBeatText(d)} />
       <Fact label="Steam Deck" value={typeof d.steam_deck === 'string' ? DECK_LABEL[d.steam_deck] : undefined} />
       <Fact label="Early Access" value={d.early_access ? 'Yes — not 1.0 yet' : undefined} />
       <Fact label="Perspective" value={list(d.perspectives)} />

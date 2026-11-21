@@ -344,6 +344,13 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
                 onToggle={(v) => set({ ...f, coop: toggle(f.coop, v) })}
               />
               <OptionGroup
+                label="Length (time to beat)"
+                options={LABELS.options.LENGTH}
+                selected={f.length}
+                render={(v) => LABELS.length[v]}
+                onToggle={(v) => set({ ...f, length: toggle(f.length, v) })}
+              />
+              <OptionGroup
                 label="Steam Deck"
                 options={LABELS.options.DECK}
                 selected={f.deck}
@@ -472,7 +479,8 @@ function ArrangeSelects({ f, set }: { f: Filters; set: (next: Filters) => void }
         onChange={(e) => set({ ...f, sort: e.target.value as SortKey })}
         className={selectClass}
       >
-        {LABELS.options.SORTS.map((s) => (
+        {/* Price and Length only mean something for games (shown for Games and All). */}
+        {LABELS.options.SORTS.filter((s) => (s !== 'price' && s !== 'length') || !f.type || f.type === 'game' || f.sort === s).map((s) => (
           <option key={s} value={s}>
             Sort: {LABELS.sort[s]}
           </option>

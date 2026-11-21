@@ -17,11 +17,13 @@ export type ReleaseFilter = 'released' | 'upcoming'
 export type AddedFilter = '7d' | '30d' | '90d' | '365d'
 export type TvStatusFilter = 'airing' | 'returning' | 'ended' | 'cancelled'
 export type TvProgressFilter = 'not_started' | 'midway' | 'caught_up'
-export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'price'
+export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'price' | 'length'
 export type CoopFilter = 'online' | 'local' | 'split' | 'pvp'
 export type DeckFilter = 'verified' | 'playable' | 'unsupported'
 export type AccessFilter = 'early_access' | 'full_release'
 export type DealFilter = 'on_sale' | 'historical_low' | 'free'
+/** Game length, by IGDB's "normal" time to beat. */
+export type LengthFilter = 'short' | 'medium' | 'long' | 'epic'
 export type GroupKey = 'none' | 'status' | 'type' | 'priority' | 'year'
 
 export interface Filters {
@@ -47,6 +49,7 @@ export interface Filters {
   deck: DeckFilter[]
   access: AccessFilter[]
   deal: DealFilter[]
+  length: LengthFilter[]
   /** Cheapest price at most this (in the user's currency), or null. */
   maxPrice: number | null
   // Arranging
@@ -69,7 +72,8 @@ const AVAILABILITY: AvailabilityFilter[] = ['available', 'unavailable']
 const ADDED: AddedFilter[] = ['7d', '30d', '90d', '365d']
 const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended', 'cancelled']
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
-const SORTS: SortKey[] = ['priority', 'added', 'release', 'score', 'title', 'updated', 'price']
+const SORTS: SortKey[] = ['priority', 'added', 'release', 'score', 'title', 'updated', 'price', 'length']
+const LENGTH: LengthFilter[] = ['short', 'medium', 'long', 'epic']
 const COOP: CoopFilter[] = ['online', 'local', 'split', 'pvp']
 const DECK: DeckFilter[] = ['verified', 'playable', 'unsupported']
 const ACCESS: AccessFilter[] = ['early_access', 'full_release']
@@ -99,6 +103,7 @@ export function parseFilters(p: URLSearchParams): Filters {
     deck: isGame ? list(p.get('deck'), DECK) : [],
     access: isGame ? list(p.get('access'), ACCESS) : [],
     deal: isGame ? list(p.get('deal'), DEAL) : [],
+    length: isGame ? list(p.get('length'), LENGTH) : [],
     maxPrice: isGame ? int(p.get('maxprice')) : null,
     sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : 'priority',
     group: (GROUPS as string[]).includes(p.get('group') ?? '') ? (p.get('group') as GroupKey) : 'none',
@@ -127,6 +132,7 @@ export function filtersToParams(f: Filters): URLSearchParams {
     set('deck', f.deck.join(','))
     set('access', f.access.join(','))
     set('deal', f.deal.join(','))
+    set('length', f.length.join(','))
     set('maxprice', f.maxPrice)
   }
   if (f.type === 'tv') {
@@ -140,7 +146,7 @@ export function filtersToParams(f: Filters): URLSearchParams {
 
 /** Switching type keeps Layer 2 but drops the old type's Layer 3 filters. */
 export function withType(f: Filters, type: MediaType | null): Filters {
-  return { ...f, type, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], maxPrice: null }
+  return { ...f, type, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
 }
 
 export function clearFilters(f: Filters): Filters {
@@ -162,6 +168,7 @@ export function clearFilters(f: Filters): Filters {
     deck: [],
     access: [],
     deal: [],
+    length: [],
     maxPrice: null,
   }
 }
@@ -265,6 +272,10 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
       const ea = i.title.details?.early_access === true
       if (!f.access.includes(ea ? 'early_access' : 'full_release')) return false
     }
+    if (f.length.length) {
+      const b = lengthBucket(i)
+      if (!b || !f.length.includes(b)) return false
+    }
     if (f.deal.length) {
       const p = i.gamePrice
       const best = p ? cheapest(p) : null
@@ -282,6 +293,18 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
     }
     return true
   })
+}
+
+/** Hours to beat a game at a normal pace (IGDB players), falling back to the rushed time. */
+export function hoursToBeat(i: UserItem): number | null {
+  const t = i.title.details?.time_to_beat as { normal?: number | null; rushed?: number | null } | null | undefined
+  return t?.normal ?? t?.rushed ?? null
+}
+
+export function lengthBucket(i: UserItem): LengthFilter | null {
+  const h = hoursToBeat(i)
+  if (h == null) return null
+  return h < 10 ? 'short' : h < 30 ? 'medium' : h < 60 ? 'long' : 'epic'
 }
 
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 }
@@ -311,6 +334,9 @@ export function sortItems(items: UserItem[], sort: SortKey): UserItem[] {
       const priceOf = (i: UserItem) => (i.gamePrice?.isFree ? 0 : i.gamePrice ? (cheapest(i.gamePrice)?.price ?? Infinity) : Infinity)
       return sorted.sort((a, b) => priceOf(a) - priceOf(b))
     }
+    case 'length':
+      // Shortest first; unknown last.
+      return sorted.sort((a, b) => (hoursToBeat(a) ?? Infinity) - (hoursToBeat(b) ?? Infinity))
   }
 }
 
@@ -372,13 +398,14 @@ export const LABELS = {
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
-  sort: { priority: 'Priority', added: 'Date added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', price: 'Price' } as Record<SortKey, string>,
+  sort: { priority: 'Priority', added: 'Date added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', price: 'Price', length: 'Length' } as Record<SortKey, string>,
   coop: { online: 'Online co-op', local: 'Local co-op', split: 'Split-screen', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,
   deal: { on_sale: 'On sale', historical_low: 'Historical low', free: 'Free-To-Play' } as Record<DealFilter, string>,
+  length: { short: 'Short (under 10h)', medium: 'Medium (10–30h)', long: 'Long (30–60h)', epic: 'Epic (60h+)' } as Record<LengthFilter, string>,
   group: { none: 'No grouping', status: 'Status', type: 'Type', priority: 'Priority', year: 'Release year' } as Record<GroupKey, string>,
-  options: { COOP, DECK, ACCESS, DEAL, STATUS, PRIORITY, RATING, AVAILABILITY, RELEASE, ADDED, TV_STATUS, TV_PROGRESS, SORTS, GROUPS },
+  options: { COOP, DECK, ACCESS, DEAL, LENGTH, STATUS, PRIORITY, RATING, AVAILABILITY, RELEASE, ADDED, TV_STATUS, TV_PROGRESS, SORTS, GROUPS },
 }
 
 /** Number of active (non-arranging) filters — for the Filters button badge. */
@@ -399,6 +426,7 @@ export function activeCount(f: Filters): number {
     f.deck.length +
     f.access.length +
     f.deal.length +
+    f.length.length +
     (f.maxPrice != null ? 1 : 0)
   )
 }

@@ -143,6 +143,28 @@ function milestonesOf(dates: Json[]): Milestone[] {
   return [toMilestone('early_access', ea), toMilestone('release', full)].filter((m): m is Milestone => !!m)
 }
 
+// ─── Time to beat ──────────────────────────────────────────────────────────
+
+/**
+ * IGDB's player-submitted completion times (seconds) → hours, one decimal. Best-effort: null when IGDB has none
+ * or the lookup fails. A "100%" time more than 5× the normal one is treated as an outlier and dropped.
+ */
+async function timeToBeat(igdbId: number): Promise<Json | null> {
+  try {
+    const [t] = await igdb('game_time_to_beats', `fields hastily,normally,completely,count; where game_id = ${igdbId};`)
+    if (!t) return null
+    const hours = (sec: unknown) => (typeof sec === 'number' && sec > 0 ? Math.round(sec / 360) / 10 : null)
+    const rushed = hours(t.hastily)
+    const normal = hours(t.normally)
+    let full = hours(t.completely)
+    if (full != null && normal != null && full > normal * 5) full = null
+    if (rushed == null && normal == null && full == null) return null
+    return { rushed, normal, full, players: typeof t.count === 'number' ? t.count : null }
+  } catch {
+    return null
+  }
+}
+
 // ─── Add / refresh ─────────────────────────────────────────────────────────
 
 async function add(igdbId: number) {
@@ -174,7 +196,7 @@ async function add(igdbId: number) {
   }
 
   const releaseIso = g.first_release_date ? new Date(g.first_release_date * 1000).toISOString().slice(0, 10) : null
-  const dates = await releaseDates(g.id as number)
+  const [dates, ttb] = await Promise.all([releaseDates(g.id as number), timeToBeat(g.id as number)])
   const milestones = milestonesOf(dates)
   // Precision of the first release (the date IGDB's first_release_date points at).
   const { precision: releasePrecision, label: releaseLabel } = dates.length
@@ -225,6 +247,8 @@ async function add(igdbId: number) {
       release_label: releasePrecision === 'day' ? null : releaseLabel,
       // Early Access launch and full release (1.0), for the Waitlist and calendar feeds.
       release_milestones: milestones,
+      // Hours to finish: rushed / normal / 100%, from IGDB players (null = no data yet).
+      time_to_beat: ttb,
     },
     release_date: releaseIso,
     refreshed_at: nowIso,

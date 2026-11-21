@@ -460,3 +460,7 @@ verify_jwt = false
 
 [functions.hardcover]
 verify_jwt = false
+
+# Scheduled job: no session; checks the private JOB_SECRET itself.
+[functions.daily]
+verify_jwt = false

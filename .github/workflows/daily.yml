@@ -1,0 +1,33 @@
+# Runs On Deck's `daily` Edge Function every 3 hours: refreshes titles whose release dates can still change,
+# refreshes each user's availability and game prices, and writes inbox notifications.
+# Each run does what fits in ~2 minutes; anything left over is picked up by the next run.
+# Needs repo secrets VITE_SUPABASE_URL and JOB_SECRET (same value as the Supabase secret JOB_SECRET).
+name: Daily refresh and notifications
+
+on:
+  schedule:
+    - cron: '41 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the daily job
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          JOB_SECRET: ${{ secrets.JOB_SECRET }}
+        run: |
+          if [ -z "$JOB_SECRET" ]; then echo "::warning::JOB_SECRET is not set — skipping."; exit 0; fi
+          status=$(curl -s -o result.json -w '%{http_code}' --max-time 180 -X POST "$SUPABASE_URL/functions/v1/daily" \
+            -H "x-job-secret: $JOB_SECRET" -H 'content-type: application/json' -d '{}')
+          cat result.json; echo
+          if [ "$status" != "200" ]; then echo "::error::daily job returned HTTP $status"; exit 1; fi

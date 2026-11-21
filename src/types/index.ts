@@ -52,6 +52,8 @@ export interface UserItem {
   tvProgress?: { season: number; episode: number }
   /** TV: Watched-up-to mirrors Plex (default) unless the user overrode it for this show. */
   plexSync?: boolean
+  /** "Notify me": release, availability and price alerts for this title (default on). */
+  notify?: boolean
   /** When the user (or sync) marked it Watched/Played/Read. */
   completedAt?: string
   /** Games: playtime and last played, from the linked Steam account. */
@@ -84,16 +86,5 @@ export const mediaLabels: Record<MediaType, { singular: string; plural: string; 
 }
 
 /** A game's prices in one region (from `game_prices`). */
-export interface GamePrice {
-  currency: string
-  isFree: boolean
-  /** Steam's own price for the region (always shown); `low` = Steam's lowest-ever. */
-  steam: { price: number; low: number | null } | null
-  /** Cheapest *other* store selling a Steam key — only shown when cheaper than Steam. */
-  official: { shop: string | null; price: number | null; url: string | null; low: number | null } | null
-  /** Steam's own full (undiscounted) price — all discounts are measured against it. */
-  steamRegular: number | null
-  /** Cheapest key-shop offer (gg.deals). */
-  keyshop: { price: number | null; low: number | null; url: string | null } | null
-  fetchedAt: string
-}
+import type { GamePrice } from '../../supabase/functions/_shared/prices.ts'
+export type { GamePrice }

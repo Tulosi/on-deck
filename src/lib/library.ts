@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
-import type { GamePrice, MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
-import { cheapest, formatPrice } from './prices'
+import type { MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
+import { cheapest, formatPrice, gamePriceFromRow, type PriceRow } from './prices'
 import { useAuth } from './auth'
 import { supabase } from './supabase'
 
@@ -44,6 +44,7 @@ interface ItemRow {
   current_season: number | null
   current_episode: number | null
   plex_sync: boolean
+  notify: boolean | null
   completed_at: string | null
   created_at: string
   updated_at: string
@@ -96,6 +97,7 @@ function toUserItem(row: ItemRow): UserItem {
     priority: row.priority ?? undefined,
     notes: row.notes ?? undefined,
     plexSync: row.plex_sync ?? true,
+    notify: row.notify ?? true,
     completedAt: row.completed_at ?? undefined,
     addedAt: row.created_at,
     updatedAt: row.updated_at,
@@ -180,39 +182,9 @@ function withAvailability(item: UserItem, a: AvailabilityRow | undefined): UserI
   }
 }
 
-interface PriceRow {
-  title_id: string
-  currency: string
-  is_free: boolean
-  steam_price: number | null
-  steam_low: number | null
-  official_shop: string | null
-  official_price: number | null
-  official_url: string | null
-  official_low: number | null
-  steam_regular: number | null
-  keyshop_price: number | null
-  keyshop_low: number | null
-  keyshop_url: string | null
-  fetched_at: string
-}
-
-const num = (v: unknown) => (v == null || v === '' ? null : Number(v))
-
 function withPrice(item: UserItem, r: PriceRow | undefined): UserItem {
   if (!r || item.title.mediaType !== 'game') return item
-  const gamePrice: GamePrice = {
-    currency: r.currency,
-    isFree: r.is_free,
-    steam: r.steam_price != null ? { price: Number(r.steam_price), low: num(r.steam_low) } : null,
-    official:
-      r.official_price != null
-        ? { shop: r.official_shop, price: num(r.official_price), url: r.official_url, low: num(r.official_low) }
-        : null,
-    steamRegular: num(r.steam_regular),
-    keyshop: r.keyshop_price != null ? { price: num(r.keyshop_price), low: num(r.keyshop_low), url: r.keyshop_url } : null,
-    fetchedAt: r.fetched_at,
-  }
+  const gamePrice = gamePriceFromRow(r)
   const best = cheapest(gamePrice)
   return {
     ...item,
@@ -232,7 +204,7 @@ export function useItems() {
       const { data, error } = await supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -471,6 +443,8 @@ export interface ItemPatch {
   plexSync?: boolean
   /** TV: per-season completion overrides; omitted seasons are auto. */
   seasonOverrides?: Record<string, SeasonOverride>
+  /** Release, availability and price alerts for this title. */
+  notify?: boolean
 }
 
 /**
@@ -493,6 +467,7 @@ export function useUpdateItem() {
     if (patch.priority !== undefined) row.priority = patch.priority
     if (patch.notes !== undefined) row.notes = patch.notes?.trim() ? patch.notes : null
     if (patch.plexSync !== undefined) row.plex_sync = patch.plexSync
+    if (patch.notify !== undefined) row.notify = patch.notify
     if (patch.seasonOverrides !== undefined) row.season_overrides = patch.seasonOverrides
     if (patch.tvProgress !== undefined) {
       row.current_season = patch.tvProgress?.season ?? null
@@ -527,6 +502,7 @@ export function useUpdateItem() {
               ...(patch.notes !== undefined && { notes: patch.notes ?? undefined }),
               ...(patch.tvProgress !== undefined && { tvProgress: patch.tvProgress ?? undefined }),
               ...(patch.plexSync !== undefined && { plexSync: patch.plexSync }),
+              ...(patch.notify !== undefined && { notify: patch.notify }),
               ...(patch.seasonOverrides !== undefined && { seasonOverrides: patch.seasonOverrides }),
             }
           : i,

@@ -81,9 +81,43 @@ export function admin(): SupabaseClient {
  * doesn't support this project's new-style API keys.
  */
 export async function requireUser(req: Request): Promise<User> {
+  // The `daily` job calls functions on a user's behalf with the private JOB_SECRET and that user's id.
+  const job = jobUserId(req)
+  if (job) return { id: job } as User
   const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
   if (!token) throw new HttpError(401, 'not_signed_in')
   const { data, error } = await admin().auth.getUser(token)
   if (error || !data.user) throw new HttpError(401, 'not_signed_in')
   return data.user
+}
+
+// ─── Scheduled job access ─────────────────────────────────────────────────
+
+/** Constant-time string comparison. */
+function sameSecret(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a)
+  const y = new TextEncoder().encode(b)
+  if (x.length !== y.length) return false
+  let diff = 0
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i]
+  return diff === 0
+}
+
+/** True when the request carries the private job secret (`x-job-secret` = JOB_SECRET). */
+export function isJob(req: Request): boolean {
+  const expected = Deno.env.get('JOB_SECRET')
+  const given = req.headers.get('x-job-secret')
+  return !!expected && expected.length >= 32 && !!given && sameSecret(given, expected)
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * For job calls: the user to act for (`x-job-user`), or the nil id for user-independent work (refreshing a
+ * shared title). Null when this isn't a job call.
+ */
+function jobUserId(req: Request): string | null {
+  if (!isJob(req)) return null
+  const id = req.headers.get('x-job-user')
+  return id && UUID.test(id) ? id : '00000000-0000-0000-0000-000000000000'
 }

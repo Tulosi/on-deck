@@ -271,24 +271,37 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - Home: a **Coming Soon** row, sorted by soonest release with exact dates first.
 
 ### Notifications
-- **Opt-in per title** with a "Notify me" toggle. It's on by default when adding a pre-release title.
-- **Triggers:**
-  - one week before release, once the date is exact
-  - on release day
-  - when the date firms up or changes, e.g. "Q2 2027" becomes "Apr 9", a delay, or a release pulled forward
-  - Steam Early Access → 1.0 (full release)
-  - new TV season premieres
-- **Channels:**
-  - an in-app inbox (bell icon with unread count), always on
-  - Web Push to phone or desktop through the installed PWA; per-user, opt-in per device
-  - Push on iPhone only works when the app is added to the home screen (iOS 16.4+)
-- No email for now.
-- **Mechanics:**
-  - a daily cron Edge Function (`refresh-releases`) re-checks every followed, unreleased title
-  - it compares against the stored state and writes events: date_changed, released, left_early_access, new_season
-  - it then fans out notifications to followers and sends Web Push using VAPID keys stored as server secrets
-- **Dedup:** each (user, title, event) is notified once. Release-day and one-week alerts are tied to
-  the specific date, so a delay re-arms them.
+**Built:** the daily job, the in-app inbox and "Notify me". **Not built yet:** Web Push.
+
+- **Daily job:** the `daily` Edge Function runs every 3 hours from `.github/workflows/daily.yml`. It's only
+  callable with the private `JOB_SECRET`. Each run does what fits in about 2 minutes; the next run picks up
+  the rest.
+  1. Refreshes titles whose dates can still change (anything with an upcoming event, unreleased statuses,
+     returning shows, Early Access games), not refreshed in the last 20 h, oldest first. It re-runs each
+     source's `add` (tmdb / igdb / hardcover) and compares upcoming events before and after.
+  2. For each user, refreshes availability and game prices through the same functions the app uses (called
+     with `x-job-secret` + `x-job-user`; see `requireUser` in `_shared/http.ts`).
+  3. Writes alerts to `notifications`.
+- **Alerts** (only for titles with **Notify me** on and not Dropped; episodes never alert):
+  | Kind | When | Example |
+  |---|---|---|
+  | `release_day` | an exact-dated release / premiere / new season / Early Access / 1.0 is today in the user's time zone | "Out today: Dune: Part Three" |
+  | `week_before` | the same, 7 days ahead | "Dune: Part Three: Release in one week (Dec 15, 2026)" |
+  | `date_changed` | an event's date or precision changed (incl. TBA → date, "Q2 2027" → exact) | "… moved from Q2 2027 to Apr 9, 2027" |
+  | `announced` | a new event appears (new season, 1.0 date) | "Low Orbit: Season 3 premiere announced — Dec 2, 2026" |
+  | `available` | a Wanted / In Progress movie or show became available on Plex or your services since the last run | "Now available on Plex: …" |
+  | `price_low` | a Wanted, unowned game's cheapest shown price is at its lowest ever | "Lowest price ever: … — CA$19.49 on Steam (-50%)" |
+- **Dedup:** `dedup_key` is unique per user. Release-day and one-week alerts include the date, so a delay
+  re-arms them. A price alert includes the price, so only a new low alerts again.
+- **First run** for a user: availability and price alerts that are already true are stored as already seen
+  (`payload.seed`, hidden from the inbox), so switching this on doesn't flood the inbox.
+- **Time zone:** the app saves the browser's time zone to `profiles.timezone`, so "today" is your day.
+- **App:** a bell in the top bar shows the unread count and the inbox. Tapping an alert opens the title and
+  marks it read; "Mark all read" clears the count. Title pages have a **Notifications on/off** switch
+  (`user_items.notify`, default on).
+- **Web Push** (next): pushes to phone or desktop through the installed PWA, using VAPID keys stored as
+  server secrets; opt-in per device. On iPhone it only works when the app is added to the home screen
+  (iOS 16.4+). No email.
 
 ### Schema additions (future migration)
 - `titles`: `release_date`, `release_precision`, `release_status` (`announced | early_access | released | cancelled`),

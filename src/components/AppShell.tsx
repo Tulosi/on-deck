@@ -1,3 +1,4 @@
+import { useTimezoneSync } from '../lib/notifications'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useAvailabilityRefresh, usePriceRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
@@ -20,6 +21,7 @@ export function AppShell() {
   useAvailabilityRefresh()
   usePriceRefresh()
   useSteamOwnershipCheck()
+  useTimezoneSync()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

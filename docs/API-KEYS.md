@@ -43,6 +43,15 @@ To save prices it needs a Supabase secret key. **Until you add it, the job skips
 
 If the key ever leaks, delete it in Supabase (step 1's page) and repeat steps 1–2 with a new one.
 
+## Job secret (scheduled jobs) ✅
+- `JOB_SECRET`: a random 64-character value. It's stored **both** as a Supabase secret and as a GitHub repo
+  secret, with the same value. The `daily` workflow sends it so the `daily` function, and the functions it
+  calls, know the request is the scheduled job.
+- To rotate it, run in Terminal (it never shows the value):
+  ```bash
+  cd ~/Desktop/"On Deck" && K=$(openssl rand -hex 32) && npx supabase secrets set JOB_SECRET="$K" && printf '%s' "$K" | gh secret set JOB_SECRET; unset K
+  ```
+
 ## 1. GitHub ✅
 - [x] Repository: **https://github.com/Tulosi/on-deck** (public, required for free GitHub Pages).
 - [x] Settings → Pages → Source: **GitHub Actions**.

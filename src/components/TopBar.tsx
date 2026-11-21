@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/theme'
 import { Logo } from './Logo'
+import { NotificationBell } from './NotificationBell'
 import { SearchBox } from './SearchBox'
 
 const iconButton = 'grid size-9 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg'
@@ -42,6 +43,7 @@ export function TopBar() {
 
         {user ? (
           <>
+            <NotificationBell />
             <span
               title={user.email}
               className="ml-1 hidden size-8 place-items-center rounded-full bg-raised font-mono text-xs font-semibold text-accent-ink uppercase sm:grid"

@@ -257,10 +257,14 @@ export function useAddFromTmdb() {
     if (insertError) throw insertError
 
     await queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) })
-    // Check where it's available in the background, then show it.
-    void refreshAvailability({ titleIds: [data.title.id] }).then(() =>
-      queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) }),
-    )
+    // Background follow-ups, then refresh the list: where to watch (movies/TV), already owned (games).
+    const follow =
+      result.mediaType === 'game'
+        ? supabase!.functions.invoke('steam', { body: { action: 'owned', titleIds: [data.title.id] } })
+        : refreshAvailability({ titleIds: [data.title.id] })
+    void Promise.resolve(follow)
+      .catch(() => undefined)
+      .then(() => queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) }))
   }
 }
 
@@ -363,7 +367,10 @@ export function useUpdateItem() {
 
   return async (item: UserItem, patch: ItemPatch) => {
     const row: Record<string, unknown> = {}
-    if (patch.owned !== undefined) row.owned = patch.owned
+    if (patch.owned !== undefined) {
+      row.owned = patch.owned
+      row.owned_locked = true // the user decided; the Steam ownership check leaves it alone from now on
+    }
     if (patch.verdict !== undefined) row.verdict = patch.verdict
     if (patch.favourite !== undefined) row.favourite = patch.favourite
     if (patch.priority !== undefined) row.priority = patch.priority

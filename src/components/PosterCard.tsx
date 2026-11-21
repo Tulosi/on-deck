@@ -153,6 +153,19 @@ export function PosterCard({
           </span>
         )}
 
+        {/* Early Access (games): bottom-right is free on game posters (Plex dots are movies/TV only). */}
+        {title.mediaType === 'game' && title.details?.early_access === true && vis('release') !== null && (
+          <span
+            title="Early Access — not at 1.0 yet"
+            className={clsx(
+              'absolute right-1.5 bottom-1.5 rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-orange-300 backdrop-blur-sm',
+              vis('release'),
+            )}
+          >
+            EARLY ACCESS
+          </span>
+        )}
+
         {/* Plex availability */}
         {showPlex && vis('plex') !== null && (
           <span

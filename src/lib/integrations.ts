@@ -25,6 +25,8 @@ export function friendlyError(err: unknown): string {
     plex_not_linked: 'Connect your Plex account first.',
     plex_unreachable: 'Couldn’t reach Plex. Try again in a moment.',
     pin_expired: 'The Plex sign-in timed out. Try again.',
+    steam_bad_reply: 'Steam’s sign-in reply looked wrong. Try connecting again.',
+    steam_not_verified: 'Steam couldn’t confirm that sign-in (it may have expired). Try connecting again.',
   }
   if (messages[code]) return messages[code]
   if (code.startsWith('seerr_')) return `Seerr returned an error (${code}).`
@@ -39,6 +41,9 @@ export interface Profile {
   seerr_url: string | null
   /** Streaming services the user opted in to (normalised names, e.g. "Netflix"). */
   streaming_services: string[]
+  /** Linked Steam account (set by the `steam` function after verifying the sign-in). */
+  steam_id: string | null
+  steam_name: string | null
   /** Poster chip visibility: { chip: "show" | "hover" | "hide" } (see lib/chips.ts). */
   card_chips: Record<string, 'show' | 'hover' | 'hide'>
 }
@@ -51,7 +56,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase!
         .from('profiles')
-        .select('country_code, currency, seerr_url, streaming_services, card_chips')
+        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name')
         .eq('user_id', user!.id)
         .single()
       if (error) throw error

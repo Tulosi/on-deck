@@ -82,17 +82,17 @@ e.g. `-62% · $14.99`, or "Free-To-Play". A small "low" marker appears if that p
 
 Prices refresh daily for Wanted/unowned games (cron) and when a game page is opened, if older than a day.
 
-## Steam ownership check (Games)
-
-- **No library import.** On Deck only checks whether a manually added game is already owned on Steam.
-- Settings → Steam profile: SteamID64, profile URL or custom URL (resolved to a SteamID64 and stored on the
-  profile).
-- When a game with a Steam app id is added (and when its page is opened, at most once a day), the server
-  calls `GetOwnedGames` filtered to that one app id. If it's owned, the game is marked **Owned**, so the
-  "unowned only" price badge disappears.
-- Needs the user's Steam **Game details** set to Public. If it's private, the check reports that instead of
-  guessing.
-- An Owned flag the user turned off manually isn't switched back on automatically.
+## Steam ownership check (Games) — built
+- **No library import.** On Deck only checks whether games on your deck are already owned.
+- **Linking:** Settings → **Connect Steam** uses Steam's own sign-in (OpenID) on steamcommunity.com, so On Deck
+  never sees your password. The `steam` function verifies the sign-in reply with Steam (check_authentication)
+  before storing the SteamID (`profiles.steam_id`, `steam_name`). **Disconnect** removes it.
+- **When it checks:** right after a game is added, once per app load, and from Settings → **Check Steam
+  library**. It uses `GetOwnedGames` (Steam Web API key, server-side) and marks matching games (by Steam app
+  id) **In Your Library**.
+- **Manual changes win:** changing In Your Library yourself sets `user_items.owned_locked`, and the check
+  never touches that game again.
+- **Privacy:** needs the Steam profile's **Game details** set to Public. When it's private, Settings says so.
 
 ## Tracking model (per user, per title)
 

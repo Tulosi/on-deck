@@ -447,3 +447,6 @@ verify_jwt = false
 
 [functions.igdb]
 verify_jwt = false
+
+[functions.steam]
+verify_jwt = false

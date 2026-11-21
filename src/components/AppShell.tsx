@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useAvailabilityRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
+import { useSteamOwnershipCheck } from '../lib/steam'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav, Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
@@ -17,6 +18,7 @@ export function AppShell() {
   useScoreBackfill()
   useRenewalCheck()
   useAvailabilityRefresh()
+  useSteamOwnershipCheck()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

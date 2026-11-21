@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2 } from 'lucide-react'
 import { ComingSoon, PageHeader } from '../components/PageHeader'
@@ -14,6 +14,7 @@ import {
   useServiceList,
   useUpdateProfile,
 } from '../lib/integrations'
+import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
 // Regions offered for streaming availability (and, later, game prices).
 const COUNTRIES = [
@@ -120,7 +121,8 @@ function StreamingSection() {
   // Your services first, then the most popular in your region.
   const ordered = [...services.filter((s) => selected.has(s.name)), ...services.filter((s) => !selected.has(s.name))]
   const matching = q ? ordered.filter((s) => s.name.toLowerCase().includes(q)) : ordered
-  const visible = q || showAll ? matching : matching.slice(0, Math.max(24, selected.size))
+  // Before "Show all": your services plus the 5 most popular others.
+  const visible = q || showAll ? matching : matching.slice(0, selected.size + 5)
 
   return (
     <Section
@@ -176,6 +178,116 @@ function StreamingSection() {
           {error && <p className="text-sm text-bad">{error}</p>}
         </div>
       )}
+    </Section>
+  )
+}
+
+function SteamSection() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const profile = useProfile()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const handled = useRef(false)
+
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['library', user?.id] }),
+    ])
+
+  async function checkLibrary() {
+    const r = await checkSteamOwned()
+    await refresh()
+    if (r.private) {
+      setMessage({
+        ok: false,
+        text: 'Your Steam game details are private, so On Deck can’t see your library. Set Steam → Profile → Edit Profile → Privacy → Game details to Public.',
+      })
+    } else {
+      setMessage({
+        ok: true,
+        text: r.newlyOwned
+          ? `Marked ${r.newlyOwned} game${r.newlyOwned === 1 ? '' : 's'} as In Your Library.`
+          : 'Library checked — nothing new to mark.',
+      })
+    }
+  }
+
+  // Returning from Steam's sign-in page: verify the reply on the server, then tidy the URL.
+  useEffect(() => {
+    const params = steamReplyParams(location.search)
+    if (!params || handled.current) return
+    handled.current = true
+    navigate('/settings', { replace: true })
+    setBusy(true)
+    verifySteam(params)
+      .then(async (r) => {
+        await refresh()
+        setMessage({ ok: true, text: `Connected to Steam as ${r.name ?? r.steamId}.` })
+        await checkLibrary()
+      })
+      .catch((err) => setMessage({ ok: false, text: friendlyError(err) }))
+      .finally(() => setBusy(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search])
+
+  async function run(fn: () => Promise<unknown>) {
+    setBusy(true)
+    setMessage(null)
+    try {
+      await fn()
+    } catch (err) {
+      setMessage({ ok: false, text: friendlyError(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const linked = !!profile.data?.steam_id
+  return (
+    <Section
+      title="Steam"
+      description="Connect Steam so games you add that you already own are marked In Your Library."
+    >
+      {profile.isLoading ? (
+        <Loader2 className="size-4 animate-spin text-muted" />
+      ) : linked ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-1.5 text-sm text-good">
+            <Check className="size-4" /> Connected as {profile.data?.steam_name ?? profile.data?.steam_id}
+          </span>
+          <button type="button" onClick={() => run(checkLibrary)} disabled={busy} className={buttonClass}>
+            {busy && <Loader2 className="size-4 animate-spin" />}
+            Check Steam library
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              run(async () => {
+                await unlinkSteam()
+                await refresh()
+              })
+            }
+            disabled={busy}
+            className={buttonClass}
+          >
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={startSteamLogin} disabled={busy} className={primaryButtonClass}>
+          {busy && <Loader2 className="size-4 animate-spin" />}
+          Connect Steam
+        </button>
+      )}
+      <p className="text-xs text-faint">
+        You sign in on steamcommunity.com — On Deck never sees your Steam password. Your Steam profile’s
+        Game details must be Public. Games you mark In Your Library yourself are never changed by the check.
+      </p>
+      {message && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
     </Section>
   )
 }
@@ -315,6 +427,7 @@ export function Settings() {
         <>
           <RegionSection />
           <PlexSection />
+          <SteamSection />
           <StreamingSection />
           <Section title="Sharing">
             <ComingSoon>Create and revoke read-only share links for your library, a category or a collection.</ComingSoon>

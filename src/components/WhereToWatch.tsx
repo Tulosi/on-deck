@@ -17,7 +17,7 @@ import type { Title } from '../types'
 const plexCopy: Record<SeerrStatus, { label: string; tone: string }> = {
   available: { label: 'On your Plex', tone: 'text-good' },
   partial: { label: 'Partly on your Plex', tone: 'text-good' },
-  processing: { label: 'Requested — downloading', tone: 'text-info' },
+  processing: { label: 'Requested', tone: 'text-info' }, // approved; "— downloading" added only when one is active
   pending: { label: 'Requested — awaiting approval', tone: 'text-info' },
   missing: { label: 'Not on your Plex', tone: 'text-muted' },
 }
@@ -72,7 +72,10 @@ function PlexRow({ title }: { title: Title }) {
 
   const { status, requested, plexUrl, seerrUrl, seasons } = seerr.data
   const onPlex = status === 'available' || status === 'partial'
-  const copy = plexCopy[status]
+  const copy =
+    status === 'processing' && seerr.data.downloading
+      ? { label: 'Requested — downloading', tone: 'text-info' }
+      : plexCopy[status]
   // TV decides per season; movies by overall state.
   const canRequest = seasons ? !!seerr.data.canRequest : (status === 'missing' || status === 'partial') && !requested
 

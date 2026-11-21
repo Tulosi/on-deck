@@ -82,6 +82,9 @@ function summarise(d: Details, mediaType: MediaType, base: string, tmdbId: numbe
     configured: true,
     status,
     requested,
+    // "processing" only means approved and handed to Radarr/Sonarr — e.g. an unreleased film just waits.
+    // Seerr lists actual in-flight downloads separately; only those count as "downloading".
+    downloading: Array.isArray(info?.downloadStatus) && info.downloadStatus.length > 0,
     plexUrl: info?.plexUrl ?? info?.mediaUrl ?? null,
     seerrUrl: `${base}/${mediaType}/${tmdbId}`, // the title's page in the user's own Seerr
     ...(seasons ? { seasons, canRequest: requestable(seasons).length > 0 } : {}),

@@ -174,6 +174,8 @@ export type SeerrResult =
       status: SeerrStatus
       /** An open request exists (awaiting approval or downloading) — independent of `status`. */
       requested: boolean
+      /** A download is actually in progress (not just approved / waiting for release). */
+      downloading?: boolean
       plexUrl?: string | null
       /** This title's page in the user's Seerr. */
       seerrUrl?: string | null

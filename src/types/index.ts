@@ -54,6 +54,8 @@ export interface UserItem {
   plexSync?: boolean
   /** "Notify me": release, availability and price alerts for this title (default on). */
   notify?: boolean
+  /** Home rating prompts dismissed with "Not now" ("title", "s2" …). */
+  ratingSkipped?: string[]
   /** When the user (or sync) marked it Watched/Played/Read. */
   completedAt?: string
   /** Games: playtime and last played, from the linked Steam account. */

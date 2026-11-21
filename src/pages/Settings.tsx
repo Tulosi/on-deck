@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2 } from 'lucide-react'
-import { ComingSoon, PageHeader } from '../components/PageHeader'
+import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../lib/auth'
 import {
   friendlyError,
@@ -16,6 +16,7 @@ import {
   useUpdateProfile,
 } from '../lib/integrations'
 import { CalendarFeed } from '../components/CalendarFeed'
+import { ShareLinksSettings } from '../components/ShareLinks'
 import { usePush } from '../lib/push'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
@@ -635,7 +636,7 @@ export function Settings() {
             <CalendarFeed />
           </section>
           <Section title="Sharing">
-            <ComingSoon>Create and revoke read-only share links for your library, a category or a collection.</ComingSoon>
+            <ShareLinksSettings />
           </Section>
         </>
       )}

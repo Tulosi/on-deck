@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
+import { RateFinished } from '../components/RateFinished'
 import { continueItems, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
 import { useNewForYou } from '../lib/newForYou'
@@ -8,7 +9,7 @@ import { useFilters } from '../lib/useFilters'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
- * everything lives on the Library page. Rows: Continue · New for you · This week · Ready to start · Deals.
+ * everything lives on the Library page. Rows: Continue · New for you · Recently finished (rate it) · This week · Ready to start · Deals.
  */
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
@@ -82,6 +83,7 @@ export function Home() {
           </button>
         }
       />
+      {!isSample && <RateFinished items={items} />}
       <PosterRow
         title="This week"
         hint="Out in the next 7 days"

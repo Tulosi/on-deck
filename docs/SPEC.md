@@ -214,7 +214,20 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
 - **Title page → Collections:** tap a collection chip to add or remove the title, or **New collection** to
   create one with it already in it.
 - Phones: Collections isn't in the tab bar; it's linked from the Library page header.
-- Share links for a collection come with share links (`share_links.collection_id` already exists).
+- Each collection's page has a **Share** button (see Sharing).
+
+### Sharing (read-only links)
+- A link shares your **whole library**, **one type**, or **one collection** (`share_links`; token = 32
+  random hex characters). There's at most one active link per list; creating it again reuses that link.
+  **Turn off** sets `revoked_at`, after which the link shows "This link doesn't work".
+- **Public page `/s/<token>`:** no sign-in. It shows covers, title, year, author/developer, score, status
+  (sections In progress / Want to / Done; collections keep their own order), liked/disliked and favourites,
+  with type pills when the list mixes types.
+  - Never shown: notes, priorities, emails or ids. Dropped titles are left out.
+  - Anonymous visitors can only call `get_shared_list(token)` and `get_share_info(token)` (security definer).
+    They have no table access.
+- **Where:** Settings → Sharing (pick what to share → Create link, which copies it; existing links have Copy /
+  Open / Turn off), and **Share** on each collection's page.
 
 ### Game length (time to beat)
 - Source: IGDB's `game_time_to_beats`, player-submitted times in seconds. These are stored as hours in

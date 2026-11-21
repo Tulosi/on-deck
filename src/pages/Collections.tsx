@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { ArrowLeft, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
+import { ShareCollection } from '../components/ShareLinks'
 import { useAuth } from '../lib/auth'
 import { useCollectionActions, useCollections, type Collection } from '../lib/collections'
 import { useItems } from '../lib/library'
@@ -258,7 +259,10 @@ export function CollectionDetail() {
               </button>
             </div>
           </PageHeader>
-          {c.description && <p className="-mt-3 mb-6 max-w-prose text-sm text-muted">{c.description}</p>}
+          {c.description && <p className="-mt-3 mb-4 max-w-prose text-sm text-muted">{c.description}</p>}
+          <div className="mb-6">
+            <ShareCollection collectionId={c.id} name={c.name} />
+          </div>
         </>
       )}
 

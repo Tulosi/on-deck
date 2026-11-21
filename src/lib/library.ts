@@ -45,6 +45,7 @@ interface ItemRow {
   current_episode: number | null
   plex_sync: boolean
   notify: boolean | null
+  rating_skipped: string[] | null
   completed_at: string | null
   created_at: string
   updated_at: string
@@ -98,6 +99,7 @@ function toUserItem(row: ItemRow): UserItem {
     notes: row.notes ?? undefined,
     plexSync: row.plex_sync ?? true,
     notify: row.notify ?? true,
+    ratingSkipped: row.rating_skipped ?? [],
     completedAt: row.completed_at ?? undefined,
     addedAt: row.created_at,
     updatedAt: row.updated_at,
@@ -206,7 +208,7 @@ export function useItems() {
       const { data, error } = await supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -449,6 +451,8 @@ export interface ItemPatch {
   seasonOverrides?: Record<string, SeasonOverride>
   /** Release, availability and price alerts for this title. */
   notify?: boolean
+  /** Home rating prompts dismissed with "Not now" ("title", "s2" …). */
+  ratingSkipped?: string[]
 }
 
 /**
@@ -472,6 +476,7 @@ export function useUpdateItem() {
     if (patch.notes !== undefined) row.notes = patch.notes?.trim() ? patch.notes : null
     if (patch.plexSync !== undefined) row.plex_sync = patch.plexSync
     if (patch.notify !== undefined) row.notify = patch.notify
+    if (patch.ratingSkipped !== undefined) row.rating_skipped = patch.ratingSkipped
     if (patch.seasonOverrides !== undefined) row.season_overrides = patch.seasonOverrides
     if (patch.tvProgress !== undefined) {
       row.current_season = patch.tvProgress?.season ?? null
@@ -507,6 +512,7 @@ export function useUpdateItem() {
               ...(patch.tvProgress !== undefined && { tvProgress: patch.tvProgress ?? undefined }),
               ...(patch.plexSync !== undefined && { plexSync: patch.plexSync }),
               ...(patch.notify !== undefined && { notify: patch.notify }),
+              ...(patch.ratingSkipped !== undefined && { ratingSkipped: patch.ratingSkipped }),
               ...(patch.seasonOverrides !== undefined && { seasonOverrides: patch.seasonOverrides }),
             }
           : i,

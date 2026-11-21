@@ -41,6 +41,15 @@ session. Implementation: `src/lib/newForYou.ts`. Every card carries a reason lab
 - One card per title, with the strongest reason winning. Strongest first: released / premiered → now
   available → new episode → lowest price → deep discount → date news. Cards clear on the next visit.
 
+### 2b. Recently finished ✅ built
+"How was it?": things you finished lately but haven't rated, newest first, up to 12
+(`src/components/RateFinished.tsx`).
+- **Shows** with no rating yet, once you've finished a season (show changed in the last 60 days); the card
+  says "Finished season 2". Rating sets the show's own rating; there are no per-season ratings.
+- **Movies, games, books:** marked Watched / Played / Read in the last 60 days with no rating.
+- Each card has **Liked**, **Nope** and **Not now**. "Not now" is remembered (`user_items.rating_skipped`).
+  For shows it's per season, so an unrated show asks again after the next season you finish.
+
 ### 3. This week
 Releases in the next **7 days**, soonest first, with countdown labels: releases, premieres and new episodes for
 shows you're following. A short horizon on purpose; the full upcoming list is Library → Release: Upcoming.

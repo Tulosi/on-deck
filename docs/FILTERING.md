@@ -90,8 +90,10 @@ Unsupported) · HowLongToBeat length · themes · perspective · Early Access ·
    `src/pages/Library.tsx`, `src/components/Toolbar.tsx`.
 2. ✅ **Layer 2 on data we have:** status, priority, rating, minimum score, release, year range, date added.
    Sort + group. Also from Layer 3: Movies/TV genre, TV show status, TV watch progress.
-3. **Availability:** store Plex + streaming availability per title (refreshed in the background). It's looked
-   up live per title page today, so this is needed before filtering a whole list by it.
+3. ✅ **Availability:** stored per user per title in `user_availability` by the `availability` function
+   (Plex via Seerr + the user's streaming services). Refreshed on app load (titles older than 12 h, 20 per call),
+   right after adding a title, and in full when region / services / Seerr change. Library filter: Available /
+   Not available (titles not checked yet match neither).
 4. **Saved views:** table, sidebar list, save/rename/delete.
 5. **Layer 3 per type** as each type's data lands: Movies/TV now (TMDB genres, runtime, show status, progress);
    Games after IGDB/Steam/prices; Books after Hardcover.

@@ -211,6 +211,13 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
           onToggle={(v) => set({ ...f, rating: toggle(f.rating, v) })}
         />
         <OptionGroup
+          label="Availability"
+          options={LABELS.options.AVAILABILITY}
+          selected={f.availability}
+          render={(v) => LABELS.availability[v]}
+          onToggle={(v) => set({ ...f, availability: toggle(f.availability, v) })}
+        />
+        <OptionGroup
           label="Release"
           options={LABELS.options.RELEASE}
           selected={f.release}
@@ -278,7 +285,8 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
           </label>
         </div>
         <p className="text-[11px] text-faint">
-          Score is on one 0–100 scale: IMDb × 10 for movies and TV, Steam % for games, Hardcover × 20 for books.
+          Availability: movies and TV on your Plex or your streaming services (Settings); games and books In Your
+          Library. Score is on one 0–100 scale: IMDb × 10 for movies and TV, Steam % for games, Hardcover × 20 for books.
         </p>
       </Section>
 

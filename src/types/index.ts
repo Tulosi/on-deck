@@ -63,6 +63,12 @@ export interface UserItem {
   price?: { amount: string; discountPct?: number }
   /** Movies/TV only — from the user's Seerr instance. */
   plex?: PlexStatus
+  /** Movies/TV: on Plex or one of the user's streaming services (stored; undefined = not checked yet). */
+  available?: boolean
+  /** Movies/TV: where — "Plex" and/or service names. */
+  availableVia?: string[]
+  /** When it last became available (for Home's "Now available"). */
+  becameAvailableAt?: string
 }
 
 export const mediaLabels: Record<MediaType, { singular: string; plural: string; done: string }> = {

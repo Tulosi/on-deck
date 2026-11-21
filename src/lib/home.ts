@@ -1,5 +1,6 @@
 // Home rows — "what's next, and what's changed" (docs/HOME.md). Step 1: Continue, This week, Ready to start,
 // computed from data the app already has. "New for you", stored availability and Deals come later.
+import { isAvailable } from './filters'
 import { releaseInfo, tvSchedule } from './release'
 import type { UserItem } from '../types'
 
@@ -110,12 +111,14 @@ export function thisWeekLine(u: Upcoming): string {
 }
 
 /**
- * 3. Ready to start — High-priority Wanted titles that are out. Until availability is stored per title
- * (docs/HOME.md step 2) this can't check "on your Plex / streaming"; it only excludes unreleased titles.
+ * 3. Ready to start — High-priority Wanted titles you can start now: out, and available (movies/TV on your
+ * Plex or streaming services; games/books In Your Library). Movies/TV not checked yet are kept, so the row
+ * isn't empty before the first availability refresh.
  */
 export function readyToStart(items: UserItem[]): UserItem[] {
   return items
     .filter((i) => i.progress === 'wanted' && i.priority === 'high' && !releaseInfo(i.title).preRelease)
+    .filter((i) => isAvailable(i) !== false)
     .sort((a, b) => Date.parse(b.addedAt ?? '0') - Date.parse(a.addedAt ?? '0'))
     .slice(0, 10)
 }

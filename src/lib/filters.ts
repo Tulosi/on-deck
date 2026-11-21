@@ -11,6 +11,7 @@ import type { MediaType, Priority, Progress, UserItem } from '../types'
 export const TYPES: MediaType[] = ['movie', 'tv', 'game', 'book']
 
 export type RatingFilter = 'liked' | 'disliked' | 'favourite' | 'unrated'
+export type AvailabilityFilter = 'available' | 'unavailable'
 export type ReleaseFilter = 'released' | 'upcoming'
 export type AddedFilter = '7d' | '30d' | '90d' | '365d'
 export type TvStatusFilter = 'airing' | 'returning' | 'ended' | 'cancelled'
@@ -26,6 +27,8 @@ export interface Filters {
   rating: RatingFilter[]
   /** Minimum normalised score 0–100, or null for any. */
   minScore: number | null
+  /** Movies/TV: on Plex or my streaming services. Games/books: In Your Library. */
+  availability: AvailabilityFilter[]
   release: ReleaseFilter[]
   yearFrom: number | null
   yearTo: number | null
@@ -50,6 +53,7 @@ const STATUS: Progress[] = ['wanted', 'in_progress', 'completed', 'dropped']
 const PRIORITY: (Priority | 'none')[] = ['high', 'medium', 'low', 'none']
 const RATING: RatingFilter[] = ['liked', 'disliked', 'favourite', 'unrated']
 const RELEASE: ReleaseFilter[] = ['released', 'upcoming']
+const AVAILABILITY: AvailabilityFilter[] = ['available', 'unavailable']
 const ADDED: AddedFilter[] = ['7d', '30d', '90d', '365d']
 const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended', 'cancelled']
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
@@ -65,6 +69,7 @@ export function parseFilters(p: URLSearchParams): Filters {
     priority: list(p.get('priority'), PRIORITY),
     rating: list(p.get('rating'), RATING),
     minScore: int(p.get('score')),
+    availability: list(p.get('avail'), AVAILABILITY),
     release: list(p.get('release'), RELEASE),
     yearFrom: int(p.get('from')),
     yearTo: int(p.get('to')),
@@ -89,6 +94,7 @@ export function filtersToParams(f: Filters): URLSearchParams {
   set('priority', f.priority.join(','))
   set('rating', f.rating.join(','))
   set('score', f.minScore)
+  set('avail', f.availability.join(','))
   set('release', f.release.join(','))
   set('from', f.yearFrom)
   set('to', f.yearTo)
@@ -115,6 +121,7 @@ export function clearFilters(f: Filters): Filters {
     priority: [],
     rating: [],
     minScore: null,
+    availability: [],
     release: [],
     yearFrom: null,
     yearTo: null,
@@ -156,6 +163,12 @@ function tvProgressOf(item: UserItem): TvProgressFilter {
   return 'midway'
 }
 
+/** Movies/TV: stored availability (null = not checked yet). Games/books: In Your Library. */
+export function isAvailable(item: UserItem): boolean | null {
+  if (item.title.mediaType === 'game' || item.title.mediaType === 'book') return item.owned
+  return item.available ?? null
+}
+
 const ADDED_DAYS: Record<AddedFilter, number> = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 }
 
 // ─── Apply ─────────────────────────────────────────────────────────────────
@@ -177,6 +190,11 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
     if (f.minScore != null) {
       const sc = normalisedScore(i)
       if (sc == null || sc < f.minScore) return false
+    }
+    if (f.availability.length) {
+      const a = isAvailable(i)
+      // Not checked yet (or no sources set up) matches neither option.
+      if (a === null || !f.availability.includes(a ? 'available' : 'unavailable')) return false
     }
     if (f.release.length) {
       const upcoming = releaseInfo(i.title).preRelease
@@ -281,12 +299,13 @@ export const LABELS = {
   priority: { high: 'High', medium: 'Medium', low: 'Low', none: 'None' } as Record<Priority | 'none', string>,
   rating: { liked: 'Liked', disliked: 'Didn’t like', favourite: '★ Favourite', unrated: 'Unrated' } as Record<RatingFilter, string>,
   release: { released: 'Released', upcoming: 'Upcoming' } as Record<ReleaseFilter, string>,
+  availability: { available: 'Available', unavailable: 'Not available' } as Record<AvailabilityFilter, string>,
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
   sort: { priority: 'Priority', added: 'Date added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated' } as Record<SortKey, string>,
   group: { none: 'No grouping', status: 'Status', type: 'Type', priority: 'Priority', year: 'Release year' } as Record<GroupKey, string>,
-  options: { STATUS, PRIORITY, RATING, RELEASE, ADDED, TV_STATUS, TV_PROGRESS, SORTS, GROUPS },
+  options: { STATUS, PRIORITY, RATING, AVAILABILITY, RELEASE, ADDED, TV_STATUS, TV_PROGRESS, SORTS, GROUPS },
 }
 
 /** Number of active (non-arranging) filters — for the Filters button badge. */
@@ -296,6 +315,7 @@ export function activeCount(f: Filters): number {
     f.priority.length +
     f.rating.length +
     (f.minScore != null ? 1 : 0) +
+    f.availability.length +
     f.release.length +
     (f.yearFrom != null || f.yearTo != null ? 1 : 0) +
     (f.added ? 1 : 0) +

@@ -9,6 +9,7 @@
 // Requires secret: TMDB_READ_TOKEN. Caller must be signed in.
 import { admin, HttpError, json, requireUser, secret, serve } from '../_shared/http.ts'
 import { cachedScores, fetchScores, scoresAreFresh } from '../_shared/scores.ts'
+import { toProviders, watchProviders } from '../_shared/providers.ts'
 
 const API = 'https://api.themoviedb.org/3'
 const IMG = 'https://image.tmdb.org/t/p'
@@ -136,47 +137,13 @@ async function add(tmdbId: number, mediaType: MediaType) {
 
 // ─── Where to watch (TMDB watch providers, data by JustWatch) ──────────────
 
-interface Provider {
-  id: number
-  name: string
-  logoUrl: string | null
-}
-
-// "Shudder Amazon Channel", "AMC Plus Apple TV channel" … → the underlying service.
-const CHANNEL_SUFFIX = /\s+(amazon channel|apple tv channel|apple tv\+? channel|roku premium channel|prime video channel)$/i
-const ALIASES: Record<string, string> = { 'AMC Plus': 'AMC+', 'Amazon Prime Video with Ads': 'Amazon Prime Video' }
-
-function normaliseName(name: string) {
-  const base = name.replace(CHANNEL_SUFFIX, '').trim()
-  return ALIASES[base] ?? base
-}
-
-function toProviders(list: Json[] | undefined): Provider[] {
-  const seen = new Map<string, Provider>()
-  for (const p of [...(list ?? [])].sort((a, b) => (a.display_priority ?? 99) - (b.display_priority ?? 99))) {
-    const name = normaliseName(p.provider_name)
-    if (!seen.has(name)) seen.set(name, { id: p.provider_id, name, logoUrl: img(p.logo_path, 'w92') })
-  }
-  return [...seen.values()]
-}
-
 /**
- * Streaming (subscription) and free/ad-supported options for one country — rent/buy is deliberately left
- * out. The app shows only the services the user opted in to. Live lookup (the app caches it for an hour):
- * availability changes too often to store. TMDB's terms require crediting JustWatch where it's shown.
+ * Streaming (subscription) and free/ad-supported options for one country (shared logic in
+ * _shared/providers.ts). Live lookup; the app caches it for an hour, and the `availability` function
+ * stores the result per user. TMDB's terms require crediting JustWatch where it's shown.
  */
 async function providers(tmdbId: number, mediaType: MediaType, country: string) {
-  const data = await tmdb(`/${mediaType}/${tmdbId}/watch/providers`)
-  const r = (data.results ?? {})[country] as Json | undefined
-  const stream = toProviders(r?.flatrate)
-  const streamNames = new Set(stream.map((p) => p.name))
-  const free = toProviders([...(r?.free ?? []), ...(r?.ads ?? [])]).filter((p) => !streamNames.has(p.name))
-  return json({
-    country,
-    link: r?.link ?? null, // TMDB → JustWatch page with deep links
-    stream,
-    free,
-  })
+  return json(await watchProviders(tmdbId, mediaType, country))
 }
 
 /** Every streaming service available in a country (movies + TV), for the Settings opt-in list. */

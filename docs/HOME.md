@@ -1,6 +1,6 @@
 # Home — "what's next, and what's changed"
 
-Status: **design proposal, not built.** Written 2026-11-20.
+Status: **steps 1–2 built** (Continue, This week, Ready to start; stored availability). Written 2026-11-20.
 
 ## Purpose
 Home and Library do different jobs:
@@ -76,8 +76,8 @@ Saved views (from the Library) can be pinned to Home as extra rows, below the bu
 ## Build order
 1. **Continue + This week + Ready to start (sources-agnostic version)** with data we already have. "Ready to
    start" falls back to High-priority Wanted until availability is stored.
-2. **Stored availability** (shared with the Library's Availability filter). Then "Ready to start" uses it, and
-   "Now available" becomes possible.
+2. ✅ **Stored availability** (shared with the Library's Availability filter). "Ready to start" now excludes
+   titles known to be unavailable. `became_available_at` is recorded, ready for "Now available".
 3. **New for you:** `last_seen_home_at`, change detection, dismiss.
 4. **Daily server job:** so "New for you" is ready before you open the app (and alerts can use it).
 5. **Deals** with games. **Pinned views** with saved views.

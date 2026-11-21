@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MediaType, Title } from '../types'
 import { useAuth } from './auth'
-import { functionError } from './library'
+import { functionError, refreshAvailability } from './library'
 import { supabase } from './supabase'
 
 async function callFn<T>(name: string, body: Record<string, unknown>): Promise<T> {
@@ -69,6 +69,18 @@ export function useUpdateProfile() {
     await queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })
     await queryClient.invalidateQueries({ queryKey: ['providers'] })
     await queryClient.invalidateQueries({ queryKey: ['seerr'] })
+    // Region, services or Seerr changed → stored availability is out of date; re-check everything.
+    if ('country_code' in patch || 'streaming_services' in patch || 'seerr_url' in patch) {
+      void (async () => {
+        try {
+          const before = new Date().toISOString()
+          let remaining = await refreshAvailability({ before })
+          for (let i = 0; i < 10 && remaining > 0; i++) remaining = await refreshAvailability({ before })
+        } finally {
+          await queryClient.invalidateQueries({ queryKey: ['library', user?.id] })
+        }
+      })()
+    }
   }
 }
 

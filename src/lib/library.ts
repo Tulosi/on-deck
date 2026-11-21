@@ -127,6 +127,38 @@ export const libraryKey = (userId: string | undefined) => ['library', userId]
  * The items to show. Signed in → the user's real list from Supabase.
  * Signed out → sample data (isSample: true) so the UI can still be explored.
  */
+interface AvailabilityRow {
+  title_id: string
+  plex_status: string | null
+  streaming: string[]
+  available: boolean
+  became_available_at: string | null
+  checked_at: string
+}
+
+/** Plex states from Seerr → the poster dot's three states. */
+const PLEX_DOT: Record<string, UserItem['plex']> = {
+  available: 'available',
+  partial: 'available',
+  processing: 'requested',
+  pending: 'requested',
+  missing: 'missing',
+}
+
+function withAvailability(item: UserItem, a: AvailabilityRow | undefined): UserItem {
+  if (!a) return item
+  return {
+    ...item,
+    plex: a.plex_status ? PLEX_DOT[a.plex_status] : undefined,
+    available: a.available,
+    availableVia: [
+      ...(a.plex_status === 'available' || a.plex_status === 'partial' ? ['Plex'] : []),
+      ...(a.streaming ?? []),
+    ],
+    becameAvailableAt: a.became_available_at ?? undefined,
+  }
+}
+
 export function useItems() {
   const { user, loading: authLoading } = useAuth()
   const query = useQuery({
@@ -140,7 +172,12 @@ export function useItems() {
         )
         .order('created_at', { ascending: false })
       if (error) throw error
-      return (data as unknown as ItemRow[]).map(toUserItem)
+      // Stored availability (movies/TV), written by the `availability` function.
+      const { data: avail } = await supabase!
+        .from('user_availability')
+        .select('title_id, plex_status, streaming, available, became_available_at, checked_at')
+      const byTitle = new Map(((avail ?? []) as AvailabilityRow[]).map((a) => [a.title_id, a]))
+      return (data as unknown as ItemRow[]).map((row) => withAvailability(toUserItem(row), byTitle.get(row.title.id)))
     },
   })
 
@@ -192,7 +229,46 @@ export function useAddFromTmdb() {
     if (insertError) throw insertError
 
     await queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) })
+    // Check where it's available in the background, then show it.
+    void refreshAvailability({ titleIds: [data.title.id] }).then(() =>
+      queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) }),
+    )
   }
+}
+
+/** Asks the server to (re)check availability. Returns how many stale titles are still left. */
+export async function refreshAvailability(opts: { titleIds?: string[]; before?: string } = {}): Promise<number> {
+  if (!supabase) return 0
+  const { data, error } = await supabase.functions.invoke('availability', { body: { action: 'refresh', ...opts } })
+  if (error) throw await functionError(error)
+  return (data?.remaining as number) ?? 0
+}
+
+/** Availability refreshes already started per user this session (so it runs once per app load). */
+const availabilityStarted = new Set<string>()
+
+/**
+ * Refreshes stale availability (older than 12 h) in the background on app load, in batches, then reloads the
+ * list. Mount once (AppShell). Interim until the daily server job takes over.
+ */
+export function useAvailabilityRefresh() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!user || !supabase || availabilityStarted.has(user.id)) return
+    availabilityStarted.add(user.id)
+    void (async () => {
+      try {
+        for (let i = 0; i < 10; i++) {
+          const remaining = await refreshAvailability()
+          await queryClient.invalidateQueries({ queryKey: libraryKey(user.id) })
+          if (remaining === 0) break
+        }
+      } catch (err) {
+        console.warn('availability refresh failed', err)
+      }
+    })()
+  }, [user, queryClient])
 }
 
 /** Titles already asked about this session, so a failing lookup isn't retried in a loop. */

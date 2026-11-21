@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { useRenewalCheck, useScoreBackfill } from '../lib/library'
+import { useAvailabilityRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav, Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
@@ -16,6 +16,7 @@ export function AppShell() {
   const { user, loading } = useAuth()
   useScoreBackfill()
   useRenewalCheck()
+  useAvailabilityRefresh()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

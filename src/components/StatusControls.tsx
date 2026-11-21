@@ -735,19 +735,6 @@ export function StatusControls({ item }: { item: UserItem }) {
         )}
       </div>
 
-      {type === 'game' && item.steamPlaytimeMinutes != null && (
-        <p className="-mb-2 text-xs text-muted">
-          Steam:{' '}
-          <span className="font-mono text-fg">
-            {item.steamPlaytimeMinutes < 60
-              ? `${item.steamPlaytimeMinutes} min`
-              : `${(item.steamPlaytimeMinutes / 60).toFixed(1)} h`}
-          </span>{' '}
-          played
-          {item.steamLastPlayed &&
-            ` · last played ${new Date(item.steamLastPlayed).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
-        </p>
-      )}
       <Segmented
         label="Status"
         value={item.progress}
@@ -759,6 +746,19 @@ export function StatusControls({ item }: { item: UserItem }) {
           void save(caughtUp ? { progress, tvProgress: caughtUp } : { progress })
         }}
       />
+      {type === 'game' && item.steamPlaytimeMinutes != null && (
+        <p className="-mt-2 text-xs text-muted">
+          Steam:{' '}
+          <span className="font-mono text-fg">
+            {item.steamPlaytimeMinutes < 60
+              ? `${item.steamPlaytimeMinutes} min`
+              : `${(item.steamPlaytimeMinutes / 60).toFixed(1)} h`}
+          </span>{' '}
+          played
+          {item.steamLastPlayed &&
+            ` · last played ${new Date(item.steamLastPlayed).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
+        </p>
+      )}
 
       {type === 'movie' && (
         <MovieProgressSection

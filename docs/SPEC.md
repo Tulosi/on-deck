@@ -59,7 +59,7 @@ than Steam**, and Steam wins ties.
 |---|---|---|
 | **Steam** | Steam store `appdetails` for the user's region (`price_overview`: current, full price, discount) | Always, if Steam has a price |
 | **Cheaper Steam key** | IsThereAnyDeal: cheapest *other* store selling a Steam key (DRM = Steam). Platform stores (Epic, Microsoft, GOG, EA, Ubisoft) are excluded | Cheaper than Steam |
-| **Cheaper on key shops** | gg.deals: cheapest key-shop offer | Cheaper than Steam |
+| **Cheaper on key shops** | gg.deals: cheapest key-shop offer (fetched every 6 h by a GitHub Actions job, since gg.deals doesn't answer Supabase's servers) | Cheaper than Steam |
 
 - **Discount %** is always measured against Steam's full price.
 - **Historical low:** each row is compared with its own source's lowest-ever (Steam's own low, the lowest

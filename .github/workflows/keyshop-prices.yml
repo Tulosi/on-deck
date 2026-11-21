@@ -1,0 +1,40 @@
+# Key-shop prices from gg.deals → Supabase `game_prices` (scripts/keyshop-prices.mjs).
+# Runs here because gg.deals doesn't answer Supabase's servers. Until the SUPABASE_SECRET_KEY repo secret is
+# added, every run skips with a notice (see docs/API-KEYS.md → "To do: key-shop prices").
+name: Key-shop prices
+
+on:
+  schedule:
+    - cron: '17 */6 * * *' # every 6 hours
+  workflow_dispatch:
+    inputs:
+      test_app_ids:
+        description: 'Test only: Steam app ids to look up and print (e.g. 1643320,367520). Nothing is saved.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keyshop-prices
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Update key-shop prices
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GGDEALS_API_KEY: ${{ secrets.GGDEALS_API_KEY }}
+          DRY_RUN: ${{ inputs.test_app_ids != '' && '1' || '' }}
+          TEST_APP_IDS: ${{ inputs.test_app_ids }}
+          TEST_COUNTRY: CA
+        run: node scripts/keyshop-prices.mjs

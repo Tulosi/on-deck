@@ -24,8 +24,24 @@ npx supabase secrets set NAME=value
 | OMDb | ✅ Done (fallback) | `OMDB_API_KEY` |
 | Hardcover | ✅ Done (token expires — see below) | `HARDCOVER_TOKEN` |
 | IsThereAnyDeal | ✅ Done | `ITAD_API_KEY` |
-| gg.deals | ✅ Done | `GGDEALS_API_KEY` |
+| gg.deals | ⚠️ Key done — **to do: one GitHub secret** (see below) | `GGDEALS_API_KEY` (Supabase + GitHub), `SUPABASE_SECRET_KEY` (GitHub, not added yet) |
 | Steam | ✅ Done | `STEAM_API_KEY` (ownership check only) |
+
+## ⚠️ To do: key-shop prices
+
+Key-shop prices ("Cheaper on key shops") come from gg.deals. gg.deals doesn't answer Supabase's servers,
+so a scheduled GitHub job fetches them instead (`.github/workflows/keyshop-prices.yml`, every 6 hours).
+To save prices it needs a Supabase secret key. **Until you add it, the job skips** (each run shows a
+"not set up yet" notice) and key-shop rows stay empty. Everything else about pricing works.
+
+1. Supabase dashboard → **Project Settings → API Keys** → *Secret keys* → **Add new secret key**. Name it
+   `github-keyshop-prices`. Copy the value; it starts with `sb_secret_`.
+2. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**.
+   Name: `SUPABASE_SECRET_KEY`. Value: paste the key. Paste it only there: not in chat, not in a file.
+3. GitHub repo → **Actions → Key-shop prices → Run workflow** (leave the test box empty). The log should end
+   with `Done — N price row(s) updated.` Key-shop prices then show on game pages after the next refresh.
+
+If the key ever leaks, delete it in Supabase (step 1's page) and repeat steps 1–2 with a new one.
 
 ## 1. GitHub ✅
 - [x] Repository: **https://github.com/Tulosi/on-deck** (public, required for free GitHub Pages).
@@ -96,8 +112,14 @@ npx supabase secrets set NAME=value
   `https://api.gg.deals/v1/prices/by-steam-app-id/?ids=<appids>&key=…&region=<cc>`. It returns the current and
   historical-low prices for official stores (`currentRetail`, `historicalRetail`) and key shops
   (`currentKeyshops`, `historicalKeyshops`) in the region's currency, plus the gg.deals page URL.
-- Takes several app ids per call, which suits the daily price-refresh job.
-- To replace it: `npx supabase secrets set GGDEALS_API_KEY=…`.
+- Takes up to 100 app ids per call.
+- **gg.deals times out from Supabase's servers**, so key-shop prices are fetched by a GitHub Actions job
+  (`scripts/keyshop-prices.mjs`, run every 6 h by `.github/workflows/keyshop-prices.yml`). It updates
+  the key-shop columns of existing `game_prices` rows. The `prices` Edge Function still tries gg.deals, but
+  keeps the stored values when there's no answer. To test the lookup alone, run the workflow by hand and put app ids in the
+  test box (nothing is saved).
+- The key is stored twice: Supabase (`npx supabase secrets set GGDEALS_API_KEY=…`) and GitHub repo secret
+  `GGDEALS_API_KEY` (`gh secret set GGDEALS_API_KEY`). Replace both if it changes.
 
 ## 8. Steam ✅
 - [x] Steam Web API key saved as `STEAM_API_KEY` (server).

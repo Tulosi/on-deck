@@ -2,7 +2,7 @@ import { useState } from 'react'
 import clsx from 'clsx'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Bell, BellOff, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
-import { ComingSoon } from '../components/PageHeader'
+import { CollectionPicker } from '../components/CollectionPicker'
 import { GamePrices } from '../components/GamePrices'
 import { StatusControls } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
@@ -302,7 +302,7 @@ export function TitleDetail() {
           {!isSample && <StatusControls item={item} />}
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
           {!isSample && title.mediaType === 'game' && <GamePrices item={item} />}
-          <ComingSoon>Coming soon on this page: adding the title to your collections.</ComingSoon>
+          {!isSample && <CollectionPicker item={item} />}
         </div>
 
         <aside className="space-y-6">

@@ -204,6 +204,18 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
+### Collections
+- Named lists that can mix movies, shows, games and books (`collections` + `collection_items` → `user_items`;
+  RLS: your own only). Implementation: `src/lib/collections.ts`, `src/pages/Collections.tsx`.
+- **/collections:** a grid of collections, each showing a 2×2 cover collage, its name and a count.
+  **New collection** takes a name and an optional description.
+- **/collections/:id:** the collection's posters in its own order, with **Arrange** (move earlier / later,
+  remove), **Rename** and **Delete**. Deleting a collection never removes titles from your library.
+- **Title page → Collections:** tap a collection chip to add or remove the title, or **New collection** to
+  create one with it already in it.
+- Phones: Collections isn't in the tab bar; it's linked from the Library page header.
+- Share links for a collection come with share links (`share_links.collection_id` already exists).
+
 ### Game length (time to beat)
 - Source: IGDB's `game_time_to_beats`, player-submitted times in seconds. These are stored as hours in
   `metadata.time_to_beat` = `{ rushed, normal, full, players }`, or `null` when IGDB has no data.

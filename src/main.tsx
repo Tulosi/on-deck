@@ -11,9 +11,10 @@ import { Library } from './pages/Library'
 import { TitleDetail } from './pages/TitleDetail'
 import { Login } from './pages/Login'
 import { ResetPassword } from './pages/ResetPassword'
-import { Collections, NotFound, SharedList } from './pages/Placeholders'
+import { NotFound, SharedList } from './pages/Placeholders'
 import { Settings } from './pages/Settings'
 import { Waitlist } from './pages/Waitlist'
+import { CollectionDetail, Collections } from './pages/Collections'
 import { AuthProvider } from './lib/auth'
 
 const queryClient = new QueryClient({
@@ -41,6 +42,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="title/:id" element={<TitleDetail />} />
             <Route path="waitlist" element={<Waitlist />} />
             <Route path="collections" element={<Collections />} />
+            <Route path="collections/:id" element={<CollectionDetail />} />
             <Route path="settings" element={<Settings />} />
             <Route path="login" element={<Login />} />
             <Route path="reset-password" element={<ResetPassword />} />

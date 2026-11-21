@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Loader2, X } from 'lucide-react'
+import { Layers, Loader2, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
 import {
@@ -86,7 +86,15 @@ export function Library() {
 
   return (
     <div>
-      <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`} />
+      <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`}>
+        {/* Phones: Collections isn't in the tab bar, so it's reached from here. */}
+        <Link
+          to="/collections"
+          className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent md:hidden"
+        >
+          <Layers className="size-3.5" /> Collections
+        </Link>
+      </PageHeader>
       <ActiveFilters f={f} set={set} />
 
       {inType.length === 0 ? (

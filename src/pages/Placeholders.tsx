@@ -1,15 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
-import { ComingSoon, PageHeader } from '../components/PageHeader'
+import { ComingSoon } from '../components/PageHeader'
 import { Wordmark } from '../components/Logo'
-
-export function Collections() {
-  return (
-    <div>
-      <PageHeader title="Collections" />
-      <ComingSoon>Named lists that can mix movies, shows, games and books — e.g. “Cyberpunk” or “Co-op with Sam”.</ComingSoon>
-    </div>
-  )
-}
 
 /** Public, read-only view of someone's shared list. Lives outside the app shell. */
 export function SharedList() {

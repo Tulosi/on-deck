@@ -48,6 +48,8 @@ export interface Profile {
   card_chips: Record<string, 'show' | 'hover' | 'hide'>
   /** Game-price alert switches (missing = on). */
   alert_settings: { price_low?: boolean; deep_discount?: boolean; deep_discount_pct?: number }
+  /** Sidebar order (see lib/navLayout.ts). */
+  nav_layout: { main?: string[]; types?: string[]; collections?: string[] }
 }
 
 export function useProfile() {
@@ -58,7 +60,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase!
         .from('profiles')
-        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name, alert_settings')
+        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name, alert_settings, nav_layout')
         .eq('user_id', user!.id)
         .single()
       if (error) throw error

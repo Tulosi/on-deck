@@ -1,3 +1,4 @@
+import { useSmartCollectionSync } from '../lib/collections'
 import { useTimezoneSync } from '../lib/notifications'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
@@ -22,6 +23,7 @@ export function AppShell() {
   usePriceRefresh()
   useSteamOwnershipCheck()
   useTimezoneSync()
+  useSmartCollectionSync()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

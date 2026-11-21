@@ -38,7 +38,7 @@ export function CollectionPicker({ item }: { item: UserItem }) {
         <Loader2 className="size-4 animate-spin text-muted" />
       ) : (
         <div className="flex flex-wrap gap-2">
-          {collections.map((c) => {
+          {collections.filter((c) => c.rules == null).map((c) => {
             const inIt = c.itemIds.includes(item.id)
             return (
               <button

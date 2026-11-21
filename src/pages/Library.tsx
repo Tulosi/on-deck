@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
-import { Layers, Loader2, X } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Layers, Loader2, Sparkles, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
 import {
@@ -12,7 +13,8 @@ import {
   type Filters,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
-import { useFilters } from '../lib/useFilters'
+import { rulesFrom, useFilters } from '../lib/useFilters'
+import { useCollectionActions, useCollections } from '../lib/collections'
 
 const grid =
   'grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-x-4 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))]'
@@ -70,6 +72,14 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
 export function Library() {
   const { items, isLoading, isSample } = useItems()
   const [f, set] = useFilters()
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const { data: collections = [] } = useCollections()
+  const { create, setRules } = useCollectionActions()
+  const [saving, setSaving] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const smartId = params.get('smart')
+  const editing = smartId ? collections.find((c) => c.id === smartId && c.rules != null) : undefined
 
   if (isLoading) {
     return (
@@ -87,6 +97,16 @@ export function Library() {
   return (
     <div>
       <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`}>
+        {!isSample && !editing && (f.type || activeCount(f) > 0) && (
+          <button
+            type="button"
+            onClick={() => setSaving((v) => !v)}
+            aria-expanded={saving}
+            className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+          >
+            <Sparkles className="size-3.5" /> Save as smart collection
+          </button>
+        )}
         {/* Phones: Collections isn't in the tab bar, so it's reached from here. */}
         <Link
           to="/collections"
@@ -95,6 +115,64 @@ export function Library() {
           <Layers className="size-3.5" /> Collections
         </Link>
       </PageHeader>
+      {editing && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/60 bg-accent/5 px-4 py-3">
+          <p className="text-sm text-fg">
+            Editing the rules of <b>{editing.name}</b>. Change the type, filters or sort, then save.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setRules.mutate({ id: editing.id, rules: rulesFrom(f) }, { onSuccess: () => navigate(`/collections/${editing.id}`) })
+              }
+              disabled={setRules.isPending}
+              className="flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg disabled:opacity-60"
+            >
+              {setRules.isPending && <Loader2 className="size-3.5 animate-spin" />}
+              Save changes
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/collections/${editing.id}`)}
+              className="h-8 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {saving && !editing && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!saveName.trim()) return
+            create.mutate({ name: saveName, rules: rulesFrom(f) }, { onSuccess: (id) => navigate(`/collections/${id}`) })
+          }}
+          className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3"
+        >
+          <p className="w-full text-xs text-muted">
+            A smart collection keeps these filters and sort, and updates itself as your library changes.
+          </p>
+          <input
+            autoFocus
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            placeholder="Name, e.g. Quick wins"
+            maxLength={80}
+            aria-label="Smart collection name"
+            className="h-9 min-w-0 flex-1 rounded-md border border-line bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint focus:border-accent"
+          />
+          <button
+            type="submit"
+            disabled={!saveName.trim() || create.isPending}
+            className="flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg disabled:opacity-60"
+          >
+            {create.isPending && <Loader2 className="size-4 animate-spin" />}
+            Save
+          </button>
+        </form>
+      )}
       <ActiveFilters f={f} set={set} />
 
       {inType.length === 0 ? (

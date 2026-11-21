@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowLeft, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
 import { ShareCollection } from '../components/ShareLinks'
 import { useAuth } from '../lib/auth'
-import { useCollectionActions, useCollections, type Collection } from '../lib/collections'
+import { smartItems, useCollectionActions, useCollections, type Collection } from '../lib/collections'
+import { activeCount, LABELS, parseFilters } from '../lib/filters'
 import { useItems } from '../lib/library'
 import type { UserItem } from '../types'
 
@@ -107,7 +108,28 @@ function Collage({ items }: { items: UserItem[] }) {
   )
 }
 
-const itemsOf = (c: Collection, byId: Map<string, UserItem>) => c.itemIds.map((id) => byId.get(id)).filter((i): i is UserItem => !!i)
+/** A collection's titles: hand-picked in their order, or (smart) whatever its rules match right now. */
+const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[]) =>
+  c.rules != null ? smartItems(c.rules, all) : c.itemIds.map((id) => byId.get(id)).filter((i): i is UserItem => !!i)
+
+/** "Games · 3 filters · sorted by Price" */
+function rulesSummary(rules: string): string {
+  const f = parseFilters(new URLSearchParams(rules))
+  const n = activeCount(f)
+  return [
+    f.type ? LABELS.type[f.type] : 'All types',
+    n ? `${n} filter${n === 1 ? '' : 's'}` : 'no filters',
+    `sorted by ${LABELS.sort[f.sort]}`,
+  ].join(' · ')
+}
+
+function AutoBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-1.5 py-0.5 font-mono text-[10px] text-accent-ink uppercase">
+      <Sparkles className="size-3" /> Auto
+    </span>
+  )
+}
 
 /** /collections: all your collections. */
 export function Collections() {
@@ -162,17 +184,21 @@ export function Collections() {
         <div className="mx-auto max-w-md py-16 text-center">
           <p className="text-sm text-muted">
             No collections yet. Make one for anything that cuts across types, like “Cyberpunk” or “Co-op with Sam”.
-            You can also add a title to a collection from its page.
+            You can also add a title to a collection from its page, or save Library filters as a{' '}
+            <b>smart collection</b> that updates itself.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-4 gap-y-6">
           {collections.map((c) => {
-            const list = itemsOf(c, byId)
+            const list = itemsOf(c, byId, items)
             return (
               <Link key={c.id} to={`/collections/${c.id}`} className="group block">
                 <Collage items={list} />
-                <p className="mt-2 truncate text-sm font-medium text-fg">{c.name}</p>
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-fg">
+                  <span className="truncate">{c.name}</span>
+                  {c.rules != null && <AutoBadge />}
+                </p>
                 <p className="font-mono text-xs text-faint">
                   {list.length} title{list.length === 1 ? '' : 's'}
                 </p>
@@ -211,7 +237,8 @@ export function CollectionDetail() {
     )
   }
   const byId = new Map(items.map((i) => [i.id, i]))
-  const list = itemsOf(c, byId)
+  const list = itemsOf(c, byId, items)
+  const smart = c.rules != null
 
   return (
     <div>
@@ -233,7 +260,12 @@ export function CollectionDetail() {
         <>
           <PageHeader title={c.name} meta={String(list.length)}>
             <div className="flex flex-wrap gap-2">
-              {list.length > 1 && (
+              {smart && (
+                <Link to={`/library?${c.rules}${c.rules ? '&' : ''}smart=${c.id}`} className={button}>
+                  <SlidersHorizontal className="size-4" /> Edit rules
+                </Link>
+              )}
+              {!smart && list.length > 1 && (
                 <button
                   type="button"
                   onClick={() => setArranging((a) => !a)}
@@ -259,7 +291,15 @@ export function CollectionDetail() {
               </button>
             </div>
           </PageHeader>
-          {c.description && <p className="-mt-3 mb-4 max-w-prose text-sm text-muted">{c.description}</p>}
+          {smart && (
+            <p className="-mt-3 mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+              <AutoBadge /> Updates itself: {rulesSummary(c.rules!)}.
+              <Link to={`/library?${c.rules}`} className="text-accent-ink hover:underline">
+                Open in Library
+              </Link>
+            </p>
+          )}
+          {c.description && <p className="-mt-1 mb-4 max-w-prose text-sm text-muted">{c.description}</p>}
           <div className="mb-6">
             <ShareCollection collectionId={c.id} name={c.name} />
           </div>
@@ -268,7 +308,9 @@ export function CollectionDetail() {
 
       {list.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">
-          Nothing here yet. Open any title in your library and use <b>Collections</b> on its page to add it.
+          {smart
+            ? 'Nothing in your library matches these rules right now. It’ll fill up as your library changes.'
+            : <>Nothing here yet. Open any title in your library and use <b>Collections</b> on its page to add it.</>}
         </p>
       ) : (
         <div className={grid}>

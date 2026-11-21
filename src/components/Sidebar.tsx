@@ -1,6 +1,9 @@
+import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
-import { Settings } from 'lucide-react'
+import { GripVertical, Layers, Settings, Sparkles } from 'lucide-react'
+import { useCollections } from '../lib/collections'
+import { DEFAULT_MAIN, DEFAULT_TYPES, moveTo, nudge, ordered, useNavLayout, type Section } from '../lib/navLayout'
 import { primaryNav, type NavItem } from './nav'
 import { Wordmark } from './Logo'
 
@@ -17,29 +20,143 @@ function useIsActive() {
   }
 }
 
-function SideLink({ item, active }: { item: NavItem; active: boolean }) {
-  const Icon = item.icon
+function SideLink({
+  to,
+  label,
+  icon: Icon,
+  active,
+  indent,
+  onKeyDown,
+}: {
+  to: string
+  label: string
+  icon: NavItem['icon']
+  active: boolean
+  indent?: boolean
+  onKeyDown?: (e: KeyboardEvent) => void
+}) {
   return (
     <Link
-      to={hrefOf(item)}
+      to={to}
+      draggable={false}
+      onKeyDown={onKeyDown}
       aria-current={active ? 'page' : undefined}
       className={clsx(
-        'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+        'relative flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
         active ? 'bg-raised text-fg' : 'text-muted hover:bg-raised/60 hover:text-fg',
-        // Type shortcuts sit indented under Library.
-        item.libraryType && 'pl-6',
+        indent && 'pl-6',
       )}
     >
       {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent" />}
-      <Icon className={clsx('size-[18px]', active && 'text-accent-ink')} strokeWidth={1.75} />
-      {item.label}
+      <Icon className={clsx('size-[18px] shrink-0', active && 'text-accent-ink')} strokeWidth={1.75} />
+      <span className="truncate">{label}</span>
     </Link>
+  )
+}
+
+/**
+ * A list whose rows can be dragged to reorder (mouse) or moved with Alt + ↑/↓ (keyboard). Rows only move
+ * within their own section, so nothing crosses the divider.
+ */
+function Reorderable({
+  section,
+  keys,
+  onReorder,
+  render,
+}: {
+  section: Section
+  keys: string[]
+  onReorder: (order: string[]) => void
+  render: (key: string, keyNav: (e: KeyboardEvent) => void) => ReactNode
+}) {
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [drop, setDrop] = useState<{ before: string | null } | null>(null)
+  const mime = `application/x-ondeck-${section}`
+
+  const keyNav = (key: string) => (e: KeyboardEvent) => {
+    if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
+    e.preventDefault()
+    const next = nudge(keys, key, e.key === 'ArrowUp' ? -1 : 1)
+    if (next !== keys) onReorder(next)
+    // Keep focus on the moved link after the re-render.
+    const el = e.currentTarget as HTMLElement
+    requestAnimationFrame(() => el.focus())
+  }
+
+  const over = (key: string) => (e: DragEvent) => {
+    if (!e.dataTransfer.types.includes(mime)) return // another section: not a drop target
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const after = e.clientY > box.top + box.height / 2
+    const i = keys.indexOf(key)
+    setDrop({ before: after ? (keys[i + 1] ?? null) : key })
+  }
+
+  return (
+    <div
+      onDragLeave={(e) => {
+        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setDrop(null)
+      }}
+    >
+      {keys.map((key) => (
+        <div
+          key={key}
+          draggable
+          onDragStart={(e) => {
+            e.stopPropagation() // a type row inside Library must not also drag the Library block
+            e.dataTransfer.setData(mime, key)
+            e.dataTransfer.effectAllowed = 'move'
+            setDragging(key)
+          }}
+          onDragEnd={() => {
+            setDragging(null)
+            setDrop(null)
+          }}
+          onDragOver={over(key)}
+          onDrop={(e) => {
+            const moved = e.dataTransfer.getData(mime)
+            if (!moved || !drop) return
+            e.preventDefault()
+            const next = moveTo(keys, moved, drop.before === moved ? keys[keys.indexOf(moved) + 1] ?? null : drop.before)
+            if (next.join() !== keys.join()) onReorder(next)
+            setDrop(null)
+          }}
+          className={clsx('group/row relative', dragging === key && 'opacity-40')}
+        >
+          {drop?.before === key && dragging !== key && <span className="absolute inset-x-2 -top-px h-0.5 rounded bg-accent" />}
+          <div className="flex items-center">
+            {render(key, keyNav(key))}
+            <GripVertical
+              aria-hidden="true"
+              className="mr-1 size-3.5 shrink-0 cursor-grab text-faint opacity-0 transition-opacity group-hover/row:opacity-100"
+            />
+          </div>
+        </div>
+      ))}
+      {drop && drop.before === null && <span className="mx-2 block h-0.5 rounded bg-accent" />}
+    </div>
   )
 }
 
 /** Desktop / tablet sidebar. Hidden below md, where BottomNav takes over. */
 export function Sidebar() {
   const isActive = useIsActive()
+  const { pathname } = useLocation()
+  const [layout, save] = useNavLayout()
+  const { data: collections = [] } = useCollections()
+
+  const byKey = new Map<string, NavItem>([
+    ['home', primaryNav.find((i) => i.to === '/')!],
+    ['library', primaryNav.find((i) => i.libraryType === null)!],
+    ['waitlist', primaryNav.find((i) => i.to === '/waitlist')!],
+    ...primaryNav.filter((i) => i.libraryType).map((i) => [i.libraryType!, i] as [string, NavItem]),
+  ])
+  const main = ordered(DEFAULT_MAIN, layout.main)
+  const types = ordered(DEFAULT_TYPES, layout.types)
+  const colOrder = ordered(collections.map((c) => c.id), layout.collections)
+  const colById = new Map(collections.map((c) => [c.id, c]))
+
   return (
     <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-line bg-surface md:flex">
       <div className="flex h-14 items-center px-4">
@@ -47,21 +164,78 @@ export function Sidebar() {
           <Wordmark />
         </NavLink>
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5 px-2 py-2">
-        {primaryNav.map((item) => (
-          <SideLink key={item.label} item={item} active={isActive(item)} />
-        ))}
+      <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-2">
+        {/* Media categories */}
+        <Reorderable
+          section="main"
+          keys={main}
+          onReorder={(o) => save('main', o)}
+          render={(key, keyNav) => {
+            const item = byKey.get(key)!
+            const link = <SideLink to={hrefOf(item)} label={item.label} icon={item.icon} active={isActive(item)} onKeyDown={keyNav} />
+            if (key !== 'library') return link
+            // Library carries its type shortcuts with it; they reorder among themselves.
+            return (
+              <div className="min-w-0 flex-1">
+                <div className="flex">{link}</div>
+                <Reorderable
+                  section="types"
+                  keys={types}
+                  onReorder={(o) => save('types', o)}
+                  render={(t, tNav) => {
+                    const ti = byKey.get(t)!
+                    return <SideLink to={hrefOf(ti)} label={ti.label} icon={ti.icon} active={isActive(ti)} indent onKeyDown={tNav} />
+                  }}
+                />
+              </div>
+            )
+          }}
+        />
+
+        {/* Collections, below a divider */}
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="flex">
+            <SideLink to="/collections" label="Collections" icon={Layers} active={pathname === '/collections'} />
+          </div>
+          {colOrder.length === 0 ? (
+            <Link to="/collections" className="block px-3 py-1.5 pl-6 text-xs text-faint hover:text-fg">
+              Make a collection
+            </Link>
+          ) : (
+            <Reorderable
+              section="collections"
+              keys={colOrder}
+              onReorder={(o) => save('collections', o)}
+              render={(id, cNav) => {
+                const c = colById.get(id)!
+                return (
+                  <SideLink
+                    to={`/collections/${id}`}
+                    label={c.name}
+                    icon={c.rules != null ? Sparkles : Layers}
+                    active={pathname === `/collections/${id}`}
+                    indent
+                    onKeyDown={cNav}
+                  />
+                )
+              }}
+            />
+          )}
+        </div>
       </nav>
       <div className="border-t border-line px-2 py-2">
-        <SideLink item={{ to: '/settings', label: 'Settings', icon: Settings }} active={isActive({ to: '/settings', label: 'Settings', icon: Settings })} />
+        <div className="flex">
+          <SideLink to="/settings" label="Settings" icon={Settings} active={pathname.startsWith('/settings')} />
+        </div>
+        <p className="px-3 pt-1 text-[10px] text-faint">Drag to rearrange · Alt + ↑/↓</p>
       </div>
     </aside>
   )
 }
 
 /**
- * Phone tab bar: Home, Library, Movies, TV, Games and Waitlist. Books (not built yet) and Collections live in
- * the sidebar for now, so the bar keeps six tabs.
+ * Phone tab bar: Home, Library, Movies, TV, Games and Waitlist. Books (via Library) and Collections (linked
+ * from the Library header) aren't in it, so the bar keeps six tabs.
  */
 export function BottomNav() {
   const isActive = useIsActive()

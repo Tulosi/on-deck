@@ -215,6 +215,15 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   create one with it already in it.
 - Phones: Collections isn't in the tab bar; it's linked from the Library page header.
 - Each collection's page has a **Share** button (see Sharing).
+- **Smart collections** (instead of separate "saved views"): Library → set a type, filters and sort →
+  **Save as smart collection**.
+  - `collections.rules` stores the Library URL form (e.g. `type=game&length=short&deal=on_sale&sort=price`).
+  - The contents are whatever matches right now, in the rules' sort order, shown with an **Auto** badge.
+  - **Edit rules** opens the Library with those filters (`&smart=<id>`) and a **Save changes** bar; **Open
+    in Library** opens it without editing.
+  - Smart collections aren't offered on title pages, since you can't add to them by hand.
+  - The app keeps their `collection_items` in step with the rules (`useSmartCollectionSync`), so counts and
+    share links match. A shared smart collection reflects your library as of your last visit.
 
 ### Sharing (read-only links)
 - A link shares your **whole library**, **one type**, or **one collection** (`share_links`; token = 32
@@ -368,6 +377,11 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   All). It follows the Library type you're browsing, otherwise your last pick (default Movies). Only that
   type's source is queried: TMDB's movie or TV search, IGDB, or Hardcover.
   On phones the sidebar becomes a bottom tab bar.
+- **Sidebar (desktop):** media categories on top (Home · Library with Movies / TV / Games / Books · Waitlist),
+  then a **divider**, then **Collections** with each of your collections (✦ = smart). Everything can be
+  rearranged by drag and drop, or with Alt + ↑/↓ on a focused item, within its own section: the main items,
+  the types inside Library, and the collections. Nothing crosses the divider. The order is saved to
+  `profiles.nav_layout` (signed out: this browser). Implementation: `src/lib/navLayout.ts`, `Sidebar.tsx`.
 - **Home**: "what's next, and what's changed". Rows: Continue · New for you · This week · Ready to start · Deals.
   Browsing, filtering and sorting live on the **Library** page (see docs/FILTERING.md). Full design: docs/HOME.md
   (proposal; today's Home still has the older rows).

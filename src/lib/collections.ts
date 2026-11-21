@@ -1,8 +1,12 @@
 // Collections: named lists that can mix movies, shows, games and books (tables `collections` and
 // `collection_items`, RLS = your own). Items point at your library entries (user_items).
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './auth'
+import { applyFilters, parseFilters, sortItems } from './filters'
+import { useItems } from './library'
 import { supabase } from './supabase'
+import type { UserItem } from '../types'
 
 export interface Collection {
   id: string
@@ -11,6 +15,14 @@ export interface Collection {
   createdAt: string
   /** Library item ids, in collection order (position, then when added). */
   itemIds: string[]
+  /** Smart collection: Library filters + sort in URL form ("type=game&length=short"). Null = hand-picked. */
+  rules: string | null
+}
+
+/** A smart collection's current titles: the Library filtered and sorted by its rules. */
+export function smartItems(rules: string, items: UserItem[]): UserItem[] {
+  const f = parseFilters(new URLSearchParams(rules))
+  return sortItems(applyFilters(items, f), f.sort)
 }
 
 const key = (userId: string | undefined) => ['collections', userId]
@@ -23,13 +35,14 @@ export function useCollections() {
     queryFn: async (): Promise<Collection[]> => {
       const { data, error } = await supabase!
         .from('collections')
-        .select('id, name, description, created_at, collection_items(user_item_id, position, added_at)')
+        .select('id, name, description, rules, created_at, collection_items(user_item_id, position, added_at)')
         .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []).map((c) => ({
         id: c.id as string,
         name: c.name as string,
         description: (c.description as string | null) ?? null,
+        rules: (c.rules as string | null) ?? null,
         createdAt: c.created_at as string,
         itemIds: ((c.collection_items ?? []) as { user_item_id: string; position: number; added_at: string }[])
           .sort((a, b) => a.position - b.position || a.added_at.localeCompare(b.added_at))
@@ -49,10 +62,20 @@ export function useCollectionActions() {
     queryClient.setQueryData<Collection[]>(key(user?.id), (l) => fn(l ?? []))
 
   const create = useMutation({
-    mutationFn: async ({ name, description, itemId }: { name: string; description?: string; itemId?: string }) => {
+    mutationFn: async ({
+      name,
+      description,
+      itemId,
+      rules,
+    }: {
+      name: string
+      description?: string
+      itemId?: string
+      rules?: string
+    }) => {
       const { data, error } = await supabase!
         .from('collections')
-        .insert({ name: name.trim(), description: description?.trim() || null })
+        .insert({ name: name.trim(), description: description?.trim() || null, rules: rules ?? null })
         .select('id')
         .single()
       if (error) throw error
@@ -84,6 +107,16 @@ export function useCollectionActions() {
       if (error) throw error
     },
     onMutate: (id) => setList((l) => l.filter((c) => c.id !== id)),
+    onSettled: refresh,
+  })
+
+  /** Replaces a smart collection's rules (the sync then updates its titles). */
+  const setRules = useMutation({
+    mutationFn: async ({ id, rules }: { id: string; rules: string }) => {
+      const { error } = await supabase!.from('collections').update({ rules }).eq('id', id)
+      if (error) throw error
+    },
+    onMutate: ({ id, rules }) => setList((l) => l.map((c) => (c.id === id ? { ...c, rules } : c))),
     onSettled: refresh,
   })
 
@@ -133,5 +166,46 @@ export function useCollectionActions() {
     onSettled: refresh,
   })
 
-  return { create, update, remove, toggleItem, move }
+  return { create, update, remove, toggleItem, move, setRules }
+}
+
+/**
+ * Keeps each smart collection's stored titles (collection_items) the same as what its rules match right now,
+ * in the same order, so counts, collages and share links stay right. Mount once (AppShell). Runs when the
+ * library or the collections change; only writes when something differs.
+ */
+export function useSmartCollectionSync() {
+  const { user } = useAuth()
+  const { items, isSample, isLoading } = useItems()
+  const { data: collections } = useCollections()
+  const queryClient = useQueryClient()
+  const running = useRef(false)
+  // Each (collection, wanted titles) sync is tried once per session, so a failing write can't loop.
+  const tried = useRef(new Set<string>())
+
+  useEffect(() => {
+    if (!user || !supabase || isSample || isLoading || !collections || running.current) return
+    const stale = collections
+      .filter((c) => c.rules != null)
+      .map((c) => ({ c, ids: smartItems(c.rules!, items).map((i) => i.id) }))
+      .filter(({ c, ids }) => ids.join() !== c.itemIds.join() && !tried.current.has(`${c.id}:${ids.join()}`))
+    if (stale.length === 0) return
+    stale.forEach(({ c, ids }) => tried.current.add(`${c.id}:${ids.join()}`))
+    running.current = true
+    void (async () => {
+      try {
+        for (const { c, ids } of stale) {
+          await supabase!.from('collection_items').delete().eq('collection_id', c.id)
+          if (ids.length) {
+            await supabase!
+              .from('collection_items')
+              .insert(ids.map((id, position) => ({ collection_id: c.id, user_item_id: id, position })))
+          }
+        }
+      } finally {
+        running.current = false
+        await queryClient.invalidateQueries({ queryKey: ['collections', user.id] })
+      }
+    })()
+  }, [user, items, isSample, isLoading, collections, queryClient])
 }

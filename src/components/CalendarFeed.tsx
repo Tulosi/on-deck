@@ -47,7 +47,7 @@ const btn =
   'flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm text-fg hover:border-accent disabled:opacity-60'
 
 /**
- * Private calendar subscription (Waitlist → "Add to your calendar", and Settings). Creates a secret feed link on
+ * Private calendar subscription (Calendar page → "Add to your calendar", and Settings). Creates a secret feed link on
  * request; "New link" revokes the old one.
  */
 export function CalendarFeed() {

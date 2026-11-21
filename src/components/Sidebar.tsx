@@ -149,7 +149,7 @@ export function Sidebar() {
   const byKey = new Map<string, NavItem>([
     ['home', primaryNav.find((i) => i.to === '/')!],
     ['library', primaryNav.find((i) => i.libraryType === null)!],
-    ['waitlist', primaryNav.find((i) => i.to === '/waitlist')!],
+    ['waitlist', primaryNav.find((i) => i.to === '/calendar')!], // key kept as 'waitlist' so saved orders still work
     ...primaryNav.filter((i) => i.libraryType).map((i) => [i.libraryType!, i] as [string, NavItem]),
   ])
   const main = ordered(DEFAULT_MAIN, layout.main)
@@ -230,34 +230,5 @@ export function Sidebar() {
         <p className="px-3 pt-1 text-[10px] text-faint">Drag to rearrange · Alt + ↑/↓</p>
       </div>
     </aside>
-  )
-}
-
-/**
- * Phone tab bar: Home, Library, Movies, TV, Games and Waitlist. Books (via Library) and Collections (linked
- * from the Library header) aren't in it, so the bar keeps six tabs.
- */
-export function BottomNav() {
-  const isActive = useIsActive()
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-      {primaryNav
-        .filter((item) => item.to !== '/collections' && item.libraryType !== 'book')
-        .map((item) => {
-          const Icon = item.icon
-          const active = isActive(item)
-          return (
-            <Link
-              key={item.label}
-              to={hrefOf(item)}
-              aria-current={active ? 'page' : undefined}
-              className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px]', active ? 'text-accent-ink' : 'text-muted')}
-            >
-              <Icon className="size-5" strokeWidth={1.75} />
-              {item.short ?? item.label}
-            </Link>
-          )
-        })}
-    </nav>
   )
 }

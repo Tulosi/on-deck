@@ -17,6 +17,7 @@ import {
 } from '../lib/integrations'
 import { CalendarFeed } from '../components/CalendarFeed'
 import { ShareLinksSettings } from '../components/ShareLinks'
+import { PhoneTabsSettings } from '../components/NavSettings'
 import { usePush } from '../lib/push'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
@@ -614,6 +615,13 @@ function NotificationsSection() {
 
 export function Settings() {
   const { user, loading } = useAuth()
+  const { hash } = useLocation()
+  // Links like /settings#navigation jump to that section once the page has rendered.
+  useEffect(() => {
+    if (!hash || loading) return
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    return () => clearTimeout(t)
+  }, [hash, loading])
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -632,6 +640,14 @@ export function Settings() {
           <SteamSection />
           <StreamingSection />
           <NotificationsSection />
+          <section id="navigation" className="scroll-mt-20">
+            <Section
+              title="Navigation"
+              description="Choose the tabs on your phone’s bottom bar and their order. On a computer, drag the sidebar to rearrange it."
+            >
+              <PhoneTabsSettings />
+            </Section>
+          </section>
           <section id="calendar" className="rounded-xl border border-line bg-surface p-5">
             <CalendarFeed />
           </section>

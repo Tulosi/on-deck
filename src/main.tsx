@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/jetbrains-mono'
@@ -15,6 +15,12 @@ import { NotFound } from './pages/Placeholders'
 import { SharedList } from './pages/SharedList'
 import { Settings } from './pages/Settings'
 import { Waitlist } from './pages/Waitlist'
+
+/** The Waitlist page was renamed Calendar; old links keep working. */
+function RedirectWaitlist() {
+  const { search } = useLocation()
+  return <Navigate to={`/calendar${search.replace('view=calendar', 'view=month')}`} replace />
+}
 import { CollectionDetail, Collections } from './pages/Collections'
 import { AuthProvider } from './lib/auth'
 
@@ -41,7 +47,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="games" element={<Navigate to="/library?type=game" replace />} />
             <Route path="books" element={<Navigate to="/library?type=book" replace />} />
             <Route path="title/:id" element={<TitleDetail />} />
-            <Route path="waitlist" element={<Waitlist />} />
+            <Route path="calendar" element={<Waitlist />} />
+            <Route path="waitlist" element={<RedirectWaitlist />} />
             <Route path="collections" element={<Collections />} />
             <Route path="collections/:id" element={<CollectionDetail />} />
             <Route path="settings" element={<Settings />} />

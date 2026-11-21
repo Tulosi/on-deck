@@ -1,12 +1,13 @@
 // Sidebar order, rearranged by drag and drop (or Alt + ↑/↓). Saved to profiles.nav_layout when signed in,
 // kept in this browser otherwise. Three independent sections, so nothing crosses the divider:
-//   main: Home · Library (with its types) · Waitlist      types: order of Movies / TV / Games / Books
+//   main: Home · Library (with its types) · Calendar (key 'waitlist')      types: order of Movies / TV / Games / Books
 //   collections: your collections, below the divider
-import { useState } from 'react'
+//   tabs: the phone tab bar's chosen tabs, in order (the rest go under More)
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './auth'
 import { useProfile, useUpdateProfile } from './integrations'
 
-export type Section = 'main' | 'types' | 'collections'
+export type Section = 'main' | 'types' | 'collections' | 'tabs'
 export type NavLayout = Partial<Record<Section, string[]>>
 
 export const DEFAULT_MAIN = ['home', 'library', 'waitlist']
@@ -45,22 +46,26 @@ function readLocal(): NavLayout {
   }
 }
 
-/** Current layout + a saver for one section's new order. */
+const LOCAL_QUERY = ['nav-layout-local']
+
+/**
+ * Current layout + a saver for one section's new order. The layout lives in the React Query cache (the
+ * profile when signed in, a local entry when signed out), so the sidebar, tab bar and Settings all update
+ * together the moment anything moves.
+ */
 export function useNavLayout(): [NavLayout, (section: Section, order: string[]) => void] {
   const { user } = useAuth()
   const profile = useProfile()
   const update = useUpdateProfile()
-  const [local, setLocal] = useState<NavLayout>(readLocal)
-  // Shown immediately while the save is in flight.
-  const [pending, setPending] = useState<NavLayout | null>(null)
+  const queryClient = useQueryClient()
+  const local = useQuery({ queryKey: LOCAL_QUERY, queryFn: readLocal, staleTime: Infinity, enabled: !user })
 
-  const saved: NavLayout = user ? ((profile.data?.nav_layout as NavLayout | undefined) ?? {}) : local
-  const layout = pending ?? saved
+  const layout: NavLayout = user ? ((profile.data?.nav_layout as NavLayout | undefined) ?? {}) : (local.data ?? {})
 
   const save = (section: Section, order: string[]) => {
     const next = { ...layout, [section]: order }
     if (!user) {
-      setLocal(next)
+      queryClient.setQueryData(LOCAL_QUERY, next)
       try {
         localStorage.setItem(LOCAL_KEY, JSON.stringify(next))
       } catch {
@@ -68,8 +73,9 @@ export function useNavLayout(): [NavLayout, (section: Section, order: string[]) 
       }
       return
     }
-    setPending(next)
-    void update({ nav_layout: next }).finally(() => setPending(null))
+    // Show it everywhere straight away, then save.
+    queryClient.setQueryData(['profile', user.id], (p: Record<string, unknown> | undefined) => (p ? { ...p, nav_layout: next } : p))
+    void update({ nav_layout: next })
   }
   return [layout, save]
 }

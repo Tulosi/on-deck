@@ -259,19 +259,19 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
 - **Poster:** byline = first author; headline score = the Hardcover rating.
 - **Title page:** Author(s), Series, Pages, Readers on Hardcover, plus a Hardcover link.
 - **Release dates:** Hardcover's date. A future Jan 1 is treated as a year-only placeholder ("2027"). Books feed
-  the Waitlist, the Calendar and the books calendar link like any other type.
+  the Calendar (list and month views) and the books calendar link like any other type.
 - **Refresh:** scores are refreshed weekly, like games.
 
 **Wording:** the app is called On Deck, but in the interface the user's collection is always "your library",
 never "your deck".
 
-### Waitlist & calendar
+### Calendar (formerly Waitlist)
 Rules live in `supabase/functions/_shared/releases.ts`, shared by the app and the feed so they always agree.
 Dropped titles are left out everywhere.
-- **Waitlist page** (`/waitlist`, in the nav): pre-release movies, games and shows, new seasons, and the
+- **Calendar page** (`/calendar`, in the nav; old `/waitlist` links redirect), **List** view: pre-release movies, games and shows, new seasons, and the
   next announced episode of shows that are airing. The list and calendar views always show the same entries. Sorted soonest first in sections: *Next 7 days*, one per month, *Date not final* (quarter or
   year only), then *Date TBA*. Each row shows the date and a countdown ("In 12 days"). You can filter by type.
-- **Calendar view** (`/waitlist?view=calendar`): the same entries on a month grid. On a phone, days show dots and tapping a day lists what's out below the grid. Only
+- **Month view** (`/calendar?view=month`): the same entries on a month grid. On a phone, days show dots and tapping a day lists what's out below the grid. Only
   exact dates go on the calendar; the rest appear only in the list.
 - **Calendar feed:** a private `.ics` subscription link, served by the `calendar` Edge Function. Tokens are
   stored in `calendar_feeds`: 64 random hex characters per user, and "New link" revokes the old one.
@@ -287,7 +287,7 @@ Dropped titles are left out everywhere.
     show has one "next episode" event that moves forward as episodes air. Releases from the last 60 days are
     kept so they don't vanish.
   - Google refreshes subscribed calendars on its own schedule, which can take up to a day.
-  - Found on the Waitlist page ("Add to your calendar") and in Settings.
+  - Found on the Calendar page ("Add to your calendar") and in Settings.
 - **Games' Early Access and 1.0:** from IGDB's release dates (PC entries, by release status), stored as
   `metadata.release_milestones`: the Early Access launch and the full release, each with its own precision.
   A game in Early Access shows its upcoming **Full release (1.0)**; one not out yet shows its **Early Access
@@ -377,11 +377,17 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   All). It follows the Library type you're browsing, otherwise your last pick (default Movies). Only that
   type's source is queried: TMDB's movie or TV search, IGDB, or Hardcover.
   On phones the sidebar becomes a bottom tab bar.
-- **Sidebar (desktop):** media categories on top (Home · Library with Movies / TV / Games / Books · Waitlist),
+- **Sidebar (desktop):** media categories on top (Home · Library with Movies / TV / Games / Books · Calendar),
   then a **divider**, then **Collections** with each of your collections (✦ = smart). Everything can be
   rearranged by drag and drop, or with Alt + ↑/↓ on a focused item, within its own section: the main items,
   the types inside Library, and the collections. Nothing crosses the divider. The order is saved to
   `profiles.nav_layout` (signed out: this browser). Implementation: `src/lib/navLayout.ts`, `Sidebar.tsx`.
+- **Phone tab bar:** up to 5 tabs you choose (default: the four media types, Movies · TV · Games · Books) plus **More**, which holds Home, Library, Calendar and the rest. (The On Deck logo in the top bar also goes Home.) More
+  opens a sheet with the remaining pages, your collections below a divider, Settings and "Customize tab bar".
+  More is highlighted when you're on a page that isn't a tab.
+  - **Settings → Navigation** (`#navigation`): pick and order the tabs. Rows drag by their handle (mouse or
+    touch, via pointer events) or move with ↑ / ↓; − sends a tab to More, + adds one (up to 5).
+  - Stored as `nav_layout.tabs`. Implementation: `BottomNav.tsx`, `NavSettings.tsx`.
 - **Home**: "what's next, and what's changed". Rows: Continue · New for you · This week · Ready to start · Deals.
   Browsing, filtering and sorting live on the **Library** page (see docs/FILTERING.md). Full design: docs/HOME.md
   (proposal; today's Home still has the older rows).

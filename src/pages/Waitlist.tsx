@@ -325,7 +325,8 @@ export function Waitlist() {
   const { items, isLoading } = useItems()
   const [params, setParams] = useSearchParams()
   const [showFeed, setShowFeed] = useState(false)
-  const view = params.get('view') === 'calendar' ? 'calendar' : 'list'
+  // ?view=month (older links used ?view=calendar)
+  const view = params.get('view') === 'month' || params.get('view') === 'calendar' ? 'month' : 'list'
   const typeParam = params.get('type')
   const type = TYPES.some((t) => t.value === typeParam) ? (typeParam as MediaType) : null
   const month = /^\d{4}-\d{2}$/.test(params.get('month') ?? '') ? params.get('month')! : todayIso().slice(0, 7)
@@ -347,7 +348,7 @@ export function Waitlist() {
 
   return (
     <div>
-      <PageHeader title="Waitlist" meta={isLoading ? undefined : `${entries.length} upcoming`}>
+      <PageHeader title="Calendar" meta={isLoading ? undefined : `${entries.length} upcoming`}>
         <button
           type="button"
           onClick={() => setShowFeed((s) => !s)}
@@ -375,13 +376,13 @@ export function Waitlist() {
           value={view}
           options={[
             { value: 'list', label: 'List', icon: List },
-            { value: 'calendar', label: 'Calendar', icon: CalendarDays },
+            { value: 'month', label: 'Month', icon: CalendarDays },
           ]}
-          onChange={(v) => set('view', v === 'list' ? null : v)}
+          onChange={(v) => set('view', v === 'list' ? null : 'month')}
         />
       </div>
 
-      {isLoading ? null : view === 'calendar' ? (
+      {isLoading ? null : view === 'month' ? (
         <CalendarView entries={entries} month={month} setMonth={(ym) => set('month', ym === todayIso().slice(0, 7) ? null : ym)} />
       ) : entries.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">

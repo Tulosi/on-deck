@@ -1,18 +1,23 @@
-// Pre-release detection for movies and TV, from the TMDB data already stored on each title.
+// Pre-release detection for movies, TV and games, from the data already stored on each title.
 import type { Title } from '../types'
-
-/** TMDB statuses that mean "not out yet". */
-const UNRELEASED_STATUS = new Set(['Rumored', 'Planned', 'In Production', 'Post Production', 'Pilot', 'Upcoming'])
+import { UNRELEASED_STATUS, type Precision } from '../../supabase/functions/_shared/releases.ts'
 
 export interface ReleaseInfo {
   preRelease: boolean
-  /** ISO date (YYYY-MM-DD) when known. */
+  /** ISO date (YYYY-MM-DD) when known. For fuzzy dates (see precision) it's only a stand-in. */
   date?: string
-  /** Whole days from today until the date (0 = today). */
+  /** Whole days from today until the date (0 = today). Only for exact dates. */
   daysUntil?: number
+  precision?: Precision
+  /** "March 2027", "Q2 2027", "2027" for fuzzy dates. */
+  fuzzyLabel?: string
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10)
+/** Today in the viewer's time zone (YYYY-MM-DD). */
+export const todayIso = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function daysBetween(fromIso: string, toIso: string): number {
   const ms = Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)
@@ -20,19 +25,26 @@ function daysBetween(fromIso: string, toIso: string): number {
 }
 
 /**
- * A movie or show is pre-release when its release / first-air date is in the future, or when it has no
- * date yet and TMDB / IGDB lists it as not released (Planned, In Production, Upcoming …). Books: not yet handled.
+ * A title is pre-release when its release / first-air date is in the future, or when it has no date yet (or
+ * only a fuzzy one, like "2027") and TMDB / IGDB lists it as not released. Books: not yet handled.
  */
 export function releaseInfo(title: Title): ReleaseInfo {
   if (title.mediaType === 'book') return { preRelease: false } // books: with Hardcover
   const date = title.releaseDate
   const today = todayIso()
-  if (date) {
-    if (date > today) return { preRelease: true, date, daysUntil: daysBetween(today, date) }
-    return { preRelease: false, date }
-  }
   const status = title.details?.status
-  return { preRelease: typeof status === 'string' && UNRELEASED_STATUS.has(status) }
+  const unreleased = typeof status === 'string' && UNRELEASED_STATUS.has(status)
+  const p = title.details?.release_precision
+  const precision: Precision = typeof p === 'string' ? (p as Precision) : 'day'
+  if (date && precision !== 'day') {
+    const label = typeof title.details?.release_label === 'string' ? title.details.release_label : undefined
+    return { preRelease: date > today || unreleased, date, precision, fuzzyLabel: label }
+  }
+  if (date) {
+    if (date > today) return { preRelease: true, date, daysUntil: daysBetween(today, date), precision: 'day' }
+    return { preRelease: false, date, precision: 'day' }
+  }
+  return { preRelease: unreleased, precision: 'tbd' }
 }
 
 const monthDay = (iso: string) =>
@@ -40,6 +52,7 @@ const monthDay = (iso: string) =>
 
 /** Short poster label: "TODAY", "TOMORROW", "IN 12 DAYS", "DEC 18", "MAR 14 '27", or "TBA". */
 export function releaseChip(info: ReleaseInfo): string {
+  if (info.fuzzyLabel) return info.fuzzyLabel.toUpperCase()
   if (!info.date || info.daysUntil == null) return 'TBA'
   if (info.daysUntil === 0) return 'TODAY'
   if (info.daysUntil === 1) return 'TOMORROW'
@@ -50,6 +63,7 @@ export function releaseChip(info: ReleaseInfo): string {
 
 /** Long title-page label: "Dec 18, 2026 · in 28 days", or "Release date TBA". */
 export function releaseLong(info: ReleaseInfo): string {
+  if (info.fuzzyLabel) return `${info.fuzzyLabel} · exact date not announced`
   if (!info.date || info.daysUntil == null) return 'Release date TBA'
   const full = new Date(`${info.date}T00:00:00`).toLocaleDateString(undefined, {
     month: 'short',

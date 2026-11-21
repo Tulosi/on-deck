@@ -81,12 +81,37 @@ async function steamDeck(steamAppId: string) {
   return DECK[d?.results?.resolved_category as number] ?? 'unknown'
 }
 
+// ─── Release date precision ────────────────────────────────────────────────
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * From IGDB's human-readable release date ("Mar 14, 2027", "Mar 2027", "Q2 2027", "2027", "TBD") for the PC
+ * release (earliest one otherwise) → precision + a display label ("March 2027").
+ */
+function releasePrecisionOf(g: Json): { precision: 'day' | 'month' | 'quarter' | 'year' | 'tbd'; label: string | null } {
+  const dates = ((g.release_dates ?? []) as Json[]).filter((r) => typeof r.human === 'string')
+  const pc = dates.filter((r) => r.platform === PC)
+  const pick = (pc.length ? pc : dates).sort((a, b) => (a.date ?? Infinity) - (b.date ?? Infinity))[0]
+  if (!pick) return { precision: g.first_release_date ? 'day' : 'tbd', label: null }
+  const h = String(pick.human).trim()
+  if (/^tb[ad]$/i.test(h)) return { precision: 'tbd', label: 'TBA' }
+  if (/^Q[1-4] \d{4}$/i.test(h)) return { precision: 'quarter', label: h.toUpperCase() }
+  if (/^\d{4}$/.test(h)) return { precision: 'year', label: h }
+  const m = h.match(/^([A-Za-z]{3,9}) (\d{4})$/)
+  if (m) {
+    const month = MONTHS.find((x) => x.toLowerCase().startsWith(m[1].slice(0, 3).toLowerCase()))
+    return { precision: 'month', label: `${month ?? m[1]} ${m[2]}` }
+  }
+  return { precision: 'day', label: null }
+}
+
 // ─── Add / refresh ─────────────────────────────────────────────────────────
 
 async function add(igdbId: number) {
   const [g] = await igdb(
     'games',
-    `fields name,summary,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,themes.name,game_modes.name,player_perspectives.name,multiplayer_modes.*,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,external_games.uid,external_games.external_game_source,url; where id = ${igdbId};`,
+    `fields name,summary,first_release_date,release_dates.human,release_dates.date,release_dates.platform,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,themes.name,game_modes.name,player_perspectives.name,multiplayer_modes.*,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,external_games.uid,external_games.external_game_source,url; where id = ${igdbId};`,
   )
   if (!g) throw new HttpError(404, 'igdb_not_found')
 
@@ -112,6 +137,7 @@ async function add(igdbId: number) {
   }
 
   const releaseIso = g.first_release_date ? new Date(g.first_release_date * 1000).toISOString().slice(0, 10) : null
+  const { precision: releasePrecision, label: releaseLabel } = releasePrecisionOf(g)
   const companies = (g.involved_companies ?? []) as Json[]
   const art = (g.artworks?.[0] ?? g.screenshots?.[0])?.image_id
   const igdbGenres = ((g.genres ?? []) as Json[]).map((x) => x.name as string)
@@ -150,7 +176,11 @@ async function add(igdbId: number) {
       steam_url: steamAppId ? `https://store.steampowered.com/app/${steamAppId}/` : null,
       igdb_url: g.url ?? null,
       // Unreleased per IGDB → treat like a pre-release title.
-      status: releaseIso && releaseIso > nowIso.slice(0, 10) ? 'Upcoming' : 'Released',
+      status:
+        (releaseIso && releaseIso > nowIso.slice(0, 10)) || (!releaseIso && releasePrecision === 'tbd') ? 'Upcoming' : 'Released',
+      // How exact the release date is (IGDB stores "2027" as Dec 31, 2027): day | month | quarter | year | tbd.
+      release_precision: releasePrecision,
+      release_label: releasePrecision === 'day' ? null : releaseLabel,
     },
     release_date: releaseIso,
     refreshed_at: nowIso,

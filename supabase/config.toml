@@ -453,3 +453,7 @@ verify_jwt = false
 
 [functions.prices]
 verify_jwt = false
+
+# Public .ics feed: no session, the secret token in the URL identifies the user.
+[functions.calendar]
+verify_jwt = false

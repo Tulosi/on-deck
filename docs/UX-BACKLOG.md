@@ -16,3 +16,11 @@ Known rough edges to pick up in the full UI/UX/user-flow pass. Add to it as thin
 ## Toolbar on phones
 - At 375px the Sort menu sits tight against the labels switch. Consider moving Sort/Group into the Filters
   panel on phones, or letting the toolbar scroll horizontally.
+
+## Phone tab bar (`src/components/Sidebar.tsx` → `BottomNav`)
+- **Revisit when Books is built.** The bar holds six tabs at phone width: Home, Library, Movies, TV, Games and
+  Waitlist. Books was dropped from it when Waitlist was added; it's reached via Library → Books for now.
+  Collections is also sidebar-only. Options:
+  - Fold the type tabs into Library on phones, giving Home · Library · Waitlist · Search.
+  - Move Waitlist under Home on phones.
+  - Add a "More" tab for Books, Collections and Settings.

@@ -71,6 +71,7 @@ export function Home() {
       <PosterRow
         title="This week"
         hint="Out in the next 7 days"
+        href="/waitlist?view=calendar"
         items={week.map((u) => u.item)}
         subline={(item) => {
           const u = weekById.get(item.id)

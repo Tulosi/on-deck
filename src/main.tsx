@@ -13,6 +13,7 @@ import { Login } from './pages/Login'
 import { ResetPassword } from './pages/ResetPassword'
 import { Collections, NotFound, SharedList } from './pages/Placeholders'
 import { Settings } from './pages/Settings'
+import { Waitlist } from './pages/Waitlist'
 import { AuthProvider } from './lib/auth'
 
 const queryClient = new QueryClient({
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="games" element={<Navigate to="/library?type=game" replace />} />
             <Route path="books" element={<Navigate to="/library?type=book" replace />} />
             <Route path="title/:id" element={<TitleDetail />} />
+            <Route path="waitlist" element={<Waitlist />} />
             <Route path="collections" element={<Collections />} />
             <Route path="settings" element={<Settings />} />
             <Route path="login" element={<Login />} />

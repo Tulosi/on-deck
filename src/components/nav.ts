@@ -1,4 +1,4 @@
-import { BookOpen, Film, Gamepad2, House, Layers, LibraryBig, Tv, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarClock, Film, Gamepad2, House, Layers, LibraryBig, Tv, type LucideIcon } from 'lucide-react'
 import type { MediaType } from '../types'
 
 export interface NavItem {
@@ -19,5 +19,6 @@ export const primaryNav: NavItem[] = [
   { libraryType: 'tv', label: 'TV Shows', short: 'TV', icon: Tv },
   { libraryType: 'game', label: 'Games', icon: Gamepad2 },
   { libraryType: 'book', label: 'Books', icon: BookOpen },
+  { to: '/waitlist', label: 'Waitlist', icon: CalendarClock },
   { to: '/collections', label: 'Collections', icon: Layers },
 ]

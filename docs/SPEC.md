@@ -204,17 +204,27 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
-### Waitlist & calendar (planned — not built)
-- **Waitlist page:** every pre-release title on your deck (movies, shows, games, and new seasons of shows you
-  follow), soonest first, with release dates prominent and TBA titles last.
-- **Calendar view:** a month grid of upcoming releases, premieres and new episodes. Click a day to see what's
-  out.
-- **Calendar feed:** a private subscription link (`.ics`, iCalendar) served by an Edge Function. Each user gets a
-  secret token URL they can revoke and regenerate. Works with Google Calendar ("From URL"), Apple Calendar and
-  Outlook. Events: releases, premieres, new episodes (all-day events; title + type in the summary, link back to
-  On Deck).
-  - Caveat: Google Calendar refreshes subscribed feeds on its own schedule (typically every several hours to
-    a day), so changes show up with a delay.
+### Waitlist & calendar
+Rules live in `supabase/functions/_shared/releases.ts`, shared by the app and the feed so they always agree.
+Dropped titles are left out everywhere.
+- **Waitlist page** (`/waitlist`, in the nav): pre-release movies, games and shows, plus new seasons of shows
+  on your deck. Sorted soonest first in sections: *Next 7 days*, one per month, *Date not final* (quarter or
+  year only), then *Date TBA*. Each row shows the date and a countdown ("In 12 days"). You can filter by type.
+- **Calendar view** (`/waitlist?view=calendar`): a month grid that also includes the next announced episode
+  of shows that are airing. On a phone, days show dots and tapping a day lists what's out below the grid. Only
+  exact dates go on the calendar; the rest appear only in the list.
+- **Calendar feed:** a private `.ics` subscription link, served by the `calendar` Edge Function. Tokens are
+  stored in `calendar_feeds`: 64 random hex characters per user, and "New link" revokes the old one.
+  - Works with Google Calendar ("Add to Google Calendar" opens its subscribe screen), Apple Calendar and
+    Outlook (via a `webcal://` link).
+  - Events are all-day, for exact dates only: releases, premieres, new seasons and the next episode. Each
+    show has one "next episode" event that moves forward as episodes air. Releases from the last 60 days are
+    kept so they don't vanish.
+  - Google refreshes subscribed calendars on its own schedule, which can take up to a day.
+  - Found on the Waitlist page ("Add to your calendar") and in Settings.
+- **Games' fuzzy dates:** IGDB's release date text ("Q2 2027", "2027", "TBD") is stored as
+  `metadata.release_precision` / `release_label`. Without it, IGDB's stand-in date (e.g. Dec 31) would look
+  exact.
 
 ### Release data
 

@@ -129,7 +129,8 @@ function toUserItem(row: ItemRow): UserItem {
       },
       needsScores:
         (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t))) ||
-        (t.source === 'igdb' && scoresNeedRefresh(t.ratings)),
+        // Games saved before release-date precision was stored are refreshed once to pick it up.
+        (t.source === 'igdb' && (scoresNeedRefresh(t.ratings) || t.metadata.release_precision === undefined)),
     },
   }
 }

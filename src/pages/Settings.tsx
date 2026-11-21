@@ -14,6 +14,7 @@ import {
   useServiceList,
   useUpdateProfile,
 } from '../lib/integrations'
+import { CalendarFeed } from '../components/CalendarFeed'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
 // Regions offered for streaming availability (and, later, game prices).
@@ -433,6 +434,9 @@ export function Settings() {
           <PlexSection />
           <SteamSection />
           <StreamingSection />
+          <section id="calendar" className="rounded-xl border border-line bg-surface p-5">
+            <CalendarFeed />
+          </section>
           <Section title="Sharing">
             <ComingSoon>Create and revoke read-only share links for your library, a category or a collection.</ComingSoon>
           </Section>

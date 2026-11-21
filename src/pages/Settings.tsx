@@ -16,6 +16,7 @@ import {
   useUpdateProfile,
 } from '../lib/integrations'
 import { CalendarFeed } from '../components/CalendarFeed'
+import { usePush } from '../lib/push'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
 // Regions offered for streaming availability (and, later, game prices).
@@ -492,6 +493,67 @@ function DealThreshold({ value, disabled, onSave }: { value: number; disabled: b
 
 type AlertSettings = { price_low?: boolean; deep_discount?: boolean; deep_discount_pct?: number }
 
+function PushControls() {
+  const push = usePush()
+  const [tested, setTested] = useState<string | null>(null)
+  const others = push.devices.filter((d) => d.endpoint !== push.endpoint)
+  return (
+    <div className="space-y-3 border-t border-line pt-4">
+      <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Push notifications</p>
+      {push.support === 'ios-needs-home-screen' ? (
+        <p className="text-sm text-muted">
+          On iPhone and iPad, push works from the home-screen app: in Safari tap Share → <b>Add to Home Screen</b>, open
+          On Deck from there, then turn this on. (iOS 16.4 or later.)
+        </p>
+      ) : push.support === 'unsupported' ? (
+        <p className="text-sm text-muted">This browser doesn’t support push notifications. Alerts still appear under the bell.</p>
+      ) : (
+        <>
+          <Toggle
+            checked={push.enabled}
+            onChange={(v) => void (v ? push.enable() : push.disable())}
+            label="Push to this device"
+            hint="Alerts also pop up on this phone or computer, even when On Deck is closed."
+          />
+          {push.enabled && (
+            <div className="ml-7 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className={buttonClass}
+                onClick={async () => {
+                  setTested(null)
+                  const r = await push.test()
+                  if (r) setTested(r.sent > 0 ? `Sent to ${r.sent} device${r.sent === 1 ? '' : 's'}.` : 'No device accepted it.')
+                }}
+              >
+                Send a test
+              </button>
+              {tested && <span className="text-xs text-muted">{tested}</span>}
+            </div>
+          )}
+          {push.busy && <Loader2 className="ml-7 size-4 animate-spin text-muted" />}
+        </>
+      )}
+      {others.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted">Also receiving push:</p>
+          <ul className="space-y-1">
+            {others.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-fg">{d.device ?? 'Device'}</span>
+                <button type="button" onClick={() => void push.removeDevice(d.id)} className="text-xs text-muted hover:text-bad">
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {push.error && <p className="text-sm text-bad">{push.error}</p>}
+    </div>
+  )
+}
+
 function NotificationsSection() {
   const profile = useProfile()
   const update = useUpdateProfile()
@@ -541,6 +603,7 @@ function NotificationsSection() {
             onSave={saveDealPct}
           />
           {error && <p className="text-sm text-bad">{error}</p>}
+          <PushControls />
         </div>
       )}
     </Section>

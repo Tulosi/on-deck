@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg'],
+        // Web Push: the generated service worker also loads the push handler (public/push-sw.js).
+        workbox: { importScripts: ['push-sw.js'] },
         manifest: {
           name: 'On Deck',
           short_name: 'On Deck',

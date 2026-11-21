@@ -3,7 +3,7 @@
 // 1. Refreshes titles that can still change (upcoming releases, airing / returning shows, Early Access games)
 //    by re-running each source's "add" (tmdb / igdb / hardcover). It compares release dates before and after.
 // 2. For each user: refreshes availability (Plex + streaming) and game prices, via the same functions the app uses.
-// 3. Writes inbox notifications (deduplicated per user by `dedup_key`):
+// 3. Writes inbox notifications (deduplicated per user by `dedup_key`) and pushes new ones to the user's devices:
 //    release_day · week_before · date_changed · announced · available · price_low · price_deal
 // Rules: docs/SPEC.md → Notifications. Release rules: _shared/releases.ts; price rules: _shared/prices.ts.
 import { admin, HttpError, isJob, json, secret, serve } from '../_shared/http.ts'
@@ -16,6 +16,7 @@ import {
   type ReleaseInput,
 } from '../_shared/releases.ts'
 import { cheapest, gamePriceFromRow, type PriceRow } from '../_shared/prices.ts'
+import { pushToUser, type PushMessage } from '../_shared/push.ts'
 
 // deno-lint-ignore no-explicit-any
 type Json = Record<string, any>
@@ -201,6 +202,7 @@ serve(async (req) => {
   const { data: profiles } = await db.from('profiles').select('user_id, timezone, country_code, daily_checked_at, alert_settings').in('user_id', users)
   const profileOf = new Map(((profiles ?? []) as Json[]).map((p) => [p.user_id as string, p]))
   let alertsWritten = 0
+  let pushesSent = 0
   let usersDone = 0
 
   for (const userId of users) {
@@ -396,9 +398,25 @@ serve(async (req) => {
       const { data: inserted, error } = await db
         .from('notifications')
         .upsert(alerts, { onConflict: 'user_id,dedup_key', ignoreDuplicates: true })
-        .select('id')
+        .select('id, title_id, kind, message, read_at')
       if (error) console.error('notify insert', error)
       alertsWritten += inserted?.length ?? 0
+
+      // Push the new (unread) ones to the user's devices: up to 3 individually, then one summary.
+      const fresh = ((inserted ?? []) as Json[]).filter((n) => !n.read_at)
+      if (fresh.length && elapsed() < BUDGET_MS + 20_000) {
+        const messages: PushMessage[] = fresh.slice(0, 3).map((n) => ({
+          title: 'On Deck',
+          body: n.message,
+          url: n.title_id ? `title/${n.title_id}` : '',
+          tag: n.id,
+        }))
+        if (fresh.length > 3) {
+          messages.push({ title: 'On Deck', body: `And ${fresh.length - 3} more — open the bell to see them all.`, url: '', tag: 'on-deck-more' })
+        }
+        const r = await pushToUser(db, userId, messages)
+        pushesSent += r.sent
+      }
     }
     await db.from('profiles').update({ daily_checked_at: nowIso }).eq('user_id', userId)
     usersDone++
@@ -411,6 +429,7 @@ serve(async (req) => {
     users: users.length,
     usersDone,
     alertsWritten,
+    pushesSent,
     seconds: Math.round(elapsed() / 1000),
   })
 })

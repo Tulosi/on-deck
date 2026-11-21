@@ -52,6 +52,13 @@ If the key ever leaks, delete it in Supabase (step 1's page) and repeat steps 1�
   cd ~/Desktop/"On Deck" && K=$(openssl rand -hex 32) && npx supabase secrets set JOB_SECRET="$K" && printf '%s' "$K" | gh secret set JOB_SECRET; unset K
   ```
 
+## Web Push keys (VAPID) ✅
+- Supabase secrets `VAPID_PRIVATE_JWK` (private key, JWK), `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT`
+  (`https://tulosi.github.io/on-deck/`). The public key is also in `src/lib/push.ts`, which is fine since
+  it's public by design.
+- Rotating the keys invalidates every device's subscription: users would need to turn push on again. If you
+  do, update both secrets and `VAPID_PUBLIC_KEY` in `src/lib/push.ts` together.
+
 ## 1. GitHub ✅
 - [x] Repository: **https://github.com/Tulosi/on-deck** (public, required for free GitHub Pages).
 - [x] Settings → Pages → Source: **GitHub Actions**.

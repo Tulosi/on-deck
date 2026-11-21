@@ -271,7 +271,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - Home: a **Coming Soon** row, sorted by soonest release with exact dates first.
 
 ### Notifications
-**Built:** the daily job, the in-app inbox and "Notify me". **Not built yet:** Web Push.
+**Built:** the daily job, the in-app inbox, "Notify me" and Web Push.
 
 - **Daily job:** the `daily` Edge Function runs every 3 hours from `.github/workflows/daily.yml`. It's only
   callable with the private `JOB_SECRET`. Each run does what fits in about 2 minutes; the next run picks up
@@ -304,9 +304,16 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - **App:** a bell in the top bar shows the unread count and the inbox. Tapping an alert opens the title and
   marks it read; "Mark all read" clears the count. Title pages have a **Notifications on/off** switch
   (`user_items.notify`, default on).
-- **Web Push** (next): pushes to phone or desktop through the installed PWA, using VAPID keys stored as
-  server secrets; opt-in per device. On iPhone it only works when the app is added to the home screen
-  (iOS 16.4+). No email.
+- **Web Push:** Settings → Notifications → **Push to this device** subscribes this browser (one row per
+  device in `push_subscriptions`) and offers **Send a test** (the `push` function).
+  - The daily job pushes each run's new alerts: up to 3 individually, then one "And N more" summary. Tapping
+    a push opens the title.
+  - Sending is implemented directly on WebCrypto in `_shared/webpush.ts` (RFC 8291 aes128gcm encryption, checked
+    against the RFC's test vector, plus RFC 8292 VAPID). Subscriptions the push service reports as gone (404/410)
+    are deleted.
+  - The handler is `public/push-sw.js`, loaded into the generated service worker via `workbox.importScripts`.
+  - iPhone/iPad: only from the home-screen app (Share → Add to Home Screen; iOS 16.4+); Settings explains this.
+    No email.
 
 ### Schema additions (future migration)
 - `titles`: `release_date`, `release_precision`, `release_status` (`announced | early_access | released | cancelled`),

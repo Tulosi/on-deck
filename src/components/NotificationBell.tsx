@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { Bell, CalendarClock, CalendarDays, CalendarPlus, PlayCircle, Tag } from 'lucide-react'
+import { Bell, CalendarClock, CalendarDays, CalendarPlus, PercentCircle, PlayCircle, Tag } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useMarkRead, useNotifications, type Notification } from '../lib/notifications'
 
@@ -12,6 +12,7 @@ const ICON: Record<string, LucideIcon> = {
   announced: CalendarPlus,
   available: PlayCircle,
   price_low: Tag,
+  price_deal: PercentCircle,
 }
 
 function ago(iso: string): string {
@@ -104,7 +105,7 @@ export function NotificationBell() {
           {list.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted">
               Nothing yet. You’ll hear here when something in your library comes out, gets a date, lands on your
-              services or hits its lowest price.
+              services, or a game you want goes on a big sale.
             </p>
           ) : (
             <ul className="max-h-[60vh] divide-y divide-line overflow-y-auto">

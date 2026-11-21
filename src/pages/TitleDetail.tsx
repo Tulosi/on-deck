@@ -165,7 +165,7 @@ function NotifyToggle({ item }: { item: UserItem }) {
         <span className="block text-sm text-fg">{on ? 'Notifications on' : 'Notifications off'}</span>
         <span className="block text-xs text-muted">
           {item.title.mediaType === 'game'
-            ? 'Release dates, Early Access and 1.0, and lowest-ever prices.'
+            ? 'Release dates, Early Access and 1.0, lowest-ever prices and deep discounts.'
             : item.title.mediaType === 'book'
               ? 'Publication date and date changes.'
               : 'Release dates, new seasons, and when it lands on Plex or your services.'}

@@ -4,7 +4,7 @@
 //    by re-running each source's "add" (tmdb / igdb / hardcover). It compares release dates before and after.
 // 2. For each user: refreshes availability (Plex + streaming) and game prices, via the same functions the app uses.
 // 3. Writes inbox notifications (deduplicated per user by `dedup_key`):
-//    release_day · week_before · date_changed · announced · available · price_low
+//    release_day · week_before · date_changed · announced · available · price_low · price_deal
 // Rules: docs/SPEC.md → Notifications. Release rules: _shared/releases.ts; price rules: _shared/prices.ts.
 import { admin, HttpError, isJob, json, secret, serve } from '../_shared/http.ts'
 import {
@@ -25,6 +25,10 @@ const TITLE_SHARE = 0.45 // share of the budget for title refreshes
 const TITLE_STALE_MS = 20 * 60 * 60 * 1000
 const SOURCE_FN: Record<string, string> = { tmdb: 'tmdb', igdb: 'igdb', hardcover: 'hardcover' }
 const LIVE_TV = new Set(['Returning Series', 'In Production', 'Planned', 'Pilot'])
+/** "Deep discount" = at least this % off Steam's full price, unless the user set their own (10–90). */
+const DEEP_DISCOUNT_PCT = 30
+/** A deep-discount alert repeats only for a lower price, or a new sale after this long. */
+const DEAL_QUIET_MS = 21 * 24 * 60 * 60 * 1000
 
 interface TitleRow {
   id: string
@@ -194,7 +198,7 @@ serve(async (req) => {
 
   // ── 2 + 3. Per user: refresh availability and prices, then write alerts ──
   const users = [...new Set(items.map((i) => i.user_id))]
-  const { data: profiles } = await db.from('profiles').select('user_id, timezone, country_code, daily_checked_at').in('user_id', users)
+  const { data: profiles } = await db.from('profiles').select('user_id, timezone, country_code, daily_checked_at, alert_settings').in('user_id', users)
   const profileOf = new Map(((profiles ?? []) as Json[]).map((p) => [p.user_id as string, p]))
   let alertsWritten = 0
   let usersDone = 0
@@ -304,32 +308,78 @@ serve(async (req) => {
       }
     }
 
-    // Games you want, at their lowest-ever price.
+    // Games you want: lowest-ever price, and deep discounts (each can be switched off in Settings).
+    const settings = (profile.alert_settings ?? {}) as {
+      price_low?: boolean
+      deep_discount?: boolean
+      deep_discount_pct?: number
+    }
+    const dealPct =
+      typeof settings.deep_discount_pct === 'number' && settings.deep_discount_pct >= 10 && settings.deep_discount_pct <= 90
+        ? settings.deep_discount_pct
+        : DEEP_DISCOUNT_PCT
+    const wantLows = settings.price_low !== false
+    const wantDeals = settings.deep_discount !== false
     const wantGames = mine.filter(
       (i) => !i.owned && (i.progress === 'wanted' || i.progress === 'in_progress') && titles.get(i.title_id)?.media_type === 'game',
     )
-    if (wantGames.length) {
+    if (wantGames.length && (wantLows || wantDeals)) {
       const { data: prices } = await db
         .from('game_prices')
         .select('*')
         .eq('country_code', String(profile.country_code ?? 'US').toUpperCase())
         .in('title_id', wantGames.map((i) => i.title_id))
+      // Earlier deep-discount alerts, to alert once per sale.
+      const { data: pastDeals } = wantDeals
+        ? await db
+            .from('notifications')
+            .select('title_id, payload, created_at')
+            .eq('user_id', userId)
+            .eq('kind', 'price_deal')
+            .order('created_at', { ascending: false })
+            .limit(500)
+        : { data: [] }
+      const lastDeal = new Map<string, { price: number; at: number }>()
+      for (const d of (pastDeals ?? []) as Json[]) {
+        if (!lastDeal.has(d.title_id)) lastDeal.set(d.title_id, { price: Number(d.payload?.price), at: Date.parse(d.created_at) })
+      }
+      // The first time deep discounts run for a user, sales already on are recorded silently.
+      const firstDeals = wantDeals && (pastDeals ?? []).length === 0
+
       for (const row of (prices ?? []) as PriceRow[]) {
         const p = gamePriceFromRow(row)
         const best = p.isFree ? null : cheapest(p)
-        if (!best?.atLow) continue
         const t = titles.get(row.title_id)
-        if (!t) continue
+        if (!best || !t) continue
         const amount = new Intl.NumberFormat('en-US', { style: 'currency', currency: p.currency || 'USD' }).format(best.price)
         const where = best.kind === 'steam' ? 'Steam' : best.kind === 'keyshop' ? 'key shops' : best.shop
-        alerts.push({
-          user_id: userId,
-          title_id: t.id,
-          kind: 'price_low',
-          message: `Lowest price ever: ${t.title} — ${amount} on ${where}${best.discountPct ? ` (-${best.discountPct}%)` : ''}`,
-          payload: { price: best.price, currency: p.currency, kind: best.kind, url: best.url },
-          dedup_key: `low:${t.id}:${best.price}`,
-        })
+        const off = best.discountPct ? ` (-${best.discountPct}%)` : ''
+        const payload = { price: best.price, currency: p.currency, kind: best.kind, url: best.url, discountPct: best.discountPct }
+        if (wantLows && best.atLow) {
+          alerts.push({
+            user_id: userId,
+            title_id: t.id,
+            kind: 'price_low',
+            message: `Lowest price ever: ${t.title} — ${amount} on ${where}${off}`,
+            payload,
+            dedup_key: `low:${t.id}:${best.price}`,
+          })
+          continue // a lowest-ever alert covers the discount too
+        }
+        if (wantDeals && (best.discountPct ?? 0) >= dealPct) {
+          const last = lastDeal.get(t.id)
+          const fresh = !last || best.price < last.price || Date.now() - last.at > DEAL_QUIET_MS
+          if (!fresh) continue
+          alerts.push({
+            user_id: userId,
+            title_id: t.id,
+            kind: 'price_deal',
+            message: `${best.discountPct}% off: ${t.title} — ${amount} on ${where}`,
+            payload: firstDeals ? { ...payload, seed: true } : payload,
+            dedup_key: `deal:${t.id}:${best.price}:${new Date().toISOString().slice(0, 10)}`,
+            ...(firstDeals ? { read_at: new Date().toISOString() } : {}),
+          })
+        }
       }
     }
 
@@ -337,7 +387,7 @@ serve(async (req) => {
     // flood the inbox with everything that's already true. Releases still notify normally.
     const nowIso = new Date().toISOString()
     for (const a of alerts) {
-      if (firstRun && (a.kind === 'available' || a.kind === 'price_low')) {
+      if (firstRun && (a.kind === 'available' || a.kind === 'price_low' || a.kind === 'price_deal')) {
         a.read_at = nowIso
         a.payload = { ...a.payload, seed: true }
       }

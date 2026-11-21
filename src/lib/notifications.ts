@@ -7,7 +7,7 @@ import { supabase } from './supabase'
 export interface Notification {
   id: string
   titleId: string | null
-  kind: 'release_day' | 'week_before' | 'date_changed' | 'announced' | 'available' | 'price_low' | string
+  kind: 'release_day' | 'week_before' | 'date_changed' | 'announced' | 'available' | 'price_low' | 'price_deal' | string
   message: string
   createdAt: string
   readAt: string | null

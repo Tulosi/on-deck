@@ -291,10 +291,15 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   | `announced` | a new event appears (new season, 1.0 date) | "Low Orbit: Season 3 premiere announced — Dec 2, 2026" |
   | `available` | a Wanted / In Progress movie or show became available on Plex or your services since the last run | "Now available on Plex: …" |
   | `price_low` | a Wanted, unowned game's cheapest shown price is at its lowest ever | "Lowest price ever: … — CA$19.49 on Steam (-50%)" |
+  | `price_deal` | the same game is at least the user's threshold off Steam's full price (default 30%, slider 10–90% in Settings) (and not at its lowest ever, which alerts instead). Once per sale: again only for a lower price or after 21 days | "51% off: … — CA$54.24 on AllYouPlay" |
 - **Dedup:** `dedup_key` is unique per user. Release-day and one-week alerts include the date, so a delay
   re-arms them. A price alert includes the price, so only a new low alerts again.
+- **Settings → Notifications:** switches for "Lowest price ever" and "Deep discounts", plus a
+  % off slider for deep discounts (`profiles.alert_settings`: `price_low`, `deep_discount`, `deep_discount_pct`;
+  missing = on / 30%). Release and availability alerts are always on; per title, use the
+  title page switch.
 - **First run** for a user: availability and price alerts that are already true are stored as already seen
-  (`payload.seed`, hidden from the inbox), so switching this on doesn't flood the inbox.
+  (`payload.seed`, hidden from the inbox), so switching this on doesn't flood the inbox. Deep discounts get the same treatment the first time they're checked.
 - **Time zone:** the app saves the browser's time zone to `profiles.timezone`, so "today" is your day.
 - **App:** a bell in the top bar shows the unread count and the inbox. Tapping an alert opens the title and
   marks it read; "Mark all read" clears the count. Title pages have a **Notifications on/off** switch

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import clsx from 'clsx'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2 } from 'lucide-react'
 import { ComingSoon, PageHeader } from '../components/PageHeader'
@@ -415,6 +416,137 @@ function PlexSection() {
   )
 }
 
+function Toggle({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  hint: string
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 size-4 shrink-0 accent-[var(--color-accent)]"
+      />
+      <span>
+        <span className="block text-sm text-fg">{label}</span>
+        <span className="block text-xs text-muted">{hint}</span>
+      </span>
+    </label>
+  )
+}
+
+const DEFAULT_DEAL_PCT = 30
+
+/** % off slider for deep-discount alerts. Saves shortly after you stop dragging. */
+function DealThreshold({ value, disabled, onSave }: { value: number; disabled: boolean; onSave: (pct: number) => void }) {
+  const [pct, setPct] = useState(value)
+  const saved = useRef(value)
+  useEffect(() => {
+    setPct(value)
+    saved.current = value
+  }, [value])
+  useEffect(() => {
+    if (pct === saved.current) return
+    const t = setTimeout(() => {
+      saved.current = pct
+      onSave(pct)
+    }, 600)
+    return () => clearTimeout(t)
+  }, [pct, onSave])
+  return (
+    <div className={clsx('ml-7 space-y-1.5', disabled && 'opacity-50')}>
+      <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor="deal-threshold" className="text-xs text-muted">
+          Alert at
+        </label>
+        <span className="font-mono text-sm font-semibold text-fg">{pct}% off or more</span>
+      </div>
+      <input
+        id="deal-threshold"
+        type="range"
+        min={10}
+        max={90}
+        step={5}
+        value={pct}
+        disabled={disabled}
+        onChange={(e) => setPct(Number(e.target.value))}
+        aria-valuetext={`${pct}% off or more`}
+        className="w-full max-w-sm accent-[var(--color-accent)]"
+      />
+      <div className="flex max-w-sm justify-between font-mono text-[10px] text-faint">
+        <span>10%</span>
+        <span>50%</span>
+        <span>90%</span>
+      </div>
+    </div>
+  )
+}
+
+type AlertSettings = { price_low?: boolean; deep_discount?: boolean; deep_discount_pct?: number }
+
+function NotificationsSection() {
+  const profile = useProfile()
+  const update = useUpdateProfile()
+  const [error, setError] = useState<string | null>(null)
+  const settings: AlertSettings = profile.data?.alert_settings ?? {}
+  const latest = useRef(settings)
+  latest.current = settings
+  const set = async (patch: AlertSettings) => {
+    setError(null)
+    try {
+      await update({ alert_settings: { ...latest.current, ...patch } })
+    } catch (err) {
+      setError(friendlyError(err))
+    }
+  }
+  // Stable, so the slider's save timer isn't reset on every render.
+  const saveDealPct = useCallback((pct: number) => void set({ deep_discount_pct: pct }), [])
+  return (
+    <Section
+      title="Notifications"
+      description="Alerts appear under the bell in the top bar, checked every few hours. Turn them off for a single title on its page."
+    >
+      {profile.isLoading ? (
+        <Loader2 className="size-4 animate-spin text-muted" />
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted">
+            Always on: release days, one week before, date changes, new seasons, and when something you want lands
+            on Plex or your services.
+          </p>
+          <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Game prices (games you want and don’t own)</p>
+          <Toggle
+            checked={settings.price_low !== false}
+            onChange={(v) => set({ price_low: v })}
+            label="Lowest price ever"
+            hint="When a game hits its all-time low."
+          />
+          <Toggle
+            checked={settings.deep_discount !== false}
+            onChange={(v) => set({ deep_discount: v })}
+            label="Deep discounts"
+            hint="When a game is on a big sale, measured against Steam’s full price. Once per sale, or again if it drops further."
+          />
+          <DealThreshold
+            value={settings.deep_discount_pct ?? DEFAULT_DEAL_PCT}
+            disabled={settings.deep_discount === false}
+            onSave={saveDealPct}
+          />
+          {error && <p className="text-sm text-bad">{error}</p>}
+        </div>
+      )}
+    </Section>
+  )
+}
+
 export function Settings() {
   const { user, loading } = useAuth()
 
@@ -434,6 +566,7 @@ export function Settings() {
           <PlexSection />
           <SteamSection />
           <StreamingSection />
+          <NotificationsSection />
           <section id="calendar" className="rounded-xl border border-line bg-surface p-5">
             <CalendarFeed />
           </section>

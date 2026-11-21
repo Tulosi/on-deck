@@ -1,14 +1,20 @@
+import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
+import { continueItems, continueLine, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
-import { releaseInfo } from '../lib/release'
 import { useFilters } from '../lib/useFilters'
 
+/**
+ * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
+ * everything lives on the Library page. Step 1 rows: Continue · This week · Ready to start.
+ */
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
-  // Home only takes the type pills from the toolbar (?type=…); the full filters live on the Library page.
+  // Home takes only the type pills from the toolbar (?type=…), narrowing every row.
   const [filters] = useFilters()
   const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
+  const typeParam = filters.type ? `&type=${filters.type}` : ''
 
   if (isLoading) {
     return (
@@ -19,7 +25,7 @@ export function Home() {
   }
   if (error) return <p className="py-16 text-center text-sm text-bad">Couldn’t load your list: {error.message}</p>
 
-  if (!isSample && items.length === 0) {
+  if (!isSample && allItems.length === 0) {
     return (
       <div className="mx-auto max-w-md py-20 text-center">
         <p className="font-mono text-xs tracking-wider text-accent-ink uppercase">Your deck is empty</p>
@@ -31,25 +37,51 @@ export function Home() {
     )
   }
 
-  const upNext = items.filter((i) => i.progress === 'wanted' && i.priority === 'high')
-  const inProgress = items.filter((i) => i.progress === 'in_progress')
-  const onSale = items.filter((i) => i.title.mediaType === 'game' && !i.owned && i.price?.discountPct)
-  const finished = items.filter((i) => i.progress === 'completed')
-  // Pre-release movies/shows, soonest first; no date yet (TBA) at the end.
-  const comingSoon = items
-    .map((i) => ({ item: i, release: releaseInfo(i.title) }))
-    .filter((x) => x.release.preRelease)
-    .sort((a, b) => (a.release.date ?? '9999').localeCompare(b.release.date ?? '9999'))
-    .map((x) => x.item)
+  const cont = continueItems(items)
+  const week = thisWeek(items)
+  const weekById = new Map(week.map((u) => [u.item.id, u]))
+  const ready = readyToStart(items)
+  const nothingGoingOn = cont.length === 0 && week.length === 0
 
   return (
     <div className="space-y-10">
-      <PosterRow title="Recently Added" items={items.slice(0, 20)} />
-      <PosterRow title="Up Next" hint="High priority, not started" items={upNext} />
-      <PosterRow title="In Progress" items={inProgress} />
-      <PosterRow title="On Sale" hint="Wanted games with a discount" items={onSale} />
-      <PosterRow title="Coming Soon" hint="Not released yet — soonest first" items={comingSoon} />
-      <PosterRow title="Recently Finished" items={finished} />
+      {nothingGoingOn && (
+        <div className="rounded-xl border border-line bg-surface px-5 py-4">
+          <p className="text-sm font-medium text-fg">You’re all caught up.</p>
+          <p className="mt-0.5 text-sm text-muted">
+            Nothing in progress and nothing out this week.
+            {ready.length > 0 ? ' Here’s what’s ready to start.' : ' '}
+            {ready.length === 0 && (
+              <Link to="/library" className="text-accent-ink hover:underline">
+                Browse your Library
+              </Link>
+            )}
+          </p>
+        </div>
+      )}
+
+      <PosterRow
+        title="Continue"
+        hint="Pick up where you left off"
+        items={cont}
+        subline={continueLine}
+        href={`/library?status=in_progress${typeParam}`}
+      />
+      <PosterRow
+        title="This week"
+        hint="Out in the next 7 days"
+        items={week.map((u) => u.item)}
+        subline={(item) => {
+          const u = weekById.get(item.id)
+          return u ? thisWeekLine(u) : undefined
+        }}
+      />
+      <PosterRow
+        title="Ready to start"
+        hint="High priority and already out"
+        items={ready}
+        href={`/library?status=wanted&priority=high&release=released${typeParam}`}
+      />
     </div>
   )
 }

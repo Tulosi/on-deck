@@ -249,7 +249,9 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 
 - Plex-style shell: left sidebar (Home, Movies, TV Shows, Games, Books, Collections, Settings), top search bar.
   On phones the sidebar becomes a bottom tab bar.
-- **Home**: horizontal poster rows — Up Next (high priority), In Progress, Coming Soon (countdowns), On Sale, Recently Added.
+- **Home**: "what's next, and what's changed". Rows: Continue · New for you · This week · Ready to start · Deals.
+  Browsing, filtering and sorting live on the **Library** page (see docs/FILTERING.md). Full design: docs/HOME.md
+  (proposal; today's Home still has the older rows).
 - **Category pages**: filterable poster grid. Filters: genre, year, status, priority; games add feature filters
   (co-op online/local, PvP, Steam Deck status, HLTB length).
 - **Theme**: dark by default, optional light. Palette: black, warm grey, lemon yellow.

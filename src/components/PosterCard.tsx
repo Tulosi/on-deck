@@ -45,11 +45,14 @@ export function PosterCard({
   item,
   className,
   chipMode,
+  subline,
 }: {
   item: UserItem
   className?: string
   /** Override the chip display mode; otherwise the user's Display setting applies. */
   chipMode?: ChipMode
+  /** Replaces the default line under the year (e.g. Home's "S2 · E5 — out now"). */
+  subline?: string
 }) {
   const { title } = item
   const savedMode = useChipMode()
@@ -60,7 +63,7 @@ export function PosterCard({
   const showPlex = (title.mediaType === 'movie' || title.mediaType === 'tv') && item.plex
   const release = releaseInfo(title)
   const schedule = release.preRelease ? null : tvSchedule(title)
-  const secondary = secondaryLine(item)
+  const secondary = subline ?? secondaryLine(item)
 
   return (
     <Link to={`/title/${title.id}`} className={clsx('group block', className)}>

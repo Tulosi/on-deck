@@ -70,3 +70,39 @@ export function finishedSeasons(item: UserItem): number[] {
     })
     .map((s) => s.season_number)
 }
+
+/**
+ * Watched / ignored / aired episodes across the show. Ignored seasons stay in the total and count as
+ * done, but are reported separately so the bar can show them in their own colour.
+ */
+export function completion(item: UserItem, seasons: SeasonMeta[]): { watched: number; ignored: number; aired: number } {
+  const airedIn = airedCounter(item)
+  let watched = 0
+  let ignored = 0
+  let aired = 0
+  for (const s of seasons) {
+    const n = airedIn(s)
+    aired += n
+    if (overrideOf(item, s.season_number) === 'ignored') ignored += n
+    else watched += watchedIn(item, s, n)
+  }
+  return { watched, ignored, aired }
+}
+
+/** TMDB statuses for shows that will get more episodes. */
+const ONGOING = new Set(['Returning Series', 'In Production', 'Planned', 'Pilot'])
+
+/** Will this show get more episodes? (Ongoing status, or a next episode is announced.) */
+export function isOngoing(item: UserItem): boolean {
+  const d = item.title.details ?? {}
+  return ONGOING.has(String(d.status ?? '')) || !!(d.next_episode_to_air as { air_date?: string } | null)?.air_date
+}
+
+/** Every episode aired so far is watched (or in an ignored season). False when nothing has aired. */
+export function allAiredWatched(item: UserItem): boolean {
+  if (item.title.mediaType !== 'tv') return false
+  const seasons = seasonsOf(item)
+  if (seasons.length === 0) return false
+  const c = completion(item, seasons)
+  return c.aired > 0 && c.watched + c.ignored >= c.aired
+}

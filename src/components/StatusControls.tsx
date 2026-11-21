@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronRight, Library, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { friendlyError, useAvailability, usePlexWatch, type PlexWatch } from '../lib/integrations'
 import { useUpdateItem, type ItemPatch } from '../lib/library'
-import { airedCounter, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
+import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
 import { mediaLabels, type Priority, type Progress, type SeasonOverride, type UserItem } from '../types'
 
 const labelClass = 'font-mono text-[11px] tracking-wider text-faint uppercase'
@@ -86,24 +86,6 @@ function latestAired(item: UserItem, seasons: SeasonMeta[]): { season: number; e
     if (n > 0) return { season: seasons[i].season_number, episode: n }
   }
   return null
-}
-
-/**
- * Watched / ignored / aired episodes across the show. Ignored seasons stay in the total and count as
- * done, but are reported separately so the bar can show them in their own colour.
- */
-function completion(item: UserItem, seasons: SeasonMeta[]): { watched: number; ignored: number; aired: number } {
-  const airedIn = airedCounter(item)
-  let watched = 0
-  let ignored = 0
-  let aired = 0
-  for (const s of seasons) {
-    const n = airedIn(s)
-    aired += n
-    if (overrideOf(item, s.season_number) === 'ignored') ignored += n
-    else watched += watchedIn(item, s, n)
-  }
-  return { watched, ignored, aired }
 }
 
 /** Collapsed-by-default per-season controls: Auto (follows Progress) / Watched / Unwatched / Ignore. */
@@ -584,12 +566,18 @@ export function StatusControls({ item }: { item: UserItem }) {
     }
   }
 
+  // Shows have one "done" option: Caught up while more episodes are coming, Watched once the show has ended.
+  const ongoingShow = type === 'tv' && isOngoing(item)
+  const doneValue: Progress = ongoingShow ? 'caught_up' : 'completed'
   const progressOptions: { value: Progress; label: string }[] = [
     { value: 'wanted', label: 'Wanted' },
     { value: 'in_progress', label: 'In Progress' },
-    { value: 'completed', label: done },
+    { value: doneValue, label: ongoingShow ? 'Caught up' : done },
     { value: 'dropped', label: 'Dropped' },
   ]
+  // A show stored as the other "done" state (e.g. Watched, then renewed) still shows the done option selected.
+  const shownProgress: Progress =
+    type === 'tv' && (item.progress === 'caught_up' || item.progress === 'completed') ? doneValue : item.progress
   const priorityOptions: { value: Priority | 'none'; label: string }[] = [
     { value: 'none', label: 'None' },
     { value: 'low', label: 'Low' },
@@ -682,12 +670,14 @@ export function StatusControls({ item }: { item: UserItem }) {
 
       <Segmented
         label="Status"
-        value={item.progress}
+        value={shownProgress}
         options={progressOptions}
         onChange={(progress) => {
-          // TV marked Watched by hand → caught up to the latest aired episode (Plex keeps control while syncing).
+          // TV marked done by hand → up to the latest aired episode (Plex keeps control while syncing).
           const caughtUp =
-            type === 'tv' && progress === 'completed' && !plexSyncActive ? latestAired(item, seasons) : null
+            type === 'tv' && (progress === 'completed' || progress === 'caught_up') && !plexSyncActive
+              ? latestAired(item, seasons)
+              : null
           void save(caughtUp ? { progress, tvProgress: caughtUp } : { progress })
         }}
       />

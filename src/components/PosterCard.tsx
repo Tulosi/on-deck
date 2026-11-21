@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, CalendarClock, Check, Film, Radio, Gamepad2, Library, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarClock, Check, CheckCheck, Film, Radio, Gamepad2, Library, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
 import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
@@ -83,6 +83,9 @@ export function PosterCard({
           )}
           {item.progress === 'in_progress' && vis('status') !== null && (
             <Badge icon={Play} label="In progress" className={vis('status')!} />
+          )}
+          {item.progress === 'caught_up' && vis('status') !== null && (
+            <Badge icon={CheckCheck} label="Caught up, waiting for new episodes" className={vis('status')!} />
           )}
           {item.progress === 'completed' && vis('status') !== null && (
             <Badge icon={Check} label="Completed" className={vis('status')!} />

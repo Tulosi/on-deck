@@ -1,7 +1,7 @@
 // Shared domain types. These mirror the Supabase schema in supabase/migrations.
 
 export type MediaType = 'movie' | 'tv' | 'game' | 'book'
-export type Progress = 'wanted' | 'in_progress' | 'completed' | 'dropped'
+export type Progress = 'wanted' | 'in_progress' | 'caught_up' | 'completed' | 'dropped'
 export type Verdict = 'liked' | 'disliked'
 export type Priority = 'high' | 'medium' | 'low'
 export type PlexStatus = 'available' | 'requested' | 'missing'

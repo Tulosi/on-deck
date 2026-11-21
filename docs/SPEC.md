@@ -204,6 +204,21 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   - title badge "New season · Season 3 premieres Mar 14, 2027 · in 114 days"
 - A show that hasn't premiered at all shows the pre-release flag instead.
 
+### Caught up (shows)
+- A status for shows only: **Caught up** = every episode aired so far is watched (ignored seasons count as
+  done), and the show is ongoing (TMDB Returning Series / In Production / Planned / Pilot, or a next
+  episode is announced). Poster badge ✓✓. Library status filter, grouping and shared lists include it.
+- Moves happen automatically on app load (`useRenewalCheck`; each move is tried once per session):
+  - In Progress → Caught up when you've watched everything aired on an ongoing show.
+  - Caught up → In Progress as soon as a new episode airs, so it's back in **Continue** (which only shows
+    In Progress) and "New for you".
+  - Caught up → Watched when the show has ended and you'd seen it all.
+  - Watched → In Progress when a finished show gets new episodes (renewal).
+- **Never both:** a show's status choices are Wanted · In Progress · *done* · Dropped. *done* reads
+  **Caught up** while the show is ongoing and **Watched** once it has ended. Marking it by hand also moves
+  Watched-up-to to the latest aired episode.
+- Also automatic: **Watched → Caught up** for an ongoing show that was marked Watched.
+
 ### Collections
 - Named lists that can mix movies, shows, games and books (`collections` + `collection_items` → `user_items`;
   RLS: your own only). Implementation: `src/lib/collections.ts`, `src/pages/Collections.tsx`.

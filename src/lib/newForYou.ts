@@ -115,7 +115,7 @@ export function newForYou(items: UserItem[], notifications: Notification[], sinc
   const today = todayIso()
   for (const item of byTitle.values()) {
     if (item.title.mediaType !== 'tv') continue
-    if (item.progress !== 'in_progress' && item.progress !== 'wanted') continue
+    if (item.progress !== 'in_progress' && item.progress !== 'caught_up' && item.progress !== 'wanted') continue
     const d = item.title.details ?? {}
     const last = d.last_episode_to_air as { air_date?: string; season_number?: number; episode_number?: number } | null | undefined
     const aired = last?.air_date ?? (typeof d.last_air_date === 'string' ? d.last_air_date : undefined)

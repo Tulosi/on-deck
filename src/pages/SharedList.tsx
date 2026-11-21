@@ -32,6 +32,7 @@ const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gam
 const TYPE_NAME: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows', game: 'Games', book: 'Books' }
 const SECTIONS: { progress: Progress; label: string }[] = [
   { progress: 'in_progress', label: 'In progress' },
+  { progress: 'caught_up', label: 'Caught up' },
   { progress: 'wanted', label: 'Want to' },
   { progress: 'completed', label: 'Done' },
 ]

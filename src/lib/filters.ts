@@ -64,7 +64,7 @@ const list = <T extends string>(v: string | null, allowed: readonly T[]): T[] =>
     .filter((x): x is T => (allowed as readonly string[]).includes(x))
 const int = (v: string | null) => (v && /^\d+$/.test(v) ? Number(v) : null)
 
-const STATUS: Progress[] = ['wanted', 'in_progress', 'completed', 'dropped']
+const STATUS: Progress[] = ['wanted', 'in_progress', 'caught_up', 'completed', 'dropped']
 const PRIORITY: (Priority | 'none')[] = ['high', 'medium', 'low', 'none']
 const RATING: RatingFilter[] = ['liked', 'disliked', 'favourite', 'unrated']
 const RELEASE: ReleaseFilter[] = ['released', 'upcoming']
@@ -199,7 +199,7 @@ function tvStatusOf(item: UserItem): TvStatusFilter | null {
 }
 
 function tvProgressOf(item: UserItem): TvProgressFilter {
-  if (item.progress === 'completed') return 'caught_up'
+  if (item.progress === 'completed' || item.progress === 'caught_up') return 'caught_up'
   if (!item.tvProgress && item.progress !== 'in_progress') return 'not_started'
   return 'midway'
 }
@@ -349,6 +349,7 @@ export interface Group {
 const STATUS_LABEL: Record<Progress, string> = {
   wanted: 'Wanted',
   in_progress: 'In Progress',
+  caught_up: 'Caught up',
   completed: 'Done',
   dropped: 'Dropped',
 }

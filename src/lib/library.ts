@@ -5,6 +5,7 @@ import { sampleItems } from '../data/sample'
 import type { MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
 import { cheapest, formatPrice, gamePriceFromRow, type PriceRow } from './prices'
 import { useAuth } from './auth'
+import { allAiredWatched, isOngoing, seasonsOf } from './seasons'
 import { supabase } from './supabase'
 
 // ─── Row shapes (mirror supabase/migrations) ───────────────────────────────
@@ -529,10 +530,17 @@ export function useUpdateItem() {
   }
 }
 
+/** Status moves already attempted this session (item:from→to), so a failing save can't loop. */
+const statusMovesTried = new Set<string>()
+
 /**
- * Renewing shows: a TV show marked Watched is "caught up" as of when it was marked. If an episode has aired
- * since then (the show's last air date is after completed_at), it goes back to In Progress. Runs across the
- * whole list on load (mount once, in AppShell). Shows marked Watched before completed_at existed are skipped.
+ * Shows move between statuses by themselves as episodes air (Mount once: AppShell):
+ *  - In Progress → Caught up: every aired episode watched, and the show is ongoing.
+ *  - Caught up → In Progress: a new episode has aired (so it's back in Continue).
+ *  - Caught up → Watched: the show has ended and you'd watched it all.
+ *  - Watched → Caught up: an ongoing show marked Watched (shows only use Watched once they've ended).
+ *  - Watched → In Progress: a show you'd finished got new episodes (renewal).
+ * Dropped and Wanted shows are never touched.
  */
 export function useRenewalCheck() {
   const { items, isSample } = useItems()
@@ -541,10 +549,23 @@ export function useRenewalCheck() {
   useEffect(() => {
     if (isSample || !supabase) return
     for (const item of items) {
-      if (item.title.mediaType !== 'tv' || item.progress !== 'completed' || !item.completedAt) continue
-      const lastAir = item.title.details?.last_air_date
-      if (typeof lastAir !== 'string') continue
-      if (lastAir > item.completedAt.slice(0, 10)) void update(item, { progress: 'in_progress' }).catch(() => undefined)
+      if (item.title.mediaType !== 'tv') continue
+      const done = allAiredWatched(item)
+      const ongoing = isOngoing(item)
+      let next: Progress | null = null
+      if (item.progress === 'in_progress' && done && ongoing) next = 'caught_up'
+      else if (item.progress === 'caught_up' && !done && seasonsOf(item).length > 0) next = 'in_progress'
+      else if (item.progress === 'caught_up' && done && !ongoing) next = 'completed'
+      else if (item.progress === 'completed' && ongoing && done) next = 'caught_up'
+      else if (item.progress === 'completed' && item.completedAt) {
+        const lastAir = item.title.details?.last_air_date
+        if (typeof lastAir === 'string' && lastAir > item.completedAt.slice(0, 10) && !done) next = 'in_progress'
+      }
+      if (!next) continue
+      const key = `${item.id}:${item.progress}->${next}`
+      if (statusMovesTried.has(key)) continue
+      statusMovesTried.add(key)
+      void update(item, { progress: next }).catch(() => undefined)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, isSample])

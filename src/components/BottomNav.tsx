@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
-import { Layers, MoreHorizontal, Settings, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { Archive, Layers, MoreHorizontal, Settings, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { useCollectionList } from '../lib/collections'
 import { ordered, useNavLayout } from '../lib/navLayout'
 import { NAV_KEYS, navItem, tabsFrom, type NavItem, type NavKey } from './nav'
@@ -66,6 +66,11 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
               </Link>
             )
           })}
+        </div>
+        <div className="border-t border-line p-2">
+          <Link to="/library?archived=only" onClick={onClose} className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs text-faint">
+            <Archive className="size-4 shrink-0" strokeWidth={1.75} /> Archive
+          </Link>
         </div>
         <div className="space-y-0.5 border-t border-line p-2">
           <Link to="/settings" onClick={onClose} className={clsx(row, 'text-muted')}>

@@ -1,7 +1,7 @@
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
-import { GripVertical, Layers, Settings, Sparkles } from 'lucide-react'
+import { Archive, GripVertical, Layers, Settings, Sparkles } from 'lucide-react'
 import { useCollectionList } from '../lib/collections'
 import { DEFAULT_MAIN, DEFAULT_TYPES, moveTo, nudge, ordered, useNavLayout, type Section } from '../lib/navLayout'
 import { primaryNav, type NavItem } from './nav'
@@ -13,9 +13,11 @@ const hrefOf = (item: NavItem) =>
 /** Library shortcuts are active when the Library shows exactly that type (Library = no type). */
 function useIsActive() {
   const { pathname, search } = useLocation()
-  const type = new URLSearchParams(search).get('type')
+  const params = new URLSearchParams(search)
+  const type = params.get('type')
+  const inArchive = params.get('archived') === 'only' // Archive has its own link
   return (item: NavItem) => {
-    if (item.libraryType !== undefined) return pathname === '/library' && (type ?? null) === item.libraryType
+    if (item.libraryType !== undefined) return pathname === '/library' && !inArchive && (type ?? null) === item.libraryType
     return item.to === '/' ? pathname === '/' : pathname.startsWith(item.to!)
   }
 }
@@ -154,7 +156,8 @@ function Line({ children, grip }: { children: ReactNode; grip: ReactNode }) {
 /** Desktop / tablet sidebar. Hidden below md, where BottomNav takes over. */
 export function Sidebar() {
   const isActive = useIsActive()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
+  const archiveActive = pathname === '/library' && new URLSearchParams(search).get('archived') === 'only'
   const [layout, save] = useNavLayout()
   const { list: collections } = useCollectionList()
 
@@ -244,6 +247,21 @@ export function Sidebar() {
               }}
             />
           )}
+        </div>
+
+        {/* Archive: its own quiet section under Collections */}
+        <div className="mt-3 border-t border-line pt-2">
+          <Link
+            to="/library?archived=only"
+            aria-current={archiveActive ? 'page' : undefined}
+            className={clsx(
+              'flex items-center gap-3 rounded-md px-3 py-1.5 text-xs transition-colors',
+              archiveActive ? 'bg-raised text-fg' : 'text-faint hover:bg-raised/60 hover:text-muted',
+            )}
+          >
+            <Archive className="size-4 shrink-0" strokeWidth={1.75} />
+            Archive
+          </Link>
         </div>
       </nav>
       <div className="border-t border-line px-2 py-2">

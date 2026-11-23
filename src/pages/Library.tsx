@@ -117,7 +117,7 @@ export function Library() {
   const hiddenArchived =
     f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
   const groups = groupItems(results, f.group)
-  const title = f.type ? LABELS.type[f.type] : 'Library'
+  const title = f.archived === 'only' ? (f.type ? `Archived ${LABELS.type[f.type]}` : 'Archive') : f.type ? LABELS.type[f.type] : 'Library'
 
   return (
     <div>

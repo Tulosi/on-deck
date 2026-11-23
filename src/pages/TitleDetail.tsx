@@ -1,10 +1,10 @@
 import { backdropProps, coverProps } from '../lib/images'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { CollectionPicker } from '../components/CollectionPicker'
 import { GamePrices } from '../components/GamePrices'
-import { StatusControls } from '../components/StatusControls'
+import { StatusControls, TrackingDetails } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
 import { useItems, useRemoveItem } from '../lib/library'
@@ -207,6 +207,21 @@ function CastRow({ d }: { d: Record<string, unknown> }) {
   )
 }
 
+/** Sample mode: where Tracking would be, say how to get it instead of leaving a gap. */
+function SignInToTrack() {
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-line px-4 py-3 sm:px-5">
+      <p className="text-sm text-muted">Track your status, progress and ratings for this title.</p>
+      <Link
+        to="/login"
+        className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent/90"
+      >
+        Sign in to track
+      </Link>
+    </section>
+  )
+}
+
 export function TitleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -328,10 +343,12 @@ export function TitleDetail() {
 
       <div className="mt-8 grid gap-8 px-4 md:px-6 lg:grid-cols-[1fr_16rem]">
         <div className="space-y-6">
+          {/* The main action first: status and progress sit right under the title, above the overview. */}
+          {isSample ? <SignInToTrack /> : <StatusControls item={item} />}
           {typeof d.tagline === 'string' && d.tagline && <p className="text-muted italic">{d.tagline}</p>}
           {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
           <CastRow d={d} />
-          {!isSample && <StatusControls item={item} />}
+          {!isSample && <TrackingDetails item={item} />}
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
           {!isSample && title.mediaType === 'game' && <GamePrices item={item} />}
           {!isSample && <CollectionPicker item={item} />}

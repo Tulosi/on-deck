@@ -59,7 +59,7 @@ function initialStatus(c: Candidate): { progress: Progress; owned: boolean } {
 
 export interface ImportResult {
   added: number
-  failed: { title: string; reason: string }[]
+  failed: { key: string; title: string; reason: string }[]
 }
 
 /**
@@ -102,12 +102,13 @@ export async function importCandidates(
         if (e) throw e
         result.added++
       } catch (err) {
-        result.failed.push({ title: c.title, reason: err instanceof Error ? err.message : 'failed' })
+        result.failed.push({ key: c.key, title: c.title, reason: err instanceof Error ? err.message : 'failed' })
       }
       onProgress(++done, chosen.length)
     }
   }
-  await Promise.all([worker(), worker(), worker()])
+  // Two at a time: each add makes several IGDB calls, and IGDB allows about 4 a second.
+  await Promise.all([worker(), worker()])
 
   // Remember choices for next time: unticked → skipped; picked → no longer skipped.
   if (notChosen.length) {

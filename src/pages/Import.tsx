@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { Check, Gamepad2, LayoutGrid, List, Loader2, Search, Sparkles, Tv } from 'lucide-react'
+import { Check, ChevronDown, Gamepad2, LayoutGrid, List, Loader2, Search, Sparkles, Tv } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../lib/auth'
 import { fetchCandidates, fetchSkips, importCandidates, type Candidate, type ImportResult, type ImportSource } from '../lib/importer'
@@ -89,9 +89,37 @@ export function ImportPage() {
   const [selected, setSelected] = useState<Set<string> | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
-
   const cands = useQuery({ queryKey: ['import-candidates', source, user?.id], enabled: !!user, queryFn: () => fetchCandidates(source), staleTime: 5 * 60_000 })
   const skips = useQuery({ queryKey: ['import-skips', user?.id], enabled: !!user, queryFn: fetchSkips })
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // Section headings stick just under the top bar (3.5rem) and the controls row, whose height varies
+  // (it wraps on phones), so it's measured.
+  const controlsRef = useRef<HTMLDivElement>(null)
+  const [controlsH, setControlsH] = useState(49)
+  useEffect(() => {
+    const el = controlsRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setControlsH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [cands.data])
+  const stickyTop = 56 + controlsH
+
+  /**
+   * Collapse or expand a section. Collapsing while scrolled inside it brings its heading back to where it was
+   * stuck, so the next section's heading follows straight after.
+   */
+  const toggleSection = (group: string, section: HTMLElement | null) => {
+    const next = new Set(collapsed)
+    const collapsing = !next.has(group)
+    if (collapsing) next.add(group)
+    else next.delete(group)
+    setCollapsed(next)
+    if (collapsing && section && section.getBoundingClientRect().top < stickyTop) {
+      requestAnimationFrame(() => window.scrollTo({ top: section.getBoundingClientRect().top + window.scrollY - stickyTop }))
+    }
+  }
 
   const inLibrary = useMemo(() => new Set(allItems.map((i) => i.title.sourceKey)), [allItems])
   const list = useMemo(() => cands.data?.candidates ?? [], [cands.data])
@@ -132,7 +160,8 @@ export function ImportPage() {
     const r = await importCandidates(user!.id, chosen, notChosen, (done, total) => setProgress({ done, total }))
     setProgress(null)
     setResult(r)
-    setSelected(new Set())
+    // Anything that failed stays ticked, so "Add" right away retries just those.
+    setSelected(new Set(r.failed.map((f) => f.key)))
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['library'] }),
       queryClient.invalidateQueries({ queryKey: ['import-skips'] }),
@@ -188,7 +217,7 @@ export function ImportPage() {
       ) : (
         <>
           {/* Controls */}
-          <div className="sticky top-14 z-10 -mx-4 mb-4 flex flex-wrap items-center gap-2 border-b border-line bg-bg/90 px-4 py-2 backdrop-blur md:-mx-6 md:px-6">
+          <div ref={controlsRef} className="sticky top-14 z-20 -mx-4 mb-4 flex flex-wrap items-center gap-2 border-b border-line bg-bg/90 px-4 py-2 backdrop-blur md:-mx-6 md:px-6">
             <button type="button" className={btn} onClick={() => setSelected(new Set(pickable.map((c) => c.key)))}>
               All
             </button>
@@ -227,26 +256,45 @@ export function ImportPage() {
 
           {groups.map(([group, items]) => {
             const picked = items.filter((c) => sel.has(c.key) && !inLibrary.has(c.key)).length
+            const isCollapsed = collapsed.has(group)
+            const bodyId = `import-${group.replace(/\W+/g, '-').toLowerCase()}`
             return (
-              <section key={group} className="mb-8 space-y-3">
-                <h2 className="flex items-baseline gap-2 text-base font-semibold text-fg">
-                  {group}
-                  <span className="font-mono text-xs font-normal text-faint">
-                    {picked} of {items.length} picked
-                  </span>
+              <section key={group} className="mb-6">
+                {/* Sticks under the controls while you scroll its section; tap to collapse and jump to the next. */}
+                <h2 className="sticky z-10 -mx-4 border-b border-line bg-bg/90 px-4 backdrop-blur md:-mx-6 md:px-6" style={{ top: stickyTop }}>
+                  <button
+                    type="button"
+                    aria-expanded={!isCollapsed}
+                    aria-controls={bodyId}
+                    onClick={(e) => toggleSection(group, e.currentTarget.closest('section'))}
+                    className="no-press flex w-full items-baseline gap-2 py-2.5 text-left text-base font-semibold text-fg"
+                  >
+                    {group}
+                    <span className="font-mono text-xs font-normal text-faint">
+                      {picked} of {items.length} picked
+                    </span>
+                    <span className="ml-auto flex items-center gap-1 self-center text-xs font-normal text-muted">
+                      {isCollapsed ? 'Show' : 'Collapse'}
+                      <ChevronDown className={clsx('size-4 transition-transform', isCollapsed && '-rotate-90')} />
+                    </span>
+                  </button>
                 </h2>
-                {view === 'grid' ? (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-x-3 gap-y-4 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]">
-                    {items.map((c) => (
-                      <Tile key={c.key} c={c} on={sel.has(c.key)} inLib={inLibrary.has(c.key)} skipped={!!skips.data?.has(c.key)} onToggle={() => toggle(c.key)} />
-                    ))}
+                {!isCollapsed && (
+                  <div id={bodyId} className="pt-3">
+                    {view === 'grid' ? (
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-x-3 gap-y-4 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]">
+                        {items.map((c) => (
+                          <Tile key={c.key} c={c} on={sel.has(c.key)} inLib={inLibrary.has(c.key)} skipped={!!skips.data?.has(c.key)} onToggle={() => toggle(c.key)} />
+                        ))}
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-line rounded-lg border border-line">
+                        {items.map((c) => (
+                          <Row key={c.key} c={c} on={sel.has(c.key)} inLib={inLibrary.has(c.key)} skipped={!!skips.data?.has(c.key)} onToggle={() => toggle(c.key)} />
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                ) : (
-                  <ul className="divide-y divide-line rounded-lg border border-line">
-                    {items.map((c) => (
-                      <Row key={c.key} c={c} on={sel.has(c.key)} inLib={inLibrary.has(c.key)} skipped={!!skips.data?.has(c.key)} onToggle={() => toggle(c.key)} />
-                    ))}
-                  </ul>
                 )}
               </section>
             )
@@ -274,7 +322,14 @@ export function ImportPage() {
             ) : result ? (
               <p className="text-sm text-fg">
                 Added <b>{result.added}</b> to your library
-                {result.failed.length ? <span className="text-bad"> · {result.failed.length} couldn’t be added</span> : ''}.{' '}
+                {result.failed.length ? (
+                  <span className="text-bad" title={result.failed.map((f) => f.title).join(', ')}>
+                    {' '}· {result.failed.length} couldn’t be added (still ticked — add again to retry)
+                  </span>
+                ) : (
+                  ''
+                )}
+                .{' '}
                 <Link to="/library" className="text-accent-ink hover:underline">
                   Open Library
                 </Link>

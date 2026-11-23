@@ -668,16 +668,11 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
   )
 }
 
-/**
- * The user's own tracking for this title: progress, verdict, favourite, priority, TV progress, notes.
- * Top right: "In Your Library" (games/books) or source availability (movies/TV).
- */
-export function StatusControls({ item }: { item: UserItem }) {
+/** Saves a patch to one item, with a pending count and the last error for a "Saving" / error line. */
+function useSaver(item: UserItem) {
   const update = useUpdateItem()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
-  const type = item.title.mediaType
-
   async function save(patch: ItemPatch) {
     setError(null)
     setPending((n) => n + 1)
@@ -689,6 +684,32 @@ export function StatusControls({ item }: { item: UserItem }) {
       setPending((n) => n - 1)
     }
   }
+  return { save, update, pending, error }
+}
+
+function SaveState({ pending, error }: { pending: number; error: string | null }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-faint" aria-live="polite">
+      {pending > 0 ? (
+        <>
+          <Loader2 className="size-3.5 animate-spin" /> Saving
+        </>
+      ) : error ? (
+        <span className="text-bad">{error}</span>
+      ) : null}
+    </span>
+  )
+}
+
+/**
+ * The main action on a title page, placed right under the title: Status, plus how far along you are
+ * (episode for TV, watched state for movies, Steam playtime for games).
+ * Top right: "In Your Library" (games/books) or source availability (movies/TV).
+ * Rating, priority and notes live further down, in <TrackingDetails>.
+ */
+export function StatusControls({ item }: { item: UserItem }) {
+  const { save, pending, error } = useSaver(item)
+  const type = item.title.mediaType
 
   // Shows have one "done" option: Caught up while more episodes are coming, Watched once the show has ended.
   const ongoingShow = type === 'tv' && isOngoing(item)
@@ -701,12 +722,6 @@ export function StatusControls({ item }: { item: UserItem }) {
   // A show stored as the other "done" state (e.g. Watched, then renewed) still shows the done option selected.
   const shownProgress: Progress =
     type === 'tv' && (item.progress === 'caught_up' || item.progress === 'completed') ? doneValue : item.progress
-  const priorityOptions: { value: Priority | 'none'; label: string }[] = [
-    { value: 'none', label: 'None' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-  ]
   const seasons = seasonsOf(item)
   // ── Plex watch history → "Watched up to" (TV) ──
   // While sync is on for this show, Watched up to mirrors Plex exactly (forwards or backwards).
@@ -754,15 +769,7 @@ export function StatusControls({ item }: { item: UserItem }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold tracking-tight text-fg">Tracking</h2>
-          <span className="flex items-center gap-1.5 text-xs text-faint" aria-live="polite">
-            {pending > 0 ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" /> Saving
-              </>
-            ) : error ? (
-              <span className="text-bad">{error}</span>
-            ) : null}
-          </span>
+          <SaveState pending={pending} error={error} />
         </div>
         {type === 'game' || type === 'book' ? (
           <Toggle
@@ -829,6 +836,25 @@ export function StatusControls({ item }: { item: UserItem }) {
         />
       )}
 
+    </section>
+  )
+}
+
+/** The rest of your tracking: rating, priority and notes. Below the overview on the title page. */
+export function TrackingDetails({ item }: { item: UserItem }) {
+  const { save, update, pending, error } = useSaver(item)
+  const priorityOptions: { value: Priority | 'none'; label: string }[] = [
+    { value: 'none', label: 'None' },
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+  ]
+  return (
+    <section className="space-y-5 rounded-xl border border-line bg-surface p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg font-semibold tracking-tight text-fg">Your take</h2>
+        <SaveState pending={pending} error={error} />
+      </div>
       <div className="space-y-1.5">
       <p className={labelClass}>Rating</p>
       <div className="flex flex-wrap gap-2">

@@ -62,7 +62,8 @@ shows you're following. A short horizon on purpose; the full upcoming list is Li
 
 ### 4. Ready to start
 Your top **High-priority Wanted** titles that you can **actually start right now**:
-- Movies/TV: available via your sources (Plex or your streaming services).
+- Movies/TV: available via your sources (Plex or your streaming services). Not checked yet → kept, unless Plex
+  already says it's only Requested or missing.
 - Games/books: In Your Library.
 - Capped at ~10. Sorted by priority, then most recently added.
 - This replaces today's "Up Next".

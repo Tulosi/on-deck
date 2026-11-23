@@ -110,12 +110,20 @@ export function thisWeekLine(u: Upcoming): string {
 /**
  * 3. Ready to start — High-priority Wanted titles you can start now: out, and available (movies/TV on your
  * Plex or streaming services; games/books In Your Library). Movies/TV not checked yet are kept, so the row
- * isn't empty before the first availability refresh.
+ * isn't empty before the first availability refresh, unless Plex already says it's only requested or missing.
  */
+/**
+ * Not checked against streaming yet, but Plex already says it isn't there (only requested, or missing):
+ * "ready to start" would be a promise the row can't keep.
+ */
+function knownUnwatchable(i: UserItem): boolean {
+  return i.available == null && (i.plex === 'requested' || i.plex === 'missing')
+}
+
 export function readyToStart(items: UserItem[]): UserItem[] {
   return items
     .filter((i) => i.progress === 'wanted' && i.priority === 'high' && !releaseInfo(i.title).preRelease)
-    .filter((i) => isAvailable(i) !== false)
+    .filter((i) => isAvailable(i) !== false && !knownUnwatchable(i))
     .sort((a, b) => Date.parse(b.addedAt ?? '0') - Date.parse(a.addedAt ?? '0'))
     .slice(0, 10)
 }

@@ -19,18 +19,30 @@ async function accessToken(): Promise<string> {
   return token.value
 }
 
-/** Runs an IGDB "apicalypse" query against an endpoint (e.g. "games"). */
+const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms))
+
+/**
+ * Runs an IGDB "apicalypse" query against an endpoint (e.g. "games").
+ * IGDB allows about 4 requests a second; a bulk import goes over that, so a 429 waits and retries
+ * (backing off, with jitter so parallel calls don't retry in lockstep) instead of failing the title.
+ */
 export async function igdb(endpoint: string, query: string): Promise<Json[]> {
-  const res = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Client-ID': secret('TWITCH_CLIENT_ID'),
-      Authorization: `Bearer ${await accessToken()}`,
-      Accept: 'application/json',
-      'Content-Type': 'text/plain',
-    },
-    body: query,
-  })
+  let res: Response
+  for (let attempt = 0; ; attempt++) {
+    res = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Client-ID': secret('TWITCH_CLIENT_ID'),
+        Authorization: `Bearer ${await accessToken()}`,
+        Accept: 'application/json',
+        'Content-Type': 'text/plain',
+      },
+      body: query,
+    })
+    if (res.status !== 429 || attempt >= 5) break
+    await res.body?.cancel()
+    await sleep(300 * 2 ** attempt + Math.random() * 300)
+  }
   if (!res.ok) {
     console.error('igdb error', res.status, await res.text().catch(() => ''))
     throw new HttpError(502, `igdb_error_${res.status}`)

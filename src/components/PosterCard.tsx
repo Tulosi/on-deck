@@ -217,14 +217,14 @@ export const PosterCard = memo(function PosterCard({
                 {showPlex && vis('plex') !== null && (
                   <span
                     title={plexMeta[item.plex!].label}
-                    aria-label={plexMeta[item.plex!].label}
                     className={clsx(
                       'flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm',
                       vis('plex'),
                     )}
                   >
-                    <span className={clsx('size-2 rounded-full', plexMeta[item.plex!].className)} />
-                    Plex
+                    {/* Words, not just the dot's colour: "On Plex", "Requested", "Not on Plex". */}
+                    <span className={clsx('size-2 shrink-0 rounded-full', plexMeta[item.plex!].className)} />
+                    {plexMeta[item.plex!].label}
                   </span>
                 )}
               </div>

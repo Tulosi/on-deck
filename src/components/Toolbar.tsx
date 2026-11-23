@@ -530,7 +530,7 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
       >
         {/* Price and Length only mean something for games (shown for Games and All). */}
         {LABELS.options.SORTS.filter(
-          (s) => !['price', 'discount', 'length'].includes(s) || !f.type || f.type === 'game' || f.sort === s,
+          (s) => !['played', 'price', 'discount', 'length'].includes(s) || !f.type || f.type === 'game' || f.sort === s,
         ).map((s) => (
           <option key={s} value={s}>
             Sort: {LABELS.sort[s]}

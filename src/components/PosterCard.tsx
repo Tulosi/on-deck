@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
@@ -5,6 +6,10 @@ import { BookOpen, CalendarClock, Check, CheckCheck, Pause, Film, Radio, Gamepad
 import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
+import { coverProps } from '../lib/images'
+
+/** Cards are about half the screen on phones (two columns) and 128–200 px wide elsewhere. */
+const POSTER_SIZES = '(max-width: 640px) 45vw, 200px'
 
 const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 
@@ -42,7 +47,8 @@ function secondaryLine(item: UserItem): string | undefined {
   return item.title.byline
 }
 
-export function PosterCard({
+/** Memoised: a library grid re-renders often (filters, saves) while most cards stay the same. */
+export const PosterCard = memo(function PosterCard({
   item,
   className,
   chipMode,
@@ -78,7 +84,13 @@ export function PosterCard({
     <Link to={`/title/${title.id}`} className={clsx('group block', className)}>
       <div className="@container/poster relative aspect-[2/3] overflow-hidden rounded-lg border border-line bg-raised transition group-hover:border-accent group-focus-visible:border-accent">
         {title.coverUrl ? (
-          <img src={title.coverUrl} alt="" loading="lazy" className="size-full object-cover" />
+          <img
+            {...coverProps(title.coverUrl, POSTER_SIZES)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="size-full object-cover"
+          />
         ) : (
           <CoverPlaceholder item={item} />
         )}
@@ -230,4 +242,4 @@ export function PosterCard({
       </div>
     </Link>
   )
-}
+})

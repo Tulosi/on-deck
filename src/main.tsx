@@ -8,22 +8,27 @@ import './index.css'
 import { AppShell } from './components/AppShell'
 import { Home } from './pages/Home'
 import { Library } from './pages/Library'
-import { TitleDetail } from './pages/TitleDetail'
-import { Login } from './pages/Login'
-import { ResetPassword } from './pages/ResetPassword'
 import { NotFound } from './pages/Placeholders'
-import { SharedList } from './pages/SharedList'
-import { Settings } from './pages/Settings'
-import { Waitlist } from './pages/Waitlist'
-import { SearchPage } from './pages/Search'
-import { ImportPage } from './pages/Import'
+import { lazyPage } from './components/LazyPage'
+
+// Home and Library are where most visits land, so they ship in the main bundle.
+// Everything else loads when first opened.
+const TitleDetail = lazyPage(() => import('./pages/TitleDetail'), 'TitleDetail')
+const Login = lazyPage(() => import('./pages/Login'), 'Login')
+const ResetPassword = lazyPage(() => import('./pages/ResetPassword'), 'ResetPassword')
+const SharedList = lazyPage(() => import('./pages/SharedList'), 'SharedList')
+const Settings = lazyPage(() => import('./pages/Settings'), 'Settings')
+const Waitlist = lazyPage(() => import('./pages/Waitlist'), 'Waitlist')
+const SearchPage = lazyPage(() => import('./pages/Search'), 'SearchPage')
+const ImportPage = lazyPage(() => import('./pages/Import'), 'ImportPage')
+const Collections = lazyPage(() => import('./pages/Collections'), 'Collections')
+const CollectionDetail = lazyPage(() => import('./pages/Collections'), 'CollectionDetail')
 
 /** The Waitlist page was renamed Calendar; old links keep working. */
 function RedirectWaitlist() {
   const { search } = useLocation()
   return <Navigate to={`/calendar${search.replace('view=calendar', 'view=month')}`} replace />
 }
-import { CollectionDetail, Collections } from './pages/Collections'
 import { AuthProvider } from './lib/auth'
 
 const queryClient = new QueryClient({

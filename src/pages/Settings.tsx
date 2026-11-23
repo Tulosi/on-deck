@@ -731,6 +731,12 @@ function NotificationsSection() {
   )
 }
 
+/** "2026-11-23" → "23 Nov 2026" (the commit date; no time zone shift). */
+function versionDate(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+}
+
 export function Settings() {
   const { user, loading } = useAuth()
   const { hash } = useLocation()
@@ -743,7 +749,13 @@ export function Settings() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <PageHeader title="Settings" />
+      <div>
+        <PageHeader title="Settings" />
+        <p className="-mt-5 font-mono text-[11px] text-faint" title={`Build ${__APP_VERSION__.build} · ${__APP_VERSION__.sha}`}>
+          v{__APP_VERSION__.build}
+          {__APP_VERSION__.date && ` · ${versionDate(__APP_VERSION__.date)}`}
+        </p>
+      </div>
       {!loading && !user ? (
         <p className="text-sm text-muted">
           <Link to="/login" className="text-accent-ink hover:underline">

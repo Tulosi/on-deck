@@ -1,12 +1,14 @@
 import { usePlexBackgroundSync } from '../lib/plexSync'
 import { useSmartCollectionSync } from '../lib/collections'
 import { useTimezoneSync } from '../lib/notifications'
+import { Suspense } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useAvailabilityRefresh, usePriceRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
 import { useSteamOwnershipCheck } from '../lib/steam'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav } from './BottomNav'
+import { PageSkeleton } from './LazyPage'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
@@ -49,7 +51,10 @@ export function AppShell() {
           )
         )}
         <main className="flex-1 px-4 py-6 pb-24 md:px-6 md:pb-10">
-          <Outlet />
+          {/* Keyed by path so a slow page never leaves the previous one's placeholder up. */}
+          <Suspense key={pathname} fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <BottomNav />

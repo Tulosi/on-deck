@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { filtersToParams, parseFilters, type Filters } from './filters'
 
@@ -7,7 +8,8 @@ import { filtersToParams, parseFilters, type Filters } from './filters'
  */
 export function useFilters(): [Filters, (next: Filters) => void] {
   const [params, setParams] = useSearchParams()
-  const filters = parseFilters(params)
+  // Parsed once per URL, so pages can memoise work that depends on the filters.
+  const filters = useMemo(() => parseFilters(params), [params])
   return [
     filters,
     (next) => {

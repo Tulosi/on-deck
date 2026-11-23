@@ -7,6 +7,10 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>On Deck</title>
+    <!-- Image and API hosts used on first paint: open the connections early. -->
+    <link rel="preconnect" href="https://image.tmdb.org" />
+    <link rel="preconnect" href="https://images.igdb.com" />
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
     <script>
       // Apply saved theme before first paint to avoid a flash.
       try {

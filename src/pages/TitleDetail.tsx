@@ -1,3 +1,4 @@
+import { backdropProps, coverProps } from '../lib/images'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
@@ -259,7 +260,9 @@ export function TitleDetail() {
     <div className="-mx-4 -mt-6 md:-mx-6">
       {/* Backdrop */}
       <div className="relative h-48 overflow-hidden bg-surface sm:h-64 md:h-80">
-        {title.backdropUrl && <img src={title.backdropUrl} alt="" className="size-full object-cover opacity-60" />}
+        {title.backdropUrl && (
+          <img {...backdropProps(title.backdropUrl)} alt="" fetchPriority="high" className="size-full object-cover opacity-60" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
         <button
           type="button"
@@ -273,7 +276,12 @@ export function TitleDetail() {
       <div className="relative -mt-24 flex flex-col gap-6 px-4 sm:flex-row sm:items-end md:-mt-32 md:px-6">
         <div className="aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg border border-line bg-raised shadow-2xl sm:w-44 md:w-52">
           {title.coverUrl ? (
-            <img src={title.coverUrl} alt="" className="size-full object-cover" />
+            <img
+              {...coverProps(title.coverUrl, '(min-width: 768px) 208px, (min-width: 640px) 176px, 128px')}
+              alt=""
+              fetchPriority="high"
+              className="size-full object-cover"
+            />
           ) : (
             <div className="grid size-full place-items-center">
               <Icon className="size-8 text-faint" />

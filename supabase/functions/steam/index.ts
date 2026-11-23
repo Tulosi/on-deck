@@ -87,7 +87,12 @@ serve(async (req) => {
       if (!params || typeof params !== 'object') throw new HttpError(400, 'steam_bad_reply')
       const steamId = await verifyOpenId(params)
       const name = await playerName(steamId)
-      const { error } = await db.from('profiles').update({ steam_id: steamId, steam_name: name }).eq('user_id', user.id)
+      // Linking turns on "Ask about new Steam games" by default. A null seen-list means the first check takes a
+      // baseline, so games already owned now go through the import picker, not Home prompts.
+      const { error } = await db
+        .from('profiles')
+        .update({ steam_id: steamId, steam_name: name, steam_sync: true, steam_seen_appids: null })
+        .eq('user_id', user.id)
       if (error) throw new HttpError(500, 'save_failed')
       return json({ linked: true, steamId, name })
     }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
@@ -218,24 +218,31 @@ export function useItems() {
     queryKey: libraryKey(user?.id),
     enabled: !!user && !!supabase,
     queryFn: async () => {
-      const { data, error } = await supabase!
+      // Four reads, run side by side: the library, stored availability (movies/TV, written by the
+      // `availability` function), and game prices for the user's region (shared cache from `prices`).
+      const itemsReq = supabase!
         .from('user_items')
         .select(
           'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, stalled_at, archived_at, completed_at, created_at, updated_at, last_activity_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
-      if (error) throw error
-      // Stored availability (movies/TV), written by the `availability` function.
-      const { data: avail } = await supabase!
+      const availReq = supabase!
         .from('user_availability')
         .select('title_id, plex_status, streaming, available, became_available_at, checked_at')
+      const pricesReq = supabase!
+        .from('profiles')
+        .select('country_code')
+        .eq('user_id', user!.id)
+        .maybeSingle()
+        .then(({ data: prof }) =>
+          supabase!
+            .from('game_prices')
+            .select('*')
+            .eq('country_code', ((prof?.country_code as string | undefined) ?? 'US').toUpperCase()),
+        )
+      const [{ data, error }, { data: avail }, { data: priceRows }] = await Promise.all([itemsReq, availReq, pricesReq])
+      if (error) throw error
       const byTitle = new Map(((avail ?? []) as AvailabilityRow[]).map((a) => [a.title_id, a]))
-      // Game prices for the user's region (shared cache written by the `prices` function).
-      const { data: prof } = await supabase!.from('profiles').select('country_code').eq('user_id', user!.id).maybeSingle()
-      const { data: priceRows } = await supabase!
-        .from('game_prices')
-        .select('*')
-        .eq('country_code', ((prof?.country_code as string | undefined) ?? 'US').toUpperCase())
       const priceByTitle = new Map(((priceRows ?? []) as PriceRow[]).map((p) => [p.title_id, p]))
       return (data as unknown as ItemRow[]).map((row) =>
         withPrice(withAvailability(toUserItem(row), byTitle.get(row.title.id)), priceByTitle.get(row.title.id)),
@@ -243,21 +250,24 @@ export function useItems() {
     },
   })
 
-  if (!user) {
-    const sample = authLoading ? [] : sampleItems
-    return { items: sample, allItems: sample, isSample: !authLoading, isLoading: authLoading, error: null }
-  }
-  const all = query.data ?? []
+  const all = user ? query.data : authLoading ? EMPTY : sampleItems
   // Archived titles are hidden everywhere by default; `allItems` is for the few places that need them
   // (the title page, search's "already added", the Library's Archived filter, collections).
+  // Memoised so pages can memoise their own filtering on a stable list.
+  const items = useMemo(() => (all ?? EMPTY).filter((i) => !i.archivedAt), [all])
+  if (!user) {
+    return { items, allItems: all ?? EMPTY, isSample: !authLoading, isLoading: authLoading, error: null }
+  }
   return {
-    items: all.filter((i) => !i.archivedAt),
-    allItems: all,
+    items,
+    allItems: all ?? EMPTY,
     isSample: false,
     isLoading: query.isLoading,
     error: query.error,
   }
 }
+
+const EMPTY: UserItem[] = []
 
 // ─── Writing ───────────────────────────────────────────────────────────────
 

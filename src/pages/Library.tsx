@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Layers, Loader2, Sparkles, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
+import { PageSkeleton } from '../components/LazyPage'
 import { PosterCard } from '../components/PosterCard'
 import {
   LABELS,
@@ -103,20 +104,18 @@ export function Library() {
   const smartId = params.get('smart')
   const editing = smartId ? collections.find((c) => c.id === smartId && c.rules != null) : undefined
 
-  if (isLoading) {
-    return (
-      <div className="grid place-items-center py-24 text-muted">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    )
-  }
+  // Filtering, sorting and grouping a large library is the expensive part of this page:
+  // only redo it when the library or the filters change.
+  const { inType, results, hiddenArchived, groups } = useMemo(() => {
+    const inType = f.type ? items.filter((i) => i.title.mediaType === f.type) : items
+    // allItems, so the Archived filter can bring archived titles back (applyFilters hides them by default).
+    const results = sortItems(applyFilters(allItems, f), f.sort)
+    const hiddenArchived =
+      f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
+    return { inType, results, hiddenArchived, groups: groupItems(results, f.group) }
+  }, [items, allItems, f])
 
-  const inType = f.type ? items.filter((i) => i.title.mediaType === f.type) : items
-  // allItems, so the Archived filter can bring archived titles back (applyFilters hides them by default).
-  const results = sortItems(applyFilters(allItems, f), f.sort)
-  const hiddenArchived =
-    f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
-  const groups = groupItems(results, f.group)
+  if (isLoading) return <PageSkeleton />
   const title = f.archived === 'only' ? (f.type ? `Archived ${LABELS.type[f.type]}` : 'Archive') : f.type ? LABELS.type[f.type] : 'Library'
 
   return (

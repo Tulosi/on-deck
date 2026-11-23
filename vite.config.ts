@@ -2,6 +2,22 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+/**
+ * Rolling version: the build number is the commit count on main, so it goes up by itself with every push.
+ * Shown quietly on Settings as "v312 · 23 Nov 2026" (commit date), with the commit hash on hover.
+ */
+function appVersion() {
+  const git = (cmd: string) => {
+    try {
+      return execSync(`git ${cmd}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    } catch {
+      return ''
+    }
+  }
+  return { build: git('rev-list --count HEAD') || '0', date: git('log -1 --format=%cs'), sha: git('rev-parse --short HEAD') }
+}
 
 // GitHub Pages serves the site from /<repo-name>/. Override with VITE_BASE if the repo name changes.
 export default defineConfig(({ mode }) => {
@@ -10,6 +26,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    define: { __APP_VERSION__: JSON.stringify(appVersion()) },
     plugins: [
       react(),
       tailwindcss(),

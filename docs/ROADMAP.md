@@ -51,7 +51,7 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
   "skip" choices; titles already in the library are marked.
 - Suggested: Steam = top 20 most-played (last 2 years, by playtime); TV = top 20 by episodes watched (last 2
   years); Movies = top 20 watched in the last 2 years by **IMDb** rating.
-- Optional ongoing Steam sync: newly owned games → "Add to On Deck?".
+- Optional ongoing Steam sync: newly owned games → "Add to On Deck?". On by default once Steam is linked (switch in Settings → Steam).
 - Home: last 5 Plex-watched titles not in the library, with "more".
 
 ## Group G — UI/UX pass ⏸ parked

@@ -294,6 +294,19 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
 - Adding (3 at a time, with progress) uses each source's normal add, then sets a status: Steam played → Playing +
   owned; wishlist → Want; Plex movie → Watched; Plex show → Watching (Plex sync then sets the episode).
 
+### Ongoing Steam sync and Home import prompts (Group F2)
+- **Settings → Steam → "Ask about new Steam games"** (`profiles.steam_sync`, off by default). Switching it on takes a
+  baseline of everything owned now (`profiles.steam_seen_appids`), so only games that show up later are offered.
+- Home's **New on Steam** row (`ImportPrompts.tsx`, importer `steam_new`, checked at most hourly): each new game
+  has **Add** (owned; Playing if it has playtime, else Want) and **✕** (no thanks). Either answer adds the app id
+  to the seen list (`steam_seen`). Games not on IGDB, or already in the library, are marked seen silently.
+- Home's **Watched on Plex** row (importer `plex_recent`, checked at most every 30 min): the 5 most recently
+  watched Plex movies / shows that aren't in the library and weren't skipped before, with **Add** (Watched /
+  Watching, as in the picker), **✕** (not interested: saved to `import_skips`, so the picker keeps it unticked
+  too) and **More…** (the full Plex picker).
+- Settings → Plex & Seerr: a saved Seerr is checked live and shows **Connected as …** (or the error) with Change /
+  Disconnect, like Plex and Steam.
+
 ### Cast (movies & TV)
 - `metadata.cast`: the top 4 billed actors (`tmdb_id`, `name`, `character`, `photo`, `imdb_id`), stored when a
   title is added or refreshed. Movies use TMDB `credits`; shows use `aggregate_credits` (the whole run). Each

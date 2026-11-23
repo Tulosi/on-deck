@@ -44,6 +44,10 @@ export interface Profile {
   /** Linked Steam account (set by the `steam` function after verifying the sign-in). */
   steam_id: string | null
   steam_name: string | null
+  /** Ongoing Steam sync: offer newly owned games on Home (Group F2). */
+  steam_sync: boolean
+  /** Steam app ids already offered / accounted for; null = take a fresh baseline on the next check. */
+  steam_seen_appids?: string[] | null
   /** Poster chip visibility: { chip: "show" | "hover" | "hide" } (see lib/chips.ts). */
   card_chips: Record<string, 'show' | 'hover' | 'hide'>
   /** Game-price alert switches (missing = on). */
@@ -60,7 +64,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase!
         .from('profiles')
-        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name, alert_settings, nav_layout')
+        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name, steam_sync, alert_settings, nav_layout')
         .eq('user_id', user!.id)
         .single()
       if (error) throw error

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2 } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Loader2, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../lib/auth'
 import {
@@ -195,6 +195,7 @@ function SteamSection() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const profile = useProfile()
+  const updateProfile = useUpdateProfile()
   const location = useLocation()
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
@@ -299,6 +300,20 @@ function SteamSection() {
           Connect Steam
         </button>
       )}
+      {linked && (
+        <Toggle
+          checked={!!profile.data?.steam_sync}
+          onChange={(on) =>
+            run(async () => {
+              // Switching on takes a fresh baseline: only games bought from now on are offered.
+              await updateProfile({ steam_sync: on, ...(on ? { steam_seen_appids: null } : {}) })
+              await queryClient.invalidateQueries({ queryKey: ['steam-new'] })
+            })
+          }
+          label="Ask about new Steam games"
+          hint="When a game you didn’t have before shows up in your Steam library, Home asks whether to add it to On Deck."
+        />
+      )}
       <p className="text-xs text-faint">
         You sign in on steamcommunity.com — On Deck never sees your Steam password. Your Steam profile’s
         Game details must be Public. Anything you change yourself (In Your Library or Status) is never changed by the check.
@@ -306,6 +321,14 @@ function SteamSection() {
       {message && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
     </Section>
   )
+}
+
+const hostOf = (u: string) => {
+  try {
+    return new URL(u).host
+  } catch {
+    return u
+  }
 }
 
 function PlexSection() {
@@ -319,10 +342,28 @@ function PlexSection() {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [editingUrl, setEditingUrl] = useState(false)
+  const savedUrl = profile.data?.seerr_url ?? null
+  const savedHost = savedUrl ? hostOf(savedUrl) : ''
+  // Live check of the saved Seerr, so it shows Connected like Plex and Steam do.
+  const seerrCheck = useQuery({
+    queryKey: ['seerr-test', user?.id, savedUrl],
+    enabled: !!savedUrl && !!plex.data?.linked,
+    staleTime: 10 * 60_000,
+    retry: false,
+    queryFn: () => testSeerr(savedUrl!),
+  })
 
   useEffect(() => {
     if (profile.data) setUrl(profile.data.seerr_url ?? '')
   }, [profile.data])
+
+  async function disconnectSeerr() {
+    setMessage(null)
+    setUrl('')
+    await update({ seerr_url: null })
+    setMessage({ ok: true, text: 'Seerr disconnected.' })
+  }
 
   const refreshPlex = () => queryClient.invalidateQueries({ queryKey: ['plex', user?.id] })
 
@@ -356,12 +397,14 @@ function PlexSection() {
       if (trimmed) {
         if (!plex.data?.linked) throw new Error('plex_not_linked')
         const result = await testSeerr(trimmed)
+        queryClient.setQueryData(['seerr-test', user?.id, trimmed], result)
         await update({ seerr_url: trimmed })
         setMessage({ ok: true, text: `Connected to Seerr${result.seerrUser ? ` as ${result.seerrUser}` : ''}.` })
       } else {
         await update({ seerr_url: null })
-        setMessage({ ok: true, text: 'Seerr URL removed.' })
+        setMessage({ ok: true, text: 'Seerr disconnected.' })
       }
+      setEditingUrl(false)
     } catch (err) {
       setMessage({ ok: false, text: friendlyError(err) })
     } finally {
@@ -406,21 +449,60 @@ function PlexSection() {
       </div>
 
       <div className="space-y-2 pt-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">2 · Seerr URL</p>
-        <div className="flex flex-wrap gap-2">
-          <input
-            type="url"
-            inputMode="url"
-            placeholder="https://requests.example.com"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className={`${inputClass} min-w-0 flex-1`}
-          />
-          <button type="button" onClick={saveUrl} disabled={busy || profile.isLoading} className={buttonClass}>
-            {busy && <Loader2 className="size-4 animate-spin" />}
-            Save &amp; test
-          </button>
-        </div>
+        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">2 · Seerr</p>
+        {savedUrl && !editingUrl ? (
+          <div className="flex flex-wrap items-center gap-3">
+            {!plex.data?.linked ? (
+              <span className="text-sm text-muted">Saved ({savedHost}). Connect Plex to use it.</span>
+            ) : seerrCheck.isLoading ? (
+              <span className="flex items-center gap-1.5 text-sm text-muted">
+                <Loader2 className="size-4 animate-spin" /> Checking {savedHost}…
+              </span>
+            ) : seerrCheck.data?.ok ? (
+              <span className="flex items-center gap-1.5 text-sm text-good">
+                <Check className="size-4" /> Connected{seerrCheck.data.seerrUser ? ` as ${seerrCheck.data.seerrUser}` : ''} ·{' '}
+                {savedHost}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-sm text-bad">
+                <X className="size-4" /> {seerrCheck.error ? friendlyError(seerrCheck.error) : 'Couldn’t connect to Seerr.'}
+              </span>
+            )}
+            <button type="button" onClick={() => setEditingUrl(true)} className={buttonClass}>
+              Change
+            </button>
+            <button type="button" onClick={() => void disconnectSeerr()} className={buttonClass}>
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="url"
+              inputMode="url"
+              placeholder="https://requests.example.com"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className={`${inputClass} min-w-0 flex-1`}
+            />
+            <button type="button" onClick={saveUrl} disabled={busy || profile.isLoading} className={buttonClass}>
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Save &amp; test
+            </button>
+            {savedUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUrl(savedUrl)
+                  setEditingUrl(false)
+                }}
+                className={buttonClass}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
         <p className="text-xs text-faint">Overseerr, Jellyseerr or Seerr — it must be reachable over https.</p>
       </div>
 

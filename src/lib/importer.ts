@@ -18,6 +18,8 @@ export interface Candidate {
   detail: string
   suggested: boolean
   sortValue: number
+  /** Steam app id (Steam candidates). */
+  appid?: string
 }
 
 export interface CandidateList {
@@ -30,6 +32,18 @@ export interface CandidateList {
 
 export const fetchCandidates = (source: ImportSource) => callFn<CandidateList>('importer', { action: source })
 
+/** Ongoing Steam sync (Group F2): games newly found in the user's Steam library, not answered yet. */
+export const fetchSteamNew = () => callFn<CandidateList>('importer', { action: 'steam_new' })
+/** Marks Steam games as answered so they aren't offered again. */
+export const markSteamSeen = (appids: string[]) => callFn<{ ok: boolean }>('importer', { action: 'steam_seen', appids })
+/** Most recently watched Plex titles not in the library (and not skipped before), newest first. */
+export const fetchPlexRecent = () => callFn<CandidateList>('importer', { action: 'plex_recent' })
+
+/** "Not interested": remembered, so the title isn't offered again (here or in the import picker). */
+export async function skipCandidate(userId: string, c: Candidate) {
+  await supabase!.from('import_skips').upsert({ user_id: userId, key: c.key }, { onConflict: 'user_id,key', ignoreDuplicates: true })
+}
+
 export async function fetchSkips(): Promise<Set<string>> {
   const { data } = await supabase!.from('import_skips').select('key')
   return new Set((data ?? []).map((r) => r.key as string))
@@ -37,6 +51,7 @@ export async function fetchSkips(): Promise<Set<string>> {
 
 /** Status for a newly imported title. */
 function initialStatus(c: Candidate): { progress: Progress; owned: boolean } {
+  if (c.group === 'New on Steam') return { progress: c.sortValue > 0 ? 'in_progress' : 'wanted', owned: true } // sortValue = minutes played
   if (c.mediaType === 'game') return c.group === 'Steam wishlist' ? { progress: 'wanted', owned: false } : { progress: 'in_progress', owned: true }
   if (c.mediaType === 'movie') return { progress: 'completed', owned: false }
   return { progress: 'in_progress', owned: false } // shows: Plex sync then sets the episode; Caught up / Watched follow

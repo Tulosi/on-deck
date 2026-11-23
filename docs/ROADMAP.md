@@ -44,7 +44,7 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
   Import **merges**. Importing into an otherwise empty account prompts to set up Plex / Steam / Seerr.
 - Settings → Status: sync errors, API limits hit or refused, expiring tokens, last run of each job.
 
-## Group F — Steam & Plex import (F1: pickers ✅ built · F2: ongoing Steam sync + Home Plex row)
+## Group F — Steam & Plex import ✅ built (F1: pickers · F2: ongoing Steam sync + Home Plex row)
 - Selective import of Steam wishlist and Plex watch history: poster grid + compact checklist, All / None /
   **Suggested** (pre-ticked by default; it's a starting point, not a mode: any title, suggested or not, can
   still be ticked or unticked by hand; All / None / Suggested just reset the selection), a note to pick only what you'll really get to. Re-syncs keep earlier

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { RateFinished } from '../components/RateFinished'
+import { ImportPrompts } from '../components/ImportPrompts'
 import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
 import { useProfile } from '../lib/integrations'
@@ -89,6 +90,7 @@ export function Home() {
         }
       />
       {!isSample && <RateFinished items={items} />}
+      {!isSample && <ImportPrompts />}
       <PosterRow
         title="This week"
         hint="Out in the next 7 days"

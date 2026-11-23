@@ -2,6 +2,11 @@
 // the app through the normal add path. Caller must be signed in.
 //   POST { action: 'steam' } → candidates from the linked Steam account: games played + the wishlist
 //   POST { action: 'plex' }  → candidates from the user's Plex watch history: shows and movies they've watched
+//   POST { action: 'steam_new' } → ongoing Steam sync (Group F2): games newly found in the user's Steam library
+//                                  that haven't been answered yet (only when the user switched sync on)
+//   POST { action: 'steam_seen', appids } → marks Steam games as answered (added or skipped)
+//   POST { action: 'plex_recent' } → the most recently watched Plex titles that aren't in the library (or
+//                                    skipped before), newest first, up to 20 — for Home's prompt
 // Each candidate: { key, source, sourceId, mediaType, title, year, poster, group, detail, suggested, sortValue }
 //   key: "game:igdb:<id>" / "movie:tmdb:<id>" / "tv:tmdb:<id>" (same as the app's sourceKey)
 // Suggested (pre-ticked in the picker; the user can still change anything):
@@ -30,6 +35,8 @@ interface Candidate {
   suggested: boolean
   /** For ordering within a group (playtime minutes, episodes watched, last-watched time …). */
   sortValue: number
+  /** Steam app id (Steam candidates). */
+  appid?: string
 }
 
 const TWO_YEARS_MS = 2 * 365 * 86_400_000
@@ -47,6 +54,17 @@ async function getJson(url: string, timeout = 10000): Promise<Json | null> {
 
 const hours = (min: number) => (min < 60 ? `${min} min played` : `${Math.round(min / 60)} h played`)
 const monthYear = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+
+/** "media:source:id" for every title in the user's library (archived included). */
+async function libraryKeys(userId: string): Promise<Set<string>> {
+  const { data } = await admin().from('user_items').select('title:titles(media_type, source, source_id)').eq('user_id', userId)
+  return new Set(((data ?? []) as unknown as Json[]).map((r) => `${r.title?.media_type}:${r.title?.source}:${r.title?.source_id}`))
+}
+
+async function skippedKeys(userId: string): Promise<Set<string>> {
+  const { data } = await admin().from('import_skips').select('key').eq('user_id', userId)
+  return new Set(((data ?? []) as Json[]).map((r) => r.key as string))
+}
 
 // ─── Steam ─────────────────────────────────────────────────────────────────
 
@@ -135,6 +153,7 @@ async function steamCandidates(steamId: string) {
       detail: `${hours(g.minutes)}${g.last ? ` · last ${monthYear(g.last)}` : ''}`,
       suggested: suggested.has(g.appid),
       sortValue: g.minutes,
+      appid: g.appid,
     })
   }
   for (const w of wishlist) {
@@ -156,9 +175,70 @@ async function steamCandidates(steamId: string) {
       detail: w.added ? `Wishlisted ${monthYear(w.added)}` : 'On your wishlist',
       suggested: false,
       sortValue: -w.priority,
+      appid: w.appid,
     })
   }
   return { candidates, unmatched }
+}
+
+// ─── Ongoing Steam sync ────────────────────────────────────────────────────
+
+async function steamNew(userId: string) {
+  const db = admin()
+  const { data: p } = await db.from('profiles').select('steam_id, steam_sync, steam_seen_appids').eq('user_id', userId).maybeSingle()
+  if (!p?.steam_id || !p.steam_sync) return { candidates: [] }
+  const owned = await getJson(
+    `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${secret('STEAM_API_KEY')}&steamid=${p.steam_id}&include_played_free_games=1&include_appinfo=0`,
+  )
+  if (!Array.isArray(owned?.response?.games)) return { candidates: [], note: 'private' as const }
+  const games = (owned.response.games as Json[]).map((g) => ({
+    appid: String(g.appid),
+    minutes: Number(g.playtime_forever ?? 0) || 0,
+    last: Number(g.rtime_last_played) > 0 ? Number(g.rtime_last_played) * 1000 : 0,
+  }))
+  // First check since sync was switched on: everything owned now is the baseline.
+  if (!Array.isArray(p.steam_seen_appids)) {
+    await db.from('profiles').update({ steam_seen_appids: games.map((g) => g.appid) }).eq('user_id', userId)
+    return { candidates: [] }
+  }
+  const seen = new Set(p.steam_seen_appids as string[])
+  const fresh = games.filter((g) => !seen.has(g.appid))
+  if (!fresh.length) return { candidates: [] }
+
+  const [igdbOf, lib] = await Promise.all([igdbForSteam(fresh.map((g) => g.appid)), libraryKeys(userId)])
+  const autoSeen: string[] = [] // nothing to ask: not on IGDB, or already in the library
+  const candidates: Candidate[] = []
+  for (const g of fresh) {
+    const m = igdbOf.get(g.appid)
+    const key = m ? `game:igdb:${m.id}` : ''
+    if (!m || lib.has(key)) {
+      autoSeen.push(g.appid)
+      continue
+    }
+    candidates.push({
+      key,
+      source: 'igdb',
+      sourceId: String(m.id),
+      mediaType: 'game',
+      title: m.name,
+      year: m.year,
+      poster: m.cover ?? `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/library_600x900.jpg`,
+      group: 'New on Steam',
+      detail: g.minutes ? hours(g.minutes) : 'Not played yet',
+      suggested: false,
+      sortValue: g.minutes,
+      appid: g.appid,
+    })
+  }
+  if (autoSeen.length) await markSteamSeen(userId, autoSeen)
+  return { candidates }
+}
+
+async function markSteamSeen(userId: string, appids: string[]) {
+  const db = admin()
+  const { data: p } = await db.from('profiles').select('steam_seen_appids').eq('user_id', userId).maybeSingle()
+  const next = [...new Set([...((p?.steam_seen_appids as string[] | null) ?? []), ...appids])]
+  await db.from('profiles').update({ steam_seen_appids: next }).eq('user_id', userId)
 }
 
 // ─── Plex ──────────────────────────────────────────────────────────────────
@@ -185,22 +265,24 @@ async function tmdbBasics(mediaType: 'movie' | 'tv', id: number): Promise<{ post
     : { poster: null, score: null }
 }
 
-async function plexCandidates(userId: string) {
-  const integ = await loadIntegration(userId)
-  if (!integ.plexToken) return { candidates: [], note: 'not_linked' as const }
-  const list = await servers(`on-deck-${userId}`, integ.plexToken)
+interface PlexRaw {
+  mediaType: 'movie' | 'tv'
+  tmdbId: number
+  title: string
+  year: number | null
+  last: number
+  watched: number // episodes (TV) or plays (movie)
+  total: number // episodes (TV)
+  imdbRating: number | null
+}
 
-  interface Raw {
-    mediaType: 'movie' | 'tv'
-    tmdbId: number
-    title: string
-    year: number | null
-    last: number
-    watched: number // episodes (TV) or plays (movie)
-    total: number // episodes (TV)
-    imdbRating: number | null
-  }
-  const raw = new Map<string, Raw>()
+/**
+ * Watched movies and shows across the user's Plex servers, most recently watched first per section, keyed
+ * "movie:tmdb:<id>" / "tv:tmdb:<id>". `pageSize`/`maxPages` limit how far back each section is read.
+ */
+async function plexWatched(userId: string, plexToken: string, pageSize = 300, maxPages = 17): Promise<Map<string, PlexRaw>> {
+  const list = await servers(`on-deck-${userId}`, plexToken)
+  const raw = new Map<string, PlexRaw>()
   for (const server of list) {
     for (const uri of server.uris) {
       const sections = await plexGet(uri, '/library/sections', server.token)
@@ -210,17 +292,17 @@ async function plexCandidates(userId: string) {
         // Most recently watched first, in pages; stop at the first never-watched title (big libraries are slow
         // to list in full).
         const watchedItems: Json[] = []
-        for (let start = 0; start < 5000; start += 300) {
-          const page = await plexGet(
+        for (let page = 0; page < maxPages; page++) {
+          const res = await plexGet(
             uri,
-            `/library/sections/${sec.key}/all?includeGuids=1&sort=lastViewedAt:desc&X-Plex-Container-Start=${start}&X-Plex-Container-Size=300`,
+            `/library/sections/${sec.key}/all?includeGuids=1&sort=lastViewedAt:desc&X-Plex-Container-Start=${page * pageSize}&X-Plex-Container-Size=${pageSize}`,
             server.token,
             20000,
           )
-          const rows = (page?.MediaContainer?.Metadata ?? []) as Json[]
+          const rows = (res?.MediaContainer?.Metadata ?? []) as Json[]
           const seen = rows.filter((r) => Number(r.lastViewedAt ?? 0) > 0)
           watchedItems.push(...seen)
-          if (rows.length < 300 || seen.length < rows.length) break
+          if (rows.length < pageSize || seen.length < rows.length) break
         }
         for (const it of watchedItems) {
           const tmdbId = tmdbIdOf(it)
@@ -255,19 +337,58 @@ async function plexCandidates(userId: string) {
       break // this server answered; don't repeat it through another connection
     }
   }
+  return raw
+}
 
-  // Posters (and a fallback score) from TMDB, 10 at a time.
-  const items = [...raw.values()]
+/** TMDB posters / scores for Plex titles, 10 at a time. */
+async function basicsFor(items: PlexRaw[]) {
   const basics = new Map<string, { poster: string | null; score: number | null }>()
   for (let i = 0; i < items.length; i += 10) {
     await Promise.all(
       items.slice(i, i + 10).map(async (r) => basics.set(`${r.mediaType}:${r.tmdbId}`, await tmdbBasics(r.mediaType, r.tmdbId))),
     )
   }
+  return basics
+}
+
+async function plexRecent(userId: string) {
+  const integ = await loadIntegration(userId)
+  if (!integ.plexToken) return { candidates: [], note: 'not_linked' as const }
+  const [raw, lib, skips] = await Promise.all([plexWatched(userId, integ.plexToken, 40, 1), libraryKeys(userId), skippedKeys(userId)])
+  const items = [...raw.entries()]
+    .filter(([k]) => !lib.has(k) && !skips.has(k))
+    .map(([, r]) => r)
+    .sort((a, b) => b.last - a.last)
+    .slice(0, 20)
+  const basics = await basicsFor(items)
+  const candidates: Candidate[] = items.map((r) => ({
+    key: `${r.mediaType}:tmdb:${r.tmdbId}`,
+    source: 'tmdb',
+    sourceId: String(r.tmdbId),
+    mediaType: r.mediaType,
+    title: r.title,
+    year: r.year,
+    poster: basics.get(`${r.mediaType}:${r.tmdbId}`)?.poster ?? null,
+    group: r.mediaType === 'tv' ? 'Shows you’ve watched on Plex' : 'Movies you’ve watched on Plex',
+    detail: r.last ? `Watched ${new Date(r.last).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Watched',
+    suggested: false,
+    sortValue: r.last,
+  }))
+  return { candidates }
+}
+
+async function plexCandidates(userId: string) {
+  const integ = await loadIntegration(userId)
+  if (!integ.plexToken) return { candidates: [], note: 'not_linked' as const }
+  const raw = await plexWatched(userId, integ.plexToken)
+
+  // Posters (and a fallback score) from TMDB.
+  const items = [...raw.values()]
+  const basics = await basicsFor(items)
 
   const now = Date.now()
-  const recent = (r: Raw) => r.last && now - r.last < TWO_YEARS_MS
-  const ratingOf = (r: Raw) => r.imdbRating ?? basics.get(`${r.mediaType}:${r.tmdbId}`)?.score ?? 0
+  const recent = (r: PlexRaw) => r.last && now - r.last < TWO_YEARS_MS
+  const ratingOf = (r: PlexRaw) => r.imdbRating ?? basics.get(`${r.mediaType}:${r.tmdbId}`)?.score ?? 0
   const suggestedTv = new Set(
     items
       .filter((r) => r.mediaType === 'tv' && recent(r))
@@ -312,5 +433,12 @@ serve(async (req) => {
     return json(await steamCandidates(profile.steam_id))
   }
   if (body?.action === 'plex') return json(await plexCandidates(user.id))
+  if (body?.action === 'plex_recent') return json(await plexRecent(user.id))
+  if (body?.action === 'steam_new') return json(await steamNew(user.id))
+  if (body?.action === 'steam_seen') {
+    const appids = Array.isArray(body.appids) ? body.appids.map(String).filter((a: string) => /^\d+$/.test(a)).slice(0, 500) : []
+    if (appids.length) await markSteamSeen(user.id, appids)
+    return json({ ok: true })
+  }
   throw new HttpError(400, 'unknown_action')
 })

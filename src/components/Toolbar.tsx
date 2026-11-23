@@ -9,11 +9,13 @@ import {
   activeCount,
   clearFilters,
   withType,
+  cycleTri,
   type Filters,
   type GroupKey,
   type SortKey,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
+import { statusFilterOptions, statusLabel } from '../lib/statusLabels'
 import { useFilters } from '../lib/useFilters'
 import type { MediaType } from '../types'
 
@@ -143,12 +145,15 @@ function OptionGroup<T extends string>({
   label,
   options,
   selected,
+  excluded,
   render,
   onToggle,
 }: {
   label: string
   options: readonly T[]
   selected: readonly T[]
+  /** 3-state groups: values currently excluded ("not …"). Omit for include-only groups. */
+  excluded?: readonly string[]
   render: (v: T) => string
   onToggle: (v: T) => void
 }) {
@@ -159,19 +164,28 @@ function OptionGroup<T extends string>({
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {
           const on = selected.includes(o)
+          const off = !!excluded?.includes(o)
+          const name = render(o)
           return (
             <button
               key={o}
               type="button"
-              aria-pressed={on}
+              aria-pressed={on ? 'true' : off ? 'mixed' : 'false'}
+              aria-label={on ? `${name}: included` : off ? `${name}: excluded` : name}
+              title={excluded ? (on ? 'Included · tap to exclude' : off ? 'Excluded · tap to clear' : 'Tap to include') : undefined}
               onClick={() => onToggle(o)}
               className={clsx(
                 'flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors',
-                on ? 'border-accent bg-accent/15 text-fg' : 'border-line text-muted hover:border-faint hover:text-fg',
+                on
+                  ? 'border-accent bg-accent/15 text-fg'
+                  : off
+                    ? 'border-bad/70 bg-bad/10 text-bad'
+                    : 'border-line text-muted hover:border-faint hover:text-fg',
               )}
             >
               {on && <Check className="size-3" />}
-              {render(o)}
+              {off && <X className="size-3" />}
+              <span className={clsx(off && 'line-through decoration-bad/70')}>{name}</span>
             </button>
           )
         })}
@@ -192,31 +206,41 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
   const minYear = years.length ? Math.min(...years) : 1950
   const maxYear = Math.max(new Date().getFullYear() + 3, ...years)
   const yearOptions = Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
-  const doneLabel = f.type ? (f.type === 'game' ? 'Played' : f.type === 'book' ? 'Read' : 'Watched') : 'Done'
 
   return (
     <div className="space-y-5">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-faint">
+        Tap a filter once to include it, again to exclude it
+        <span className="inline-flex items-center gap-0.5 rounded-full border border-bad/70 bg-bad/10 px-1.5 text-bad">
+          <X className="size-2.5" />
+          <span className="line-through">like this</span>
+        </span>
+        , a third time to clear.
+      </p>
       <Section title="All types">
         <OptionGroup
           label="Status"
-          options={LABELS.options.STATUS}
+          options={statusFilterOptions(f.type)}
           selected={f.status}
-          render={(v) => (v === 'completed' ? doneLabel : LABELS.status[v])}
-          onToggle={(v) => set({ ...f, status: toggle(f.status, v) })}
+          render={(v) => statusLabel(v, f.type)}
+          excluded={f.not.status ?? []}
+          onToggle={(v) => set(cycleTri(f, 'status', v))}
         />
         <OptionGroup
           label="Priority"
           options={LABELS.options.PRIORITY}
           selected={f.priority}
           render={(v) => LABELS.priority[v]}
-          onToggle={(v) => set({ ...f, priority: toggle(f.priority, v) })}
+          excluded={f.not.priority ?? []}
+          onToggle={(v) => set(cycleTri(f, 'priority', v))}
         />
         <OptionGroup
           label="Rating"
           options={LABELS.options.RATING}
           selected={f.rating}
           render={(v) => LABELS.rating[v]}
-          onToggle={(v) => set({ ...f, rating: toggle(f.rating, v) })}
+          excluded={f.not.rating ?? []}
+          onToggle={(v) => set(cycleTri(f, 'rating', v))}
         />
         <OptionGroup
           label="Availability"
@@ -277,6 +301,18 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
             </div>
           </div>
           <label className="space-y-1.5">
+            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Archived</span>
+            <select
+              value={f.archived}
+              onChange={(e) => set({ ...f, archived: e.target.value as Filters['archived'] })}
+              className={selectClass}
+            >
+              <option value="hide">Hidden (default)</option>
+              <option value="include">Include</option>
+              <option value="only">Only archived</option>
+            </select>
+          </label>
+          <label className="space-y-1.5">
             <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Date added</span>
             <select
               value={f.added ?? ''}
@@ -316,14 +352,16 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
                     options={LABELS.options.TV_STATUS}
                     selected={f.tvStatus}
                     render={(v) => LABELS.tvStatus[v]}
-                    onToggle={(v) => set({ ...f, tvStatus: toggle(f.tvStatus, v) })}
+                    excluded={f.not.tvStatus ?? []}
+          onToggle={(v) => set(cycleTri(f, 'tvStatus', v))}
                   />
                   <OptionGroup
                     label="Watch progress"
                     options={LABELS.options.TV_PROGRESS}
                     selected={f.tvProgress}
                     render={(v) => LABELS.tvProgress[v]}
-                    onToggle={(v) => set({ ...f, tvProgress: toggle(f.tvProgress, v) })}
+                    excluded={f.not.tvProgress ?? []}
+          onToggle={(v) => set(cycleTri(f, 'tvProgress', v))}
                   />
                 </>
               )}
@@ -343,21 +381,24 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
                 options={LABELS.options.COOP}
                 selected={f.coop}
                 render={(v) => LABELS.coop[v]}
-                onToggle={(v) => set({ ...f, coop: toggle(f.coop, v) })}
+                excluded={f.not.coop ?? []}
+          onToggle={(v) => set(cycleTri(f, 'coop', v))}
               />
               <OptionGroup
                 label="Length (time to beat)"
                 options={LABELS.options.LENGTH}
                 selected={f.length}
                 render={(v) => LABELS.length[v]}
-                onToggle={(v) => set({ ...f, length: toggle(f.length, v) })}
+                excluded={f.not.length ?? []}
+          onToggle={(v) => set(cycleTri(f, 'length', v))}
               />
               <OptionGroup
                 label="Steam Deck"
                 options={LABELS.options.DECK}
                 selected={f.deck}
                 render={(v) => LABELS.deck[v]}
-                onToggle={(v) => set({ ...f, deck: toggle(f.deck, v) })}
+                excluded={f.not.deck ?? []}
+          onToggle={(v) => set(cycleTri(f, 'deck', v))}
               />
               <OptionGroup
                 label="Release state"
@@ -371,7 +412,8 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
                 options={LABELS.options.DEAL}
                 selected={f.deal}
                 render={(v) => LABELS.deal[v]}
-                onToggle={(v) => set({ ...f, deal: toggle(f.deal, v) })}
+                excluded={f.not.deal ?? []}
+          onToggle={(v) => set(cycleTri(f, 'deal', v))}
               />
               <label className="space-y-1.5">
                 <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Max price</span>

@@ -27,7 +27,7 @@ npx supabase secrets set NAME=value
 | gg.deals | ⚠️ Key done — **to do: one GitHub secret** (see below) | `GGDEALS_API_KEY` (Supabase + GitHub), `SUPABASE_SECRET_KEY` (GitHub, not added yet) |
 | Steam | ✅ Done | `STEAM_API_KEY` (ownership check only) |
 
-## ⚠️ To do: key-shop prices
+## ✅ Key-shop prices (set up 2026-11-23)
 
 Key-shop prices ("Cheaper on key shops") come from gg.deals. gg.deals doesn't answer Supabase's servers,
 so a scheduled GitHub job fetches them instead (`.github/workflows/keyshop-prices.yml`, every 6 hours).

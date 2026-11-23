@@ -219,6 +219,26 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   episode of an ended show is watched. The Caught up moves then follow on the next app load.
 - Movie rules: started → In Progress, finished → Watched (forward only).
 
+### Statuses, Stalled, Archive, 3-state filters (Group B)
+- **Wording per type** (`src/lib/statusLabels.ts`): Movies Want to Watch / In Progress / Watched It / Dropped It ·
+  TV Want to Watch / In Progress / Caught Up or Watched It / Dropped It · Games Want to Play / Playing It /
+  Stalled / Beat It / Dropped It · Books Want to Read / Reading It / Stalled / Read It / Dropped It. Mixed views
+  use Wanted / In Progress / Caught Up / Stalled / Done / Dropped.
+- **Stalled** (games, books): `progress = 'stalled'`, `stalled_at` set when chosen. Home → "Pick it back up?"
+  lists titles stalled in the last 3 months.
+- **Archive** (any status): `user_items.archived_at`. It's the button beside the status options (on phones,
+  below them), with a confirmation; an archived title's page shows "Archived <date>" and **Unarchive**.
+  Archived titles are hidden by default:
+  - in the app: `useItems().items` excludes them (`allItems` includes them, for the title page and search)
+  - in the Library: an **Archived** filter (Hidden / Include / Only), plus a "N archived titles are hidden ·
+    Show" notice
+  - in hand-picked collections: a notice with Show / Hide; smart collections follow their Archived rule
+  - on the server: no alerts or refreshes (daily job), not in calendar feeds, not in share links
+- **3-state chips** for Status, Priority, Rating, TV status, Watch progress, Co-op, Steam Deck, Deals and Length:
+  tap to include → exclude → clear. Excluded chips show a red ✕ with the label struck through, and a
+  "Not: …" pill. URL: excluded values get a leading "-" (`status=stalled,-dropped`). Genre and two-option
+  groups stay include-only.
+
 ### Caught up (shows)
 - A status for shows only: **Caught up** = every episode aired so far is watched (ignored seasons count as
   done), and the show is ongoing (TMDB Returning Series / In Production / Planned / Pilot, or a next

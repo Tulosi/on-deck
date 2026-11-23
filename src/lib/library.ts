@@ -48,6 +48,8 @@ interface ItemRow {
   plex_sync: boolean
   notify: boolean | null
   rating_skipped: string[] | null
+  stalled_at: string | null
+  archived_at: string | null
   completed_at: string | null
   created_at: string
   updated_at: string
@@ -102,6 +104,8 @@ function toUserItem(row: ItemRow): UserItem {
     plexSync: row.plex_sync ?? true,
     notify: row.notify ?? true,
     ratingSkipped: row.rating_skipped ?? [],
+    stalledAt: row.stalled_at ?? undefined,
+    archivedAt: row.archived_at ?? undefined,
     completedAt: row.completed_at ?? undefined,
     addedAt: row.created_at,
     updatedAt: row.updated_at,
@@ -214,7 +218,7 @@ export function useItems() {
       const { data, error } = await supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, stalled_at, archived_at, completed_at, created_at, updated_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -236,8 +240,20 @@ export function useItems() {
     },
   })
 
-  if (!user) return { items: authLoading ? [] : sampleItems, isSample: !authLoading, isLoading: authLoading, error: null }
-  return { items: query.data ?? [], isSample: false, isLoading: query.isLoading, error: query.error }
+  if (!user) {
+    const sample = authLoading ? [] : sampleItems
+    return { items: sample, allItems: sample, isSample: !authLoading, isLoading: authLoading, error: null }
+  }
+  const all = query.data ?? []
+  // Archived titles are hidden everywhere by default; `allItems` is for the few places that need them
+  // (the title page, search's "already added", the Library's Archived filter, collections).
+  return {
+    items: all.filter((i) => !i.archivedAt),
+    allItems: all,
+    isSample: false,
+    isLoading: query.isLoading,
+    error: query.error,
+  }
 }
 
 // ─── Writing ───────────────────────────────────────────────────────────────
@@ -459,6 +475,8 @@ export interface ItemPatch {
   notify?: boolean
   /** Home rating prompts dismissed with "Not now" ("title", "s2" …). */
   ratingSkipped?: string[]
+  /** true = archive, false = take out of the archive. */
+  archived?: boolean
 }
 
 /**
@@ -483,6 +501,7 @@ export function useUpdateItem() {
     if (patch.plexSync !== undefined) row.plex_sync = patch.plexSync
     if (patch.notify !== undefined) row.notify = patch.notify
     if (patch.ratingSkipped !== undefined) row.rating_skipped = patch.ratingSkipped
+    if (patch.archived !== undefined) row.archived_at = patch.archived ? new Date().toISOString() : null
     if (patch.seasonOverrides !== undefined) row.season_overrides = patch.seasonOverrides
     if (patch.tvProgress !== undefined) {
       row.current_season = patch.tvProgress?.season ?? null
@@ -494,6 +513,7 @@ export function useUpdateItem() {
       const now = new Date().toISOString()
       if (patch.progress === 'in_progress' && item.progress === 'wanted') row.started_at = now
       if (patch.progress === 'completed') row.completed_at = now
+      row.stalled_at = patch.progress === 'stalled' ? now : null
       if (patch.progress === 'wanted') {
         row.started_at = null
         row.completed_at = null
@@ -519,6 +539,8 @@ export function useUpdateItem() {
               ...(patch.plexSync !== undefined && { plexSync: patch.plexSync }),
               ...(patch.notify !== undefined && { notify: patch.notify }),
               ...(patch.ratingSkipped !== undefined && { ratingSkipped: patch.ratingSkipped }),
+              ...(patch.archived !== undefined && { archivedAt: patch.archived ? new Date().toISOString() : undefined }),
+              ...(patch.progress === 'stalled' && { stalledAt: new Date().toISOString() }),
               ...(patch.seasonOverrides !== undefined && { seasonOverrides: patch.seasonOverrides }),
             }
           : i,

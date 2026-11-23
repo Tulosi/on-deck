@@ -10,8 +10,14 @@ import {
   clearFilters,
   groupItems,
   sortItems,
-  type Filters, DEFAULT_SORT } from '../lib/filters'
+  type Filters,
+  type TriKey,
+  TRI_KEYS,
+  DEFAULT_SORT,
+} from '../lib/filters'
 import { useItems } from '../lib/library'
+import { statusLabel } from '../lib/statusLabels'
+import type { Progress } from '../types'
 import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
 
@@ -22,7 +28,7 @@ const grid =
 function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void }) {
   const pills: { key: string; label: string; remove: () => void }[] = []
   const without = <T,>(list: T[], v: T) => list.filter((x) => x !== v)
-  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: `Status: ${LABELS.status[v]}`, remove: () => set({ ...f, status: without(f.status, v) }) }))
+  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: `Status: ${statusLabel(v, f.type)}`, remove: () => set({ ...f, status: without(f.status, v) }) }))
   f.priority.forEach((v) => pills.push({ key: `p-${v}`, label: `Priority: ${LABELS.priority[v]}`, remove: () => set({ ...f, priority: without(f.priority, v) }) }))
   f.rating.forEach((v) => pills.push({ key: `r-${v}`, label: LABELS.rating[v], remove: () => set({ ...f, rating: without(f.rating, v) }) }))
   f.availability.forEach((v) => pills.push({ key: `av-${v}`, label: LABELS.availability[v], remove: () => set({ ...f, availability: without(f.availability, v) }) }))
@@ -34,6 +40,8 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
       label: `Year ${f.yearFrom ?? '…'}–${f.yearTo ?? '…'}`,
       remove: () => set({ ...f, yearFrom: null, yearTo: null }),
     })
+  if (f.archived !== 'hide')
+    pills.push({ key: 'archived', label: `Archived: ${LABELS.archived[f.archived]}`, remove: () => set({ ...f, archived: 'hide' }) })
   if (f.added) pills.push({ key: 'added', label: `Added: ${LABELS.added[f.added]}`, remove: () => set({ ...f, added: null }) })
   f.genre.forEach((v) => pills.push({ key: `g-${v}`, label: v, remove: () => set({ ...f, genre: without(f.genre, v) }) }))
   f.tvStatus.forEach((v) => pills.push({ key: `ts-${v}`, label: LABELS.tvStatus[v], remove: () => set({ ...f, tvStatus: without(f.tvStatus, v) }) }))
@@ -44,6 +52,21 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
   f.deal.forEach((v) => pills.push({ key: `dl-${v}`, label: LABELS.deal[v], remove: () => set({ ...f, deal: without(f.deal, v) }) }))
   if (f.maxPrice != null) pills.push({ key: 'maxprice', label: `Under ${f.maxPrice}`, remove: () => set({ ...f, maxPrice: null }) })
   f.tvProgress.forEach((v) => pills.push({ key: `tp-${v}`, label: LABELS.tvProgress[v], remove: () => set({ ...f, tvProgress: without(f.tvProgress, v) }) }))
+  // Exclusions ("not …") from 3-state groups.
+  const name = (k: TriKey, v: string): string => {
+    if (k === 'status') return statusLabel(v as Progress, f.type)
+    const table = (LABELS as unknown as Record<string, Record<string, string> | undefined>)[k]
+    return table?.[v] ?? v
+  }
+  for (const k of TRI_KEYS) {
+    for (const v of f.not[k] ?? []) {
+      pills.push({
+        key: `not-${k}-${v}`,
+        label: `Not: ${name(k, v)}`,
+        remove: () => set({ ...f, not: { ...f.not, [k]: (f.not[k] ?? []).filter((x) => x !== v) } }),
+      })
+    }
+  }
   if (pills.length === 0) return null
 
   return (
@@ -69,7 +92,7 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
 
 /** One page for everything on deck — type, filters, sort and group all come from the URL. */
 export function Library() {
-  const { items, isLoading, isSample } = useItems()
+  const { items, allItems, isLoading, isSample } = useItems()
   const [f, set] = useFilters()
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -89,7 +112,10 @@ export function Library() {
   }
 
   const inType = f.type ? items.filter((i) => i.title.mediaType === f.type) : items
-  const results = sortItems(applyFilters(items, f), f.sort)
+  // allItems, so the Archived filter can bring archived titles back (applyFilters hides them by default).
+  const results = sortItems(applyFilters(allItems, f), f.sort)
+  const hiddenArchived =
+    f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
   const groups = groupItems(results, f.group)
   const title = f.type ? LABELS.type[f.type] : 'Library'
 
@@ -174,6 +200,14 @@ export function Library() {
         </form>
       )}
       <ActiveFilters f={f} set={set} />
+      {hiddenArchived > 0 && (
+        <p className="-mt-3 mb-4 text-xs text-faint">
+          {hiddenArchived} archived title{hiddenArchived === 1 ? ' is' : 's are'} hidden by default ·{' '}
+          <button type="button" onClick={() => set({ ...f, archived: 'include' })} className="text-accent-ink hover:underline">
+            Show
+          </button>
+        </p>
+      )}
 
       {inType.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">

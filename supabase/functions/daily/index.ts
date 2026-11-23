@@ -152,6 +152,7 @@ async function syncPlex(db: ReturnType<typeof admin>, userId: string, hasTime: (
     .select('id, progress, current_season, current_episode, plex_sync, title:titles(title, media_type, source, source_id, metadata)')
     .eq('user_id', userId)
     .neq('plex_sync', false)
+    .is('archived_at', null)
     .in('progress', ['wanted', 'in_progress', 'caught_up'])
     .order('plex_checked_at', { ascending: true, nullsFirst: true })
     .limit(40)
@@ -211,6 +212,7 @@ serve(async (req) => {
     .from('user_items')
     .select('user_id, title_id, progress, owned, notify')
     .neq('progress', 'dropped')
+    .is('archived_at', null) // archived: no alerts, no refreshes
   if (itemErr) throw itemErr
   const items = (itemData ?? []) as ItemRow[]
   const titleIds = [...new Set(items.map((i) => i.title_id))]

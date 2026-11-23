@@ -176,7 +176,8 @@ export function useCollectionActions() {
  */
 export function useSmartCollectionSync() {
   const { user } = useAuth()
-  const { items, isSample, isLoading } = useItems()
+  // All items: a smart collection's rules decide whether archived titles count (hidden by default).
+  const { allItems: items, isSample, isLoading } = useItems()
   const { data: collections } = useCollections()
   const queryClient = useQueryClient()
   const running = useRef(false)

@@ -1,6 +1,7 @@
+import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, CalendarClock, Check, CheckCheck, Film, Radio, Gamepad2, Library, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarClock, Check, CheckCheck, Pause, Film, Radio, Gamepad2, Library, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
 import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
@@ -88,13 +89,16 @@ export function PosterCard({
             <Badge icon={Star} label="All-time favourite" className={clsx('!bg-accent !text-accent-fg', vis('rating'))} />
           )}
           {item.progress === 'in_progress' && vis('status') !== null && (
-            <Badge icon={Play} label="In progress" className={vis('status')!} />
+            <Badge icon={Play} label={statusLabel('in_progress', title.mediaType)} className={vis('status')!} />
           )}
           {item.progress === 'caught_up' && vis('status') !== null && (
             <Badge icon={CheckCheck} label="Caught up, waiting for new episodes" className={vis('status')!} />
           )}
           {item.progress === 'completed' && vis('status') !== null && (
-            <Badge icon={Check} label="Completed" className={vis('status')!} />
+            <Badge icon={Check} label={statusLabel('completed', title.mediaType)} className={vis('status')!} />
+          )}
+          {item.progress === 'stalled' && vis('status') !== null && (
+            <Badge icon={Pause} label="Stalled" className={vis('status')!} />
           )}
           {item.owned && (title.mediaType === 'game' || title.mediaType === 'book') && vis('library') !== null && (
             <Badge icon={Library} label="In your library" className={vis('library')!} />

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { Check, ChevronRight, Library, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, ChevronRight, Library, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { friendlyError, useAvailability, usePlexWatch, type PlexWatch } from '../lib/integrations'
 import { useUpdateItem, type ItemPatch } from '../lib/library'
+import { statusesFor, statusLabel } from '../lib/statusLabels'
 import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
 import { plexStateOf } from '../lib/plexSync'
 import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
-import { mediaLabels, type Priority, type Progress, type SeasonOverride, type UserItem } from '../types'
+import { type Priority, type Progress, type SeasonOverride, type UserItem } from '../types'
 
 const labelClass = 'font-mono text-[11px] tracking-wider text-faint uppercase'
 
@@ -17,20 +19,26 @@ function Segmented<T extends string>({
   value,
   options,
   onChange,
+  aside,
 }: {
   label: string
   value: T
   options: { value: T; label: string }[]
   onChange: (value: T) => void
+  /** Extra control to the right of the options (e.g. Archive). */
+  aside?: ReactNode
 }) {
+  // Phones: 2 per row for 4 options, 3 + 2 for 5 (never a lone option on its own line). One row from sm up.
+  const cols = options.length === 5 ? 'grid-cols-3 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
   return (
     <div className="space-y-1.5">
       <p className={labelClass}>{label}</p>
-      {/* 2×2 on phones, one row from sm up — never a lone option on its own line. */}
+      <div className="flex flex-wrap items-stretch gap-2">
       <div
         role="radiogroup"
         aria-label={label}
-        className="grid grid-cols-2 gap-1 rounded-lg border border-line bg-bg p-1 sm:grid-cols-4"
+        // Phones: full width (anything in `aside` drops to its own line); wider: options grow beside it.
+        className={clsx('grid min-w-0 basis-full gap-1 rounded-lg border border-line bg-bg p-1 sm:basis-auto sm:flex-1', cols)}
       >
         {options.map((o) => (
           <button
@@ -48,7 +56,74 @@ function Segmented<T extends string>({
           </button>
         ))}
       </div>
+      {aside}
+      </div>
     </div>
+  )
+}
+
+/** Archive: confirm, then hide the title everywhere by default. Archived titles show a notice to bring them back. */
+function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<void> }) {
+  const [confirming, setConfirming] = useState(false)
+  if (item.archivedAt) {
+    return (
+      <button
+        type="button"
+        onClick={() => void save({ archived: false })}
+        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-accent/60 bg-accent/10 px-3 text-sm text-fg hover:border-accent sm:h-auto sm:self-stretch"
+        title="Take this title out of the archive"
+      >
+        <ArchiveRestore className="size-4" /> Unarchive
+      </button>
+    )
+  }
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-line px-3 text-sm text-muted hover:border-faint hover:text-fg sm:h-auto sm:self-stretch"
+        title="Archive this title"
+      >
+        <Archive className="size-4" /> Archive
+      </button>
+      {confirming &&
+        createPortal(
+          <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="archive-title">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setConfirming(false)} />
+            <div className="relative w-full max-w-sm space-y-3 rounded-xl border border-line bg-surface p-5 shadow-2xl">
+              <p id="archive-title" className="text-base font-semibold text-fg">
+                Archive “{item.title.title}”?
+              </p>
+              <p className="text-sm text-muted">For things you're done with but want a record of. Archiving:</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+                <li>Hides it from Home, the Library, the Calendar and collections</li>
+                <li>Stops its alerts and leaves it out of share links and calendar feeds</li>
+                <li>Keeps its status, rating and notes exactly as they are</li>
+              </ul>
+              <p className="text-xs text-faint">
+                Find it again any time with the <b>Archived</b> filter in the Library, and unarchive it from its page.
+              </p>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setConfirming(false)} className="h-9 rounded-md border border-line px-3 text-sm text-fg hover:border-accent">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirming(false)
+                    void save({ archived: true })
+                  }}
+                  className="flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95"
+                >
+                  <Archive className="size-4" /> Archive
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }
 
@@ -596,7 +671,6 @@ export function StatusControls({ item }: { item: UserItem }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
   const type = item.title.mediaType
-  const done = mediaLabels[type].done
 
   async function save(patch: ItemPatch) {
     setError(null)
@@ -613,12 +687,11 @@ export function StatusControls({ item }: { item: UserItem }) {
   // Shows have one "done" option: Caught up while more episodes are coming, Watched once the show has ended.
   const ongoingShow = type === 'tv' && isOngoing(item)
   const doneValue: Progress = ongoingShow ? 'caught_up' : 'completed'
-  const progressOptions: { value: Progress; label: string }[] = [
-    { value: 'wanted', label: 'Wanted' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: doneValue, label: ongoingShow ? 'Caught up' : done },
-    { value: 'dropped', label: 'Dropped' },
-  ]
+  // Per-type wording and options (Games / Books also get Stalled).
+  const progressOptions: { value: Progress; label: string }[] = statusesFor(type, { ongoingShow }).map((p) => ({
+    value: p,
+    label: statusLabel(p, type),
+  }))
   // A show stored as the other "done" state (e.g. Watched, then renewed) still shows the done option selected.
   const shownProgress: Progress =
     type === 'tv' && (item.progress === 'caught_up' || item.progress === 'completed') ? doneValue : item.progress
@@ -703,6 +776,7 @@ export function StatusControls({ item }: { item: UserItem }) {
         label="Status"
         value={shownProgress}
         options={progressOptions}
+        aside={<ArchiveButton item={item} save={save} />}
         onChange={(progress) => {
           // TV marked done by hand → up to the latest aired episode (Plex keeps control while syncing).
           const caughtUp =

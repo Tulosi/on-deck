@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom'
 import { BookOpen, Film, Gamepad2, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
 import { useUpdateItem } from '../lib/library'
 import { finishedSeasons } from '../lib/seasons'
+import { statusLabel } from '../lib/statusLabels'
 import type { MediaType, UserItem, Verdict } from '../types'
 
 const RECENT_MS = 60 * 86_400_000
 const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
-const DONE_WORD: Record<MediaType, string> = { movie: 'Watched', tv: 'Watched', game: 'Played', book: 'Read' }
 
 export interface RatePrompt {
   item: UserItem
@@ -35,12 +35,12 @@ export function ratePrompts(items: UserItem[]): RatePrompt[] {
       const n = finishedSeasons(item).at(-1)
       if (n == null || skipped.includes(`s${n}`)) continue
       const all = item.progress === 'completed'
-      out.push({ item, key: `s${n}`, label: all ? 'Watched' : `Finished season ${n}`, at: Date.parse(item.updatedAt!) })
+      out.push({ item, key: `s${n}`, label: all ? statusLabel('completed', 'tv') : `Finished season ${n}`, at: Date.parse(item.updatedAt!) })
     } else {
       if (item.progress !== 'completed' || item.verdict || skipped.includes('title')) continue
       const when = item.completedAt ?? item.updatedAt
       if (!recent(when)) continue
-      out.push({ item, key: 'title', label: DONE_WORD[item.title.mediaType], at: Date.parse(when!) })
+      out.push({ item, key: 'title', label: statusLabel('completed', item.title.mediaType), at: Date.parse(when!) })
     }
   }
   return out.sort((a, b) => b.at - a.at).slice(0, 12)

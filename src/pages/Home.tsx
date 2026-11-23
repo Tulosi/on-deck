@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { RateFinished } from '../components/RateFinished'
-import { DEFAULT_DEAL_PCT, continueItems, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
+import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
 import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
@@ -10,7 +10,8 @@ import { useFilters } from '../lib/useFilters'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
- * everything lives on the Library page. Rows: Continue · New for you · Recently finished (rate it) · This week · Ready to start · Deals.
+ * everything lives on the Library page. Rows: Continue · New for you · Recently finished (rate it) · This week · Pick it back up? · Ready to start ·
+ * Deals.
  */
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
@@ -47,6 +48,7 @@ export function Home() {
   const week = thisWeek(items)
   const weekById = new Map(week.map((u) => [u.item.id, u]))
   const ready = readyToStart(items)
+  const stalled = recentlyStalled(items)
   const dealPct = profile.data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
   const onDeal = deals(items, dealPct)
   const nothingGoingOn = cont.length === 0 && week.length === 0
@@ -96,6 +98,12 @@ export function Home() {
           const u = weekById.get(item.id)
           return u ? thisWeekLine(u) : undefined
         }}
+      />
+      <PosterRow
+        title="Pick it back up?"
+        hint="Stalled in the last 3 months"
+        items={stalled}
+        href={`/library?status=stalled${typeParam}`}
       />
       <PosterRow
         title="Ready to start"

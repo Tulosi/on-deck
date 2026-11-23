@@ -244,7 +244,7 @@ function ResultSection({
  */
 export function SearchBox() {
   const { user } = useAuth()
-  const { items, isSample } = useItems()
+  const { allItems: items, isSample } = useItems()
   const addFromTmdb = useAddFromTmdb()
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)

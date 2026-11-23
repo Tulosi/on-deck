@@ -135,3 +135,13 @@ export function deals(items: UserItem[], minDiscountPct = DEFAULT_DEAL_PCT): Use
     .sort((a, b) => a.best!.price - b.best!.price)
     .map((x) => x.i)
 }
+
+const STALLED_RECENT_MS = 90 * 86_400_000
+
+/** "Pick it back up?" — games and books set to Stalled in the last 3 months, most recent first. */
+export function recentlyStalled(items: UserItem[]): UserItem[] {
+  const now = Date.now()
+  return items
+    .filter((i) => i.progress === 'stalled' && !!i.stalledAt && now - Date.parse(i.stalledAt) < STALLED_RECENT_MS)
+    .sort((a, b) => Date.parse(b.stalledAt!) - Date.parse(a.stalledAt!))
+}

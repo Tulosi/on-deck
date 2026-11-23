@@ -18,7 +18,7 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
     bottom chips when there are any.
 11. Sidebar drag handles: one per row (Library included), right-aligned; type handles sit within Library's group.
 
-## Group B — Statuses, Archive, 3-state filters
+## Group B — Statuses, Archive, 3-state filters ✅ built
 - Status wording per type:
   - Movies: Want to Watch / In Progress / Watched It / Dropped It
   - TV: Want to Watch / In Progress / Caught Up (ongoing) or Watched It (ended) / Dropped It

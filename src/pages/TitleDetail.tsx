@@ -162,7 +162,7 @@ function GameLinks({ d }: { d: Record<string, unknown> }) {
 export function TitleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { items, isLoading, isSample } = useItems()
+  const { allItems: items, isLoading, isSample } = useItems()
   const removeItem = useRemoveItem()
   const [removing, setRemoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -236,6 +236,14 @@ export function TitleDetail() {
         <div className="min-w-0 pb-1">
           <p className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-accent-ink uppercase">
             <Icon className="size-3.5" /> {mediaLabels[title.mediaType].singular}
+            {item.archivedAt && (
+              <span
+                className="ml-1 rounded border border-line px-1.5 py-0.5 text-[10px] tracking-wide text-muted normal-case"
+                title="Archived: hidden everywhere by default. Unarchive it from Tracking below."
+              >
+                Archived {new Date(item.archivedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            )}
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-fg md:text-4xl">{title.title}</h1>
           <p className="mt-1 font-mono text-sm text-muted">

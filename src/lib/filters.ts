@@ -7,6 +7,7 @@
 // Within one filter values are OR'd; different filters are AND'd. Include only (no exclude).
 import { cheapest } from './prices'
 import { releaseInfo, tvSchedule } from './release'
+import { statusLabel } from './statusLabels'
 import type { MediaType, Priority, Progress, UserItem } from '../types'
 
 export const TYPES: MediaType[] = ['movie', 'tv', 'game', 'book']
@@ -24,6 +25,29 @@ export type AccessFilter = 'early_access' | 'full_release'
 export type DealFilter = 'on_sale' | 'historical_low' | 'free'
 /** Game length, by IGDB's "normal" time to beat. */
 export type LengthFilter = 'short' | 'medium' | 'long' | 'epic'
+/**
+ * Filter groups with three states per chip: include (match any) → exclude (match none) → off. The others
+ * (genre, and two-option groups like Availability) are include-only.
+ */
+export const TRI_KEYS = ['status', 'priority', 'rating', 'tvStatus', 'tvProgress', 'coop', 'deck', 'deal', 'length'] as const
+export type TriKey = (typeof TRI_KEYS)[number]
+/** URL parameter for each 3-state group; excluded values are written with a leading "-". */
+const TRI_PARAM: Record<TriKey, string> = {
+  status: 'status',
+  priority: 'priority',
+  rating: 'rating',
+  tvStatus: 'tvstatus',
+  tvProgress: 'tvprogress',
+  coop: 'coop',
+  deck: 'deck',
+  deal: 'deal',
+  length: 'length',
+}
+const TV_TRI: TriKey[] = ['tvStatus', 'tvProgress']
+const GAME_TRI: TriKey[] = ['coop', 'deck', 'deal', 'length']
+
+/** hide = the default (archived titles left out). */
+export type ArchivedFilter = 'hide' | 'include' | 'only'
 export type GroupKey = 'none' | 'status' | 'type' | 'priority' | 'year'
 
 export interface Filters {
@@ -40,6 +64,10 @@ export interface Filters {
   yearFrom: number | null
   yearTo: number | null
   added: AddedFilter | null
+  /** Archived titles: hidden (default), included, or only them. */
+  archived: ArchivedFilter
+  /** Excluded values per 3-state group ("not Dropped"). */
+  not: Partial<Record<TriKey, string[]>>
   // Layer 3 (Movies / TV for now)
   genre: string[]
   tvStatus: TvStatusFilter[]
@@ -64,7 +92,7 @@ const list = <T extends string>(v: string | null, allowed: readonly T[]): T[] =>
     .filter((x): x is T => (allowed as readonly string[]).includes(x))
 const int = (v: string | null) => (v && /^\d+$/.test(v) ? Number(v) : null)
 
-const STATUS: Progress[] = ['wanted', 'in_progress', 'caught_up', 'completed', 'dropped']
+const STATUS: Progress[] = ['wanted', 'in_progress', 'caught_up', 'stalled', 'completed', 'dropped']
 const PRIORITY: (Priority | 'none')[] = ['high', 'medium', 'low', 'none']
 const RATING: RatingFilter[] = ['liked', 'disliked', 'favourite', 'unrated']
 const RELEASE: ReleaseFilter[] = ['released', 'upcoming']
@@ -86,8 +114,31 @@ export function parseFilters(p: URLSearchParams): Filters {
   const type = (TYPES as string[]).includes(p.get('type') ?? '') ? (p.get('type') as MediaType) : null
   const hasGenres = type === 'movie' || type === 'tv' || type === 'game'
   const isGame = type === 'game'
+  const ALLOWED: Record<TriKey, readonly string[]> = {
+    status: STATUS,
+    priority: PRIORITY,
+    rating: RATING,
+    tvStatus: TV_STATUS,
+    tvProgress: TV_PROGRESS,
+    coop: COOP,
+    deck: DECK,
+    deal: DEAL,
+    length: LENGTH,
+  }
+  const not: Partial<Record<TriKey, string[]>> = {}
+  for (const k of TRI_KEYS) {
+    if (TV_TRI.includes(k) && type !== 'tv') continue
+    if (GAME_TRI.includes(k) && !isGame) continue
+    const ex = (p.get(TRI_PARAM[k]) ?? '')
+      .split(',')
+      .filter((v) => v.startsWith('-'))
+      .map((v) => v.slice(1))
+      .filter((v) => ALLOWED[k].includes(v))
+    if (ex.length) not[k] = ex
+  }
   return {
     type,
+    not,
     status: list(p.get('status'), STATUS),
     priority: list(p.get('priority'), PRIORITY),
     rating: list(p.get('rating'), RATING),
@@ -97,6 +148,7 @@ export function parseFilters(p: URLSearchParams): Filters {
     yearFrom: int(p.get('from')),
     yearTo: int(p.get('to')),
     added: (ADDED as string[]).includes(p.get('added') ?? '') ? (p.get('added') as AddedFilter) : null,
+    archived: p.get('archived') === 'include' || p.get('archived') === 'only' ? (p.get('archived') as ArchivedFilter) : 'hide',
     // Layer 3 is ignored unless its type is selected.
     genre: hasGenres ? (p.get('genre') ?? '').split(',').filter(Boolean) : [],
     tvStatus: type === 'tv' ? list(p.get('tvstatus'), TV_STATUS) : [],
@@ -118,28 +170,31 @@ export function filtersToParams(f: Filters): URLSearchParams {
   const set = (k: string, v: string | number | null | undefined) => {
     if (v !== null && v !== undefined && v !== '') p.set(k, String(v))
   }
+  /** Included values, then excluded ones with a leading "-". */
+  const tri = (key: TriKey, inc: readonly string[]) => [...inc, ...(f.not[key] ?? []).map((v) => `-${v}`)].join(',')
   set('type', f.type)
-  set('status', f.status.join(','))
-  set('priority', f.priority.join(','))
-  set('rating', f.rating.join(','))
+  set('status', tri('status', f.status))
+  set('priority', tri('priority', f.priority))
+  set('rating', tri('rating', f.rating))
   set('score', f.minScore)
   set('avail', f.availability.join(','))
   set('release', f.release.join(','))
   set('from', f.yearFrom)
   set('to', f.yearTo)
   set('added', f.added)
+  if (f.archived !== 'hide') set('archived', f.archived)
   if (f.type === 'movie' || f.type === 'tv' || f.type === 'game') set('genre', f.genre.join(','))
   if (f.type === 'game') {
-    set('coop', f.coop.join(','))
-    set('deck', f.deck.join(','))
+    set('coop', tri('coop', f.coop))
+    set('deck', tri('deck', f.deck))
     set('access', f.access.join(','))
-    set('deal', f.deal.join(','))
-    set('length', f.length.join(','))
+    set('deal', tri('deal', f.deal))
+    set('length', tri('length', f.length))
     set('maxprice', f.maxPrice)
   }
   if (f.type === 'tv') {
-    set('tvstatus', f.tvStatus.join(','))
-    set('tvprogress', f.tvProgress.join(','))
+    set('tvstatus', tri('tvStatus', f.tvStatus))
+    set('tvprogress', tri('tvProgress', f.tvProgress))
   }
   if (f.sort !== DEFAULT_SORT) set('sort', f.sort)
   if (f.group !== 'none') set('group', f.group)
@@ -148,12 +203,15 @@ export function filtersToParams(f: Filters): URLSearchParams {
 
 /** Switching type keeps Layer 2 but drops the old type's Layer 3 filters. */
 export function withType(f: Filters, type: MediaType | null): Filters {
-  return { ...f, type, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
+  const not = { ...f.not }
+  for (const k of [...TV_TRI, ...GAME_TRI]) delete not[k]
+  return { ...f, type, not, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
 }
 
 export function clearFilters(f: Filters): Filters {
   return {
     ...f,
+    not: {},
     status: [],
     priority: [],
     rating: [],
@@ -163,6 +221,7 @@ export function clearFilters(f: Filters): Filters {
     yearFrom: null,
     yearTo: null,
     added: null,
+    archived: 'hide',
     genre: [],
     tvStatus: [],
     tvProgress: [],
@@ -219,6 +278,8 @@ const ADDED_DAYS: Record<AddedFilter, number> = { '7d': 7, '30d': 30, '90d': 90,
 export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
   const now = Date.now()
   return items.filter((i) => {
+    if (f.archived === 'hide' && i.archivedAt) return false
+    if (f.archived === 'only' && !i.archivedAt) return false
     if (f.type && i.title.mediaType !== f.type) return false
     if (f.status.length && !f.status.includes(i.progress)) return false
     if (f.priority.length && !f.priority.includes(i.priority ?? 'none')) return false
@@ -293,8 +354,67 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
       const price = p?.isFree ? 0 : p ? cheapest(p)?.price : undefined
       if (price == null || price > f.maxPrice) return false
     }
+    // Exclusions ("not …"): drop anything matching an excluded value.
+    for (const k of TRI_KEYS) {
+      const ex = f.not[k]
+      if (ex?.length && triValues(k, i).some((v) => ex.includes(v))) return false
+    }
     return true
   })
+}
+
+/** The values an item has in a 3-state group (for exclusions). */
+export function triValues(k: TriKey, i: UserItem): string[] {
+  switch (k) {
+    case 'status':
+      return [i.progress]
+    case 'priority':
+      return [i.priority ?? 'none']
+    case 'rating': {
+      const r: string[] = []
+      if (i.verdict === 'liked') r.push('liked')
+      if (i.verdict === 'disliked') r.push('disliked')
+      if (i.favourite) r.push('favourite')
+      if (!i.verdict && !i.favourite) r.push('unrated')
+      return r
+    }
+    case 'tvStatus': {
+      const s = tvStatusOf(i)
+      return s ? [s] : []
+    }
+    case 'tvProgress':
+      return [tvProgressOf(i)]
+    case 'coop': {
+      const mp = (i.title.details?.multiplayer ?? {}) as Record<string, unknown>
+      return [mp.online_coop && 'online', mp.local_coop && 'local', mp.split_screen && 'split', mp.pvp && 'pvp'].filter(Boolean) as string[]
+    }
+    case 'deck':
+      return typeof i.title.details?.steam_deck === 'string' ? [i.title.details.steam_deck as string] : []
+    case 'deal': {
+      const p = i.gamePrice
+      const best = p ? cheapest(p) : null
+      return [best && (best.discountPct ?? 0) > 0 && 'on_sale', best?.atLow && 'historical_low', p?.isFree && 'free'].filter(Boolean) as string[]
+    }
+    case 'length': {
+      const b = lengthBucket(i)
+      return b ? [b] : []
+    }
+  }
+}
+
+/** Off → include → exclude → off, for one chip of a 3-state group. */
+export function cycleTri<K extends TriKey>(f: Filters, k: K, v: string): Filters {
+  const inc = f[k] as string[]
+  const ex: string[] = f.not[k] ?? []
+  if (inc.includes(v)) {
+    // include → exclude
+    return { ...f, [k]: inc.filter((x) => x !== v), not: { ...f.not, [k]: [...ex, v] } }
+  }
+  if (ex.includes(v)) {
+    // exclude → off
+    return { ...f, not: { ...f.not, [k]: ex.filter((x) => x !== v) } }
+  }
+  return { ...f, [k]: [...inc, v] } // off → include
 }
 
 /** Hours to beat a game at a normal pace (IGDB players), falling back to the rushed time. */
@@ -348,13 +468,9 @@ export interface Group {
   items: UserItem[]
 }
 
-const STATUS_LABEL: Record<Progress, string> = {
-  wanted: 'Wanted',
-  in_progress: 'In Progress',
-  caught_up: 'Caught up',
-  completed: 'Done',
-  dropped: 'Dropped',
-}
+const STATUS_LABEL: Record<Progress, string> = Object.fromEntries(
+  (['wanted', 'in_progress', 'caught_up', 'stalled', 'completed', 'dropped'] as Progress[]).map((p) => [p, statusLabel(p)]),
+) as Record<Progress, string>
 const TYPE_LABEL: Record<MediaType, string> = { movie: 'Movies', tv: 'TV Shows', game: 'Games', book: 'Books' }
 const PRIORITY_LABEL: Record<string, string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority', none: 'No priority' }
 
@@ -398,6 +514,7 @@ export const LABELS = {
   rating: { liked: 'Liked', disliked: 'Didn’t like', favourite: '★ Favourite', unrated: 'Unrated' } as Record<RatingFilter, string>,
   release: { released: 'Released', upcoming: 'Upcoming' } as Record<ReleaseFilter, string>,
   availability: { available: 'Available', unavailable: 'Not available' } as Record<AvailabilityFilter, string>,
+  archived: { hide: 'Hide', include: 'Include', only: 'Only archived' } as Record<ArchivedFilter, string>,
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
@@ -422,6 +539,8 @@ export function activeCount(f: Filters): number {
     f.release.length +
     (f.yearFrom != null || f.yearTo != null ? 1 : 0) +
     (f.added ? 1 : 0) +
+    (f.archived !== 'hide' ? 1 : 0) +
+    Object.values(f.not).reduce((n, v) => n + (v?.length ?? 0), 0) +
     f.genre.length +
     f.tvStatus.length +
     f.tvProgress.length +

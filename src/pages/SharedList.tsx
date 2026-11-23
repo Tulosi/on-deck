@@ -33,6 +33,7 @@ const TYPE_NAME: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows', 
 const SECTIONS: { progress: Progress; label: string }[] = [
   { progress: 'in_progress', label: 'In progress' },
   { progress: 'caught_up', label: 'Caught up' },
+  { progress: 'stalled', label: 'Stalled' },
   { progress: 'wanted', label: 'Want to' },
   { progress: 'completed', label: 'Done' },
 ]

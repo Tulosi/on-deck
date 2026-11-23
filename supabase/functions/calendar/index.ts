@@ -91,6 +91,7 @@ serve(async (req) => {
     .from('user_items')
     .select('progress, title:titles(id, title, media_type, release_date, metadata)')
     .eq('user_id', feed.user_id)
+    .is('archived_at', null) // archived titles stay out of calendar feeds
   if (error) throw error
 
   // "Today" a day early, so viewers west of UTC still get today's events.

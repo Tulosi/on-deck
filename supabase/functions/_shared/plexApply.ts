@@ -5,7 +5,7 @@
 //  - Movies (forward only): started → In Progress (from Wanted); finished → Watched (from Wanted / In Progress).
 //  - Never touches Dropped titles, or anything with Plex sync switched off for it.
 
-export type Progress = 'wanted' | 'in_progress' | 'caught_up' | 'completed' | 'dropped'
+export type Progress = 'wanted' | 'in_progress' | 'caught_up' | 'stalled' | 'completed' | 'dropped'
 
 export interface PlexWatchResult {
   configured?: boolean

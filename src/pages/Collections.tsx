@@ -108,9 +108,16 @@ function Collage({ items }: { items: UserItem[] }) {
   )
 }
 
-/** A collection's titles: hand-picked in their order, or (smart) whatever its rules match right now. */
-const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[]) =>
-  c.rules != null ? smartItems(c.rules, all) : c.itemIds.map((id) => byId.get(id)).filter((i): i is UserItem => !!i)
+/**
+ * A collection's titles: hand-picked in their order, or (smart) whatever its rules match right now. Archived titles
+ * are left out unless `showArchived` (smart collections follow their own Archived rule instead).
+ */
+const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[], showArchived = false) =>
+  c.rules != null
+    ? smartItems(c.rules, all)
+    : c.itemIds
+        .map((id) => byId.get(id))
+        .filter((i): i is UserItem => !!i && (showArchived || !i.archivedAt))
 
 /** "Games · 3 filters · sorted by Price" */
 function rulesSummary(rules: string): string {
@@ -134,7 +141,7 @@ function SmartBadge() {
 /** /collections: all your collections. */
 export function Collections() {
   const { user, loading } = useAuth()
-  const { items } = useItems()
+  const { allItems: items } = useItems()
   const { data: collections = [], isLoading } = useCollections()
   const { create } = useCollectionActions()
   const [creating, setCreating] = useState(false)
@@ -217,11 +224,12 @@ export function Collections() {
 export function CollectionDetail() {
   const { id } = useParams()
   const { user, loading } = useAuth()
-  const { items } = useItems()
+  const { allItems: items } = useItems()
   const { data: collections = [], isLoading } = useCollections()
   const { update, remove, toggleItem, move } = useCollectionActions()
   const [editing, setEditing] = useState(false)
   const [arranging, setArranging] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const navigate = useNavigate()
 
   if (!loading && !user) return <SignInNote />
@@ -238,8 +246,9 @@ export function CollectionDetail() {
     )
   }
   const byId = new Map(items.map((i) => [i.id, i]))
-  const list = itemsOf(c, byId, items)
+  const list = itemsOf(c, byId, items, showArchived)
   const smart = c.rules != null
+  const archivedHere = smart ? 0 : c.itemIds.filter((id) => byId.get(id)?.archivedAt).length
 
   return (
     <div>
@@ -304,6 +313,16 @@ export function CollectionDetail() {
           <div className="mb-6">
             <ShareCollection collectionId={c.id} name={c.name} />
           </div>
+          {archivedHere > 0 && (
+            <p className="-mt-3 mb-5 text-xs text-faint">
+              {showArchived
+                ? `Showing ${archivedHere} archived title${archivedHere === 1 ? '' : 's'} · `
+                : `${archivedHere} archived title${archivedHere === 1 ? ' is' : 's are'} hidden by default · `}
+              <button type="button" onClick={() => setShowArchived((v) => !v)} className="text-accent-ink hover:underline">
+                {showArchived ? 'Hide' : 'Show'}
+              </button>
+            </p>
+          )}
         </>
       )}
 

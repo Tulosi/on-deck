@@ -1,7 +1,7 @@
 // Shared domain types. These mirror the Supabase schema in supabase/migrations.
 
 export type MediaType = 'movie' | 'tv' | 'game' | 'book'
-export type Progress = 'wanted' | 'in_progress' | 'caught_up' | 'completed' | 'dropped'
+export type Progress = 'wanted' | 'in_progress' | 'caught_up' | 'stalled' | 'completed' | 'dropped'
 export type Verdict = 'liked' | 'disliked'
 export type Priority = 'high' | 'medium' | 'low'
 export type PlexStatus = 'available' | 'requested' | 'missing'
@@ -56,6 +56,10 @@ export interface UserItem {
   notify?: boolean
   /** Home rating prompts dismissed with "Not now" ("title", "s2" …). */
   ratingSkipped?: string[]
+  /** Games / books: when it was set to Stalled. */
+  stalledAt?: string
+  /** Set = archived (hidden by default everywhere). */
+  archivedAt?: string
   /** When the user (or sync) marked it Watched/Played/Read. */
   completedAt?: string
   /** Games: playtime and last played, from the linked Steam account. */

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Check, SlidersHorizontal, X } from 'lucide-react'
+import { Check, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
 import { useChipModeControl, type ChipMode } from '../lib/chips'
 import {
   LABELS,
-  TYPES,
   activeCount,
+  moreActive,
   clearFilters,
   withType,
   cycleTri,
@@ -17,6 +17,7 @@ import {
 import { useItems } from '../lib/library'
 import { statusFilterOptions, statusLabel } from '../lib/statusLabels'
 import { useFilters } from '../lib/useFilters'
+import { TypeFilter } from './TypeFilter'
 import type { MediaType } from '../types'
 
 // ─── Poster labels switch ──────────────────────────────────────────────────
@@ -91,53 +92,6 @@ function LabelsToggle() {
 // ─── Type pills (Layer 1) ──────────────────────────────────────────────────
 
 const selectClass = 'h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
-
-function TypePills({ value, onChange }: { value: MediaType | null; onChange: (t: MediaType | null) => void }) {
-  const options: { value: MediaType | null; label: string }[] = [
-    { value: null, label: 'All' },
-    ...TYPES.map((t) => ({ value: t, label: LABELS.type[t] })),
-  ]
-  // When the pills overflow and scroll sideways, keep the selected one in view.
-  const pills = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = pills.current?.querySelector<HTMLElement>('[aria-checked="true"]')
-    if (el && pills.current) pills.current.scrollLeft = el.offsetLeft - pills.current.offsetLeft - 8
-  }, [value])
-  return (
-    <>
-      {/* Phones: a compact dropdown, so the selected type is always visible. */}
-      <select
-        aria-label="Media type"
-        value={value ?? ''}
-        onChange={(e) => onChange((e.target.value || null) as MediaType | null)}
-        className={clsx(selectClass, 'shrink-0 sm:hidden')}
-      >
-        {options.map((o) => (
-          <option key={o.label} value={o.value ?? ''}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    <div ref={pills} role="radiogroup" aria-label="Media type" className="no-scrollbar hidden gap-1 overflow-x-auto sm:flex">
-      {options.map((o) => (
-        <button
-          key={o.label}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={clsx(
-            'h-7 shrink-0 rounded-full px-3 text-xs whitespace-nowrap transition-colors',
-            value === o.value ? 'bg-accent font-medium text-accent-fg' : 'text-muted hover:bg-raised hover:text-fg',
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-    </>
-  )
-}
 
 // ─── Filters panel ─────────────────────────────────────────────────────────
 
@@ -217,124 +171,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
         </span>
         , a third time to clear.
       </p>
-      <Section title="All types">
-        <OptionGroup
-          label="Status"
-          options={statusFilterOptions(f.type)}
-          selected={f.status}
-          render={(v) => statusLabel(v, f.type)}
-          excluded={f.not.status ?? []}
-          onToggle={(v) => set(cycleTri(f, 'status', v))}
-        />
-        <OptionGroup
-          label="Priority"
-          options={LABELS.options.PRIORITY}
-          selected={f.priority}
-          render={(v) => LABELS.priority[v]}
-          excluded={f.not.priority ?? []}
-          onToggle={(v) => set(cycleTri(f, 'priority', v))}
-        />
-        <OptionGroup
-          label="Rating"
-          options={LABELS.options.RATING}
-          selected={f.rating}
-          render={(v) => LABELS.rating[v]}
-          excluded={f.not.rating ?? []}
-          onToggle={(v) => set(cycleTri(f, 'rating', v))}
-        />
-        <OptionGroup
-          label="Availability"
-          options={LABELS.options.AVAILABILITY}
-          selected={f.availability}
-          render={(v) => LABELS.availability[v]}
-          onToggle={(v) => set({ ...f, availability: toggle(f.availability, v) })}
-        />
-        <OptionGroup
-          label="Release"
-          options={LABELS.options.RELEASE}
-          selected={f.release}
-          render={(v) => LABELS.release[v]}
-          onToggle={(v) => set({ ...f, release: toggle(f.release, v) })}
-        />
-        <div className="flex flex-wrap gap-x-6 gap-y-4">
-          <label className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Minimum score</span>
-            <select
-              value={f.minScore ?? ''}
-              onChange={(e) => set({ ...f, minScore: e.target.value ? Number(e.target.value) : null })}
-              className={selectClass}
-            >
-              <option value="">Any</option>
-              {[90, 80, 70, 60, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}+ / 100
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Year</span>
-            <div className="flex items-center gap-1.5 text-xs text-muted">
-              <select
-                aria-label="From year"
-                value={f.yearFrom ?? ''}
-                onChange={(e) => set({ ...f, yearFrom: e.target.value ? Number(e.target.value) : null })}
-                className={selectClass}
-              >
-                <option value="">Any</option>
-                {yearOptions.map((y) => (
-                  <option key={y}>{y}</option>
-                ))}
-              </select>
-              to
-              <select
-                aria-label="To year"
-                value={f.yearTo ?? ''}
-                onChange={(e) => set({ ...f, yearTo: e.target.value ? Number(e.target.value) : null })}
-                className={selectClass}
-              >
-                <option value="">Any</option>
-                {yearOptions.map((y) => (
-                  <option key={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <label className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Archived</span>
-            <select
-              value={f.archived}
-              onChange={(e) => set({ ...f, archived: e.target.value as Filters['archived'] })}
-              className={selectClass}
-            >
-              <option value="hide">Hidden (default)</option>
-              <option value="include">Include</option>
-              <option value="only">Only archived</option>
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Date added</span>
-            <select
-              value={f.added ?? ''}
-              onChange={(e) => set({ ...f, added: (e.target.value || null) as Filters['added'] })}
-              className={selectClass}
-            >
-              <option value="">Any time</option>
-              {LABELS.options.ADDED.map((a) => (
-                <option key={a} value={a}>
-                  {LABELS.added[a]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <p className="text-[11px] text-faint">
-          Availability: movies and TV on your Plex or your streaming services (Settings); games and books In Your
-          Library. Score is on one 0–100 scale: IMDb × 10 for movies and TV, Steam % for games, Hardcover × 20 for books.
-        </p>
-      </Section>
-
-      {f.type ? (
+      {f.type && (
         <Section title={LABELS.type[f.type]}>
           {f.type === 'movie' || f.type === 'tv' ? (
             <>
@@ -438,8 +275,134 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
             <p className="text-xs text-muted">Books filters arrive with books search.</p>
           )}
         </Section>
-      ) : (
-        <p className="text-xs text-faint">Pick a type (Movies, TV, Games, Books) for its own filters.</p>
+      )}
+      <Section title={f.type ? 'Everything' : 'Filters'}>
+        <OptionGroup
+          label="Status"
+          options={statusFilterOptions(f.type)}
+          selected={f.status}
+          render={(v) => statusLabel(v, f.type)}
+          excluded={f.not.status ?? []}
+          onToggle={(v) => set(cycleTri(f, 'status', v))}
+        />
+        <OptionGroup
+          label="Priority"
+          options={LABELS.options.PRIORITY}
+          selected={f.priority}
+          render={(v) => LABELS.priority[v]}
+          excluded={f.not.priority ?? []}
+          onToggle={(v) => set(cycleTri(f, 'priority', v))}
+        />
+        <OptionGroup
+          label="Rating"
+          options={LABELS.options.RATING}
+          selected={f.rating}
+          render={(v) => LABELS.rating[v]}
+          excluded={f.not.rating ?? []}
+          onToggle={(v) => set(cycleTri(f, 'rating', v))}
+        />
+        <OptionGroup
+          label="Availability"
+          options={LABELS.options.AVAILABILITY}
+          selected={f.availability}
+          render={(v) => LABELS.availability[v]}
+          onToggle={(v) => set({ ...f, availability: toggle(f.availability, v) })}
+        />
+        <p className="text-[11px] text-faint">
+          Availability: movies and TV on your Plex or your streaming services (Settings); games and books In Your
+          Library. Score is on one 0–100 scale: IMDb × 10 for movies and TV, Steam % for games, Hardcover × 20 for books.
+        </p>
+      </Section>
+      <details className="group" open={moreActive(f)}>
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-fg [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" />
+          More filters
+          <span className="text-xs font-normal text-faint">release, score, year, date added, archived</span>
+        </summary>
+        <div className="mt-3 space-y-4">
+        <OptionGroup
+          label="Release"
+          options={LABELS.options.RELEASE}
+          selected={f.release}
+          render={(v) => LABELS.release[v]}
+          onToggle={(v) => set({ ...f, release: toggle(f.release, v) })}
+        />
+        <div className="flex flex-wrap gap-x-6 gap-y-4">
+          <label className="space-y-1.5">
+            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Minimum score</span>
+            <select
+              value={f.minScore ?? ''}
+              onChange={(e) => set({ ...f, minScore: e.target.value ? Number(e.target.value) : null })}
+              className={selectClass}
+            >
+              <option value="">Any</option>
+              {[90, 80, 70, 60, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n}+ / 100
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="space-y-1.5">
+            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Year</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <select
+                aria-label="From year"
+                value={f.yearFrom ?? ''}
+                onChange={(e) => set({ ...f, yearFrom: e.target.value ? Number(e.target.value) : null })}
+                className={selectClass}
+              >
+                <option value="">Any</option>
+                {yearOptions.map((y) => (
+                  <option key={y}>{y}</option>
+                ))}
+              </select>
+              to
+              <select
+                aria-label="To year"
+                value={f.yearTo ?? ''}
+                onChange={(e) => set({ ...f, yearTo: e.target.value ? Number(e.target.value) : null })}
+                className={selectClass}
+              >
+                <option value="">Any</option>
+                {yearOptions.map((y) => (
+                  <option key={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <label className="space-y-1.5">
+            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Archived</span>
+            <select
+              value={f.archived}
+              onChange={(e) => set({ ...f, archived: e.target.value as Filters['archived'] })}
+              className={selectClass}
+            >
+              <option value="hide">Hidden (default)</option>
+              <option value="include">Include</option>
+              <option value="only">Only archived</option>
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Date added</span>
+            <select
+              value={f.added ?? ''}
+              onChange={(e) => set({ ...f, added: (e.target.value || null) as Filters['added'] })}
+              className={selectClass}
+            >
+              <option value="">Any time</option>
+              {LABELS.options.ADDED.map((a) => (
+                <option key={a} value={a}>
+                  {LABELS.added[a]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        </div>
+      </details>
+      {!f.type && (
+        <p className="text-xs text-faint">Pick a type (Movies, TV Shows, Games, Books) for its own filters.</p>
       )}
     </div>
   )
@@ -573,10 +536,10 @@ export function Toolbar() {
   return (
     <div className="sticky top-14 z-10 flex h-11 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur md:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <TypePills value={f.type} onChange={setType} />
+        {/* Library: the sidebar sets the type on desktop, so the toolbar only offers it on phones. */}
+        <TypeFilter value={f.type} onChange={setType} navOwned={isLibrary} />
         {isLibrary && (
           <>
-            <span className="mx-1 hidden h-4 w-px bg-line sm:block" />
             <FiltersButton f={f} set={set} />
             <ArrangeSelects f={f} set={set} />
           </>
@@ -589,3 +552,4 @@ export function Toolbar() {
 
 /** Library URL for a type (used by the sidebar shortcuts). */
 export const libraryHref = (type: MediaType | null) => `/library${type ? `?type=${type}` : ''}`
+

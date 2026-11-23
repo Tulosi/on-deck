@@ -19,14 +19,10 @@ import { useItems } from '../lib/library'
 import { todayIso } from '../lib/release'
 import { countdown, eventLabel, groupEntries, waitlistEntries, whenLabel, type WaitlistEntry } from '../lib/waitlist'
 import type { MediaType } from '../types'
+import { TYPES } from '../lib/filters'
+import { TypeFilter } from '../components/TypeFilter'
 
 const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
-const TYPES: { value: MediaType | null; label: string }[] = [
-  { value: null, label: 'All' },
-  { value: 'movie', label: 'Movies' },
-  { value: 'tv', label: 'TV' },
-  { value: 'game', label: 'Games' },
-]
 
 function Segmented<T extends string | null>({
   value,
@@ -328,7 +324,7 @@ export function Waitlist() {
   // ?view=month (older links used ?view=calendar)
   const view = params.get('view') === 'month' || params.get('view') === 'calendar' ? 'month' : 'list'
   const typeParam = params.get('type')
-  const type = TYPES.some((t) => t.value === typeParam) ? (typeParam as MediaType) : null
+  const type = (TYPES as string[]).includes(typeParam ?? '') ? (typeParam as MediaType) : null
   const month = /^\d{4}-\d{2}$/.test(params.get('month') ?? '') ? params.get('month')! : todayIso().slice(0, 7)
 
   const set = (key: string, value: string | null) =>
@@ -370,7 +366,9 @@ export function Waitlist() {
       )}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <Segmented label="Type" value={type} options={TYPES} onChange={(v) => set('type', v)} />
+        <div className="flex items-center gap-2">
+          <TypeFilter value={type} onChange={(v) => set('type', v)} />
+        </div>
         <Segmented
           label="View"
           value={view}

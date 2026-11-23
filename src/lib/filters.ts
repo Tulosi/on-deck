@@ -532,7 +532,7 @@ export const LABELS = {
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
-  sort: { priority: 'Priority', added: 'None (date added)', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length' } as Record<SortKey, string>,
+  sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length' } as Record<SortKey, string>,
   coop: { online: 'Online co-op', local: 'Local co-op', split: 'Split-screen', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,
@@ -566,3 +566,9 @@ export function activeCount(f: Filters): number {
     (f.maxPrice != null ? 1 : 0)
   )
 }
+
+/** Whether any of the rarer filters (the panel's "More filters") is set, so that section opens itself. */
+export function moreActive(f: Filters): boolean {
+  return f.release.length > 0 || f.minScore != null || f.yearFrom != null || f.yearTo != null || f.added != null || f.archived !== 'hide'
+}
+

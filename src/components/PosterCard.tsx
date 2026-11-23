@@ -160,7 +160,7 @@ export function PosterCard({
                   <span
                     title={releaseLong(release)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-accent backdrop-blur-sm',
+                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-accent backdrop-blur-sm',
                       vis('release'),
                     )}
                   >
@@ -174,7 +174,7 @@ export function PosterCard({
                   <span
                     title={tvScheduleLong(schedule)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide backdrop-blur-sm',
+                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide backdrop-blur-sm',
                       schedule.kind === 'airing' ? 'border-info/70 text-info' : 'border-accent/70 text-accent',
                       vis('release'),
                     )}
@@ -191,7 +191,7 @@ export function PosterCard({
                   <span
                     title="Early Access — not at 1.0 yet"
                     className={clsx(
-                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-orange-300 backdrop-blur-sm',
+                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-orange-300 backdrop-blur-sm',
                       vis('release'),
                     )}
                   >
@@ -207,7 +207,7 @@ export function PosterCard({
                     title={plexMeta[item.plex!].label}
                     aria-label={plexMeta[item.plex!].label}
                     className={clsx(
-                      'flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm',
+                      'flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm',
                       vis('plex'),
                     )}
                   >

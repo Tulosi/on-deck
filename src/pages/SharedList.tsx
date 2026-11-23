@@ -79,7 +79,7 @@ function Card({ r }: { r: SharedRow }) {
             </span>
           )}
         </div>
-        {s && <span className="absolute top-1.5 right-1.5 rounded bg-bg/80 px-1.5 py-0.5 font-mono text-[10px] text-fg">{s}</span>}
+        {s && <span className="absolute top-1.5 right-1.5 rounded bg-bg/80 px-1.5 py-0.5 font-mono text-[11px] text-fg">{s}</span>}
       </div>
       <p className="mt-2 truncate text-sm font-medium text-fg">{r.title}</p>
       <p className="truncate font-mono text-xs text-faint">{[r.year, r.byline].filter(Boolean).join(' · ') || '—'}</p>

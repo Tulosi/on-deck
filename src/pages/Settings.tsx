@@ -576,7 +576,7 @@ function DealThreshold({ value, disabled, onSave }: { value: number; disabled: b
         aria-valuetext={`${pct}% off or more`}
         className="w-full max-w-sm accent-[var(--color-accent)]"
       />
-      <div className="flex max-w-sm justify-between font-mono text-[10px] text-faint">
+      <div className="flex max-w-sm justify-between font-mono text-[11px] text-faint">
         <span>10%</span>
         <span>50%</span>
         <span>90%</span>

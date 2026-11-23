@@ -285,7 +285,7 @@ export function TitleDetail() {
             <Icon className="size-3.5" /> {mediaLabels[title.mediaType].singular}
             {item.archivedAt && (
               <span
-                className="ml-1 rounded border border-line px-1.5 py-0.5 text-[10px] tracking-wide text-muted normal-case"
+                className="ml-1 rounded border border-line px-1.5 py-0.5 text-[11px] tracking-wide text-muted normal-case"
                 title="Archived: hidden everywhere by default. Unarchive it from Tracking below."
               >
                 Archived {new Date(item.archivedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

@@ -26,6 +26,14 @@
   --color-good: var(--od-good);
   --color-bad: var(--od-bad);
   --color-info: var(--od-info);
+
+  /* Motion: one shared set of curves. Strong ease-out for anything entering or
+     responding to a tap; ease-in-out for things moving on screen; drawer for sheets. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-duration: 160ms;
+  --default-transition-timing-function: var(--ease-out);
 }
 
 :root,
@@ -36,7 +44,7 @@
   --od-line: #2e2b27;
   --od-fg: #f3efe8;
   --od-muted: #a59e94;
-  --od-faint: #6b655d;
+  --od-faint: #8e877c; /* ≥4.5:1 on bg, surface and raised */
   --od-accent: #f4e04d; /* lemon */
   --od-accent-fg: #0c0b0a; /* text on an accent fill */
   --od-accent-ink: #f4e04d; /* accent used as text/icon colour */
@@ -52,8 +60,8 @@
   --od-raised: #ece8e0;
   --od-line: #dcd6cc;
   --od-fg: #1a1815;
-  --od-muted: #6b655d;
-  --od-faint: #a59e94;
+  --od-muted: #57524b;
+  --od-faint: #6e685f; /* ≥4.5:1 on bg, surface and raised */
   --od-accent: #f4e04d;
   --od-accent-fg: #1a1815;
   --od-accent-ink: #7a6a00; /* lemon is unreadable as text on white */
@@ -77,4 +85,48 @@ body {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Browser surfaces carry the palette too. */
+::selection {
+  background: color-mix(in oklab, var(--od-accent) 35%, transparent);
+  color: var(--od-fg);
+}
+input,
+textarea {
+  caret-color: var(--od-accent-ink);
+}
+
+/*
+ * Keyboard focus: one ring everywhere. Unlayered, so it wins over the
+ * `outline-none` utilities that only swap a border colour.
+ */
+:focus-visible {
+  outline: 2px solid var(--od-accent-ink);
+  outline-offset: 2px;
+}
+:where(input, textarea, select):focus-visible {
+  outline-offset: 0;
+}
+
+@layer base {
+  /* Press feedback: every button answers the tap. Opt out with .no-press.
+     In the base layer so a component's own transition utilities still win. */
+  button:not(:disabled, .no-press),
+  .press {
+    transition-property: color, background-color, border-color, opacity, transform;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+  button:not(:disabled, .no-press):active,
+  .press:active {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active,
+  .press:active {
+    transform: none;
+  }
 }

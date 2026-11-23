@@ -14,9 +14,12 @@ to pick from for the broader UI/UX pass, not a plan that's been agreed. Nothing 
   - Emil Kowalski's design-engineering skill (installed here).
   - Impeccable, Taste, Unslop, UI/UX Pro Max and Vercel's Web Interface Guidelines, read from their repos.
   - React Bits and Motion's current docs.
-- **Not used:**
-  - The Awwwards MCP isn't connected to this session, so no Awwwards references were pulled.
-  - UI/UX Pro Max's palette and font search runs a local script over its data files. Only its rules were used.
+- **Not used at first, now installed:**
+  - At first the Awwwards MCP wasn't connected, and UI/UX Pro Max's palette and font search (a local script over
+    its data files) wasn't installed, so only its rules were used.
+  - On 2026-11-23 all the guides were installed globally (skills in `~/.claude/skills`, the Awwwards MCP with
+    Playwright and ffmpeg). They can now run directly: `/impeccable audit`, `/unslop`, `ui-ux-pro-max`
+    search, and Awwwards reference pulls.
 
 ---
 
@@ -108,6 +111,12 @@ Keep it. The guides flag only a handful of things.
   - `subtle`: decoration only, such as dividers, disabled states and icons beside a label (the current values).
 
   Then audit the 130 `text-faint` uses: most are captions, years and hints, so they become text-level.
+
+**Tiny text**
+- Found by `npx impeccable detect` on Home, added after the tools were installed.
+- Poster chips and badges are set at 10px: "Plex", "NEXT EP TUE", "IN 3 DAYS".
+- Impeccable treats 11px as the minimum for functional text. Raise chips to 11px. Their container queries
+  already give room.
 
 **Small tweaks**
 - **Theme colour:** add `<meta name="theme-color">` for both themes, with `media="(prefers-color-scheme: …)"` or updated by the theme toggle. The phone's status bar then matches the app.
@@ -305,3 +314,135 @@ Use sparingly. Most components are showpieces built for landing pages. A few fit
 4. **Signature moment:** poster → title View Transition, sheet and popover entrances with `@starting-style`.
 5. **Flows:** one-tap progress, poster quick actions, onboarding, scroll restoration, ⌘K.
 6. **Delight, sparingly:** stats page with counters. Maybe a backdrop grain or glare on the title page only.
+
+---
+
+## 11. Tool-backed pass (same day, with every tool installed)
+
+The installed tools were run against the live app, both desktop and 390 × 844, in sample mode:
+- **Impeccable critique:** two separate agents, A for a design review and B for the detector.
+- **Impeccable audit.**
+- **UI/UX Pro Max:** search.
+- **Awwwards MCP:** reference pulls.
+- **Vercel:** React best-practices and View Transitions skills.
+- **Code greps.**
+
+Sections 1–10 still stand. This section adds to them and re-ranks a few items.
+
+### Scores
+- **Nielsen heuristics (Impeccable A): 25 / 40.**
+  - Strongest, at 3: visibility of status, real-world wording, efficiency, minimalism.
+  - Weakest, at 2: user control (blocking `confirm()`, no undo), consistency (type filter), recognition (icon-only badges, colour-only Plex), error recovery (raw `err.message`), help.
+- **Audit health: 13 / 20.**
+
+  | Dimension | Score | Main reason |
+  |---|---|---|
+  | Accessibility | 2 | `faint` text fails AA (27 detector hits); 10 px labels; colour-only Plex state; no Escape on 3 dialogs; div backdrops with `onClick` |
+  | Performance | 2 | 808 kB single bundle; w500 posters; Library filters and sorts every render with no `useMemo`; PosterCard not memoised |
+  | Theming | 3 | Tokens are used throughout; a hard-coded `text-[#0c0b0a]` at `PosterCard.tsx:149,152` should be `text-accent-fg` |
+  | Responsive | 3 | Works at 375 px; type pills clip at about 800 px ("Book" is cut off); autofocus opens the keyboard on mobile Search and Library |
+  | Anti-patterns | 3 | Restrained; nothing reads as AI-made except the same sparkle icon on every smart collection |
+
+- **Design specificity verdict:** "The visual shell is generic; the content model is not." Status words per type, chips that carry real information, Home's "not a Library filter" rule, and "Date not final" are the product's own. The sidebar, pill tabs and grid are not.
+
+### Detector (Impeccable B)
+- **110 findings from about 8 sources.** The source scan finds 0 because its rules don't parse TSX.
+- **`undersized-ui-text`: 76.**
+  - BottomNav labels are 10 px (`BottomNav.tsx:118,129`): 42 hits, phone only.
+  - PosterCard badges are 10 px (`:163,177,194,210`).
+- **`low-contrast`: 27.** Every one is `--od-faint` #6b655d (`index.css:39`) at 3.2–3.4 : 1:
+  - search placeholder
+  - Archive link
+  - PageHeader subtitle
+  - poster subline
+  - row subtitles
+- **`tiny-text`: 7.** Includes the sidebar "Drag to rearrange" hint (`Sidebar.tsx:271`).
+- **Not scanned, but the same pattern:** 10 px faint text at `SearchBox:188`, `SearchResults:235,286`, `Settings:579`, `Import:55,73` and `Collections:104`. Light theme wasn't scanned; its faint colour is worse (about 2.4–2.7 : 1).
+
+### New findings, ranked P0–P3
+No P0s: nothing blocks a task.
+
+| P | Finding | Where | Fix |
+|---|---|---|---|
+| P1 | **The title page buries the main action.** Status controls render after the overview and cast, about two screens down on a phone. | `TitleDetail.tsx:322-330` | Put a compact status control (and the next-episode step) in the hero next to the score chips. Leave rating, priority and notes in the Tracking card. Signed out: a disabled ghost with "Sign in to track". |
+| P1 | **One job, four controls: the type filter.** Sidebar sub-items, toolbar pills, bottom tabs plus a dropdown, and Calendar's own segmented control ("TV" vs "TV Shows", no Books). | `Toolbar`, `Sidebar`/`nav.ts`, `BottomNav`, `Calendar` | Pick one owner (the nav). Hide the pills when the route already sets a type. Use one component with the same labels everywhere. |
+| P1 | **"Ready to start" can't be trusted.** It includes titles that are only *Requested* on Plex; the only difference is a blue dot. | `home.ts`, `PosterCard` Plex chip | Leave out requested-but-unavailable titles (or label them). Make the chip text "On Plex" / "Requested" so it isn't colour only. |
+| P1 | **`faint` contrast** (as in section 3). | `index.css:39` | Text faint to about #857e74 or lighter (≥ 4.5 : 1); keep the current value for icons and borders only. Light theme the same. |
+| P2 | **The filter panel is a wall.** About 60 options in one scroll; the include / exclude / clear cycle is hard to discover. | `Toolbar.tsx` | Type-specific group first. Collapse the rarer groups. Show active filters as removable chips plus "Clear all". Sort: 5 options plus "More…"; rename "None (date added)" to "Recently added". |
+| P2 | **Icon-only stacked poster badges.** Tooltips come only from `title`, which never shows on touch. | `PosterCard.tsx` Badge | Show at most one status badge; move "Owned" into the subline. |
+| P2 | **Dialogs.** No Escape handling on the More sheet, the archive confirm or the Search preview. Backdrops are `<div onClick>`. Three `window.confirm`s (`ShareLinks:42`, `Collections:328`, `TitleDetail:246`). | as listed | Use native `<dialog>` or one shared Sheet (Escape, focus trap, inert background). Replace the confirms with undo toasts. |
+| P2 | **No route code-splitting or Suspense skeletons** (UI/UX Pro Max and Vercel agree). | `App.tsx` | `React.lazy` per route, with skeleton fallbacks marked `aria-busy`. |
+| P2 | **`autoFocus` opens the phone keyboard** on Search and Library. | `Search.tsx:80`, `Library.tsx:184` | Autofocus only on a fine pointer, or not at all. |
+| P3 | Index keys | `BackupPanel:162`, `Collections:102,104` | Stable ids. |
+| P3 | No `ScrollRestoration`: back from a title loses your place in a long Library. | router setup | Add it (data router) or save scroll per key. |
+| P3 | On a title page the phone tab bar lights up "More". | `BottomNav` | Keep the origin tab active. |
+| P3 | Archive in faint grey reads as disabled (detector agrees). | `Sidebar.tsx:259` | Use `muted` instead of `faint`; still quieter than the main items. |
+
+### Personas
+- **Busy parent** (Plex with the kids, Steam, deciding on a phone):
+  - No "tonight" answer: Continue mixes a book, a family show and an adult drama.
+  - No time cue on games (time-to-beat exists but isn't shown on Continue).
+  - Logging "the episode we just watched" takes too many taps.
+- **One-handed phone use:**
+  - Calendar is under More, while four of the six tabs are media types.
+  - The type dropdown and labels toggle sit at the top, out of thumb reach.
+- **Power user:**
+  - No `/` or ⌘K for search.
+  - No bulk select.
+  - A blocking `confirm()` on remove.
+- **Accessibility:**
+  - faint text
+  - colour-only Plex
+  - badges labelled only by `title`
+  - the mobile "Poster labels" slider has no visible text
+
+### What the other tools added
+- **UI/UX Pro Max:**
+  - Its search agreed on skeletons with `aria-busy`, reserved space against layout shift, undo instead of "Are you sure?", and `React.lazy` with Suspense.
+  - Its "avoid horizontal scroll" rule doesn't apply: the poster rows scroll sideways on purpose.
+- **Vercel React best-practices:**
+  - lazy routes
+  - `useMemo` for Library's filter and sort
+  - `memo(PosterCard)`
+  - stable keys
+  - `content-visibility: auto` on long grids
+- **Vercel View Transitions:**
+  - On Deck is on **React 19.3.1**, so React's stable `<ViewTransition>` and `addTransitionType` work without Motion.
+  - Order the skill prescribes, all available here:
+    1. **Shared element:** poster → title backdrop, `name={"poster-"+id}`.
+    2. **Suspense reveal:** skeleton → content.
+    3. **List identity:** Library re-sort and filter.
+    4. **Enter/exit:** sheets and toasts.
+    5. **Route:** a fade between top-level tabs; nav-forward/back slides only for list → detail.
+  - This replaces section 5's suggestion of Motion's `animateView` for the morph. Keep Motion for gestures (drag-to-dismiss sheets) and springs.
+- **Awwwards MCP:** little to offer an app UI.
+  - The element library is empty since the gallery crawl was retired.
+  - Design briefs for the closest dark, media-heavy winners came back thin.
+  - A live capture of one showed only marketing scroll choreography (GSAP, ScrollTrigger, Lenis): wrong for an Operate-mode tool.
+  - It suits a future marketing or landing page, not the app.
+- **Taste / Unslop:**
+  - Both are aimed at marketing sites; their hero and section rules don't fit.
+  - Unslop's one useful flag here is the repeated sparkle icon on smart collections. Give each its own icon (Waitlist → `Clock`, Early Access → `FlaskConical`, Deals → `Tag`).
+
+### React Bits / Motion, re-checked against Operate mode
+- **Keep:**
+  - Motion for the drag-to-dismiss More sheet and bottom sheets (springs, velocity dismissal).
+  - `AnimatePresence` for undo toasts.
+  - `layout` for the Continue row re-ordering after an update.
+- **React Bits, at most two pieces:**
+  - **Count Up:** for a future stats page.
+  - **Spotlight / Tilted Card:** only on the title-page poster, desktop, with `prefers-reduced-motion` respected.
+  - Skip text effects (Split/Blur/Shiny Text), cursors and backgrounds. On a screen opened many times a day they are noise, per Emil's frequency rule.
+
+### Re-ranked order
+1. **Foundations:** faint contrast, the 10 px → 11–12 px floor, the focus ring, press states, motion tokens.
+2. **Speed:** lazy routes, Suspense skeletons, memoised Library, `PosterCard` memo, w342 + `srcset`, preconnect.
+3. **Trust and the main action:** status control in the title hero, honest "Ready to start", Plex chip text.
+4. **One type control** across nav, toolbar, bottom nav and Calendar; a slimmer filter panel with chips.
+5. **Dialogs and undo:** shared Sheet or `<dialog>`, Escape, undo toasts instead of `confirm()`.
+6. **Signature motion:** `<ViewTransition>` poster → title, Suspense reveals, list identity.
+7. **Busy-parent flows:** one-tap "Watched E5", time-to-beat on Continue, maybe a "tonight" filter (audience or length).
+
+### Re-run
+- **Detector:** `npx impeccable detect --json https://tulosi.github.io/on-deck/ --viewport 390x844` (and the other routes).
+- **Critique and audit:** re-run `/impeccable critique` and `/impeccable audit` after steps 1–3 to measure the change.

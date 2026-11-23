@@ -46,13 +46,13 @@ function Tile({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; 
           <Check className="size-3.5" />
         </span>
         {(inLib || c.suggested || skipped) && (
-          <span className="absolute bottom-1.5 left-1.5 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[10px] text-white">
+          <span className="absolute bottom-1.5 left-1.5 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[11px] text-white">
             {inLib ? 'IN LIBRARY' : skipped ? 'SKIPPED BEFORE' : 'SUGGESTED'}
           </span>
         )}
       </div>
       <p className="mt-1.5 truncate text-xs font-medium text-fg">{c.title}</p>
-      <p className="truncate font-mono text-[10px] text-faint">{c.detail}</p>
+      <p className="truncate font-mono text-[11px] text-faint">{c.detail}</p>
     </button>
   )
 }
@@ -70,7 +70,7 @@ function Row({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; i
           <span className="block truncate font-mono text-[11px] text-muted">{c.detail}</span>
         </span>
         {(inLib || c.suggested || skipped) && (
-          <span className="shrink-0 font-mono text-[10px] text-faint uppercase">{inLib ? 'In library' : skipped ? 'Skipped before' : 'Suggested'}</span>
+          <span className="shrink-0 font-mono text-[11px] text-faint uppercase">{inLib ? 'In library' : skipped ? 'Skipped before' : 'Suggested'}</span>
         )}
       </label>
     </li>

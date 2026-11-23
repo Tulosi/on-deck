@@ -268,7 +268,7 @@ export function Sidebar() {
         <div className="flex">
           <SideLink to="/settings" label="Settings" icon={Settings} active={pathname.startsWith('/settings')} />
         </div>
-        <p className="px-3 pt-1 text-[10px] text-faint">Drag to rearrange · Alt + ↑/↓</p>
+        <p className="px-3 pt-1 text-xs text-faint">Drag to rearrange · Alt + ↑/↓</p>
       </div>
     </aside>
   )

@@ -101,7 +101,7 @@ function Collage({ items }: { items: UserItem[] }) {
           return t?.coverUrl ? (
             <img key={i} src={t.coverUrl} alt="" loading="lazy" className="size-full object-cover" />
           ) : (
-            <div key={i} className="grid size-full place-items-center bg-surface px-1 text-center text-[10px] text-faint">
+            <div key={i} className="grid size-full place-items-center bg-surface px-1 text-center text-[11px] text-faint">
               {t?.title ?? ''}
             </div>
           )
@@ -137,7 +137,7 @@ function rulesSummary(rules: string): string {
 
 function DefaultBadge() {
   return (
-    <span className="inline-flex items-center rounded-full border border-line px-1.5 py-0.5 font-mono text-[10px] text-muted uppercase">
+    <span className="inline-flex items-center rounded-full border border-line px-1.5 py-0.5 font-mono text-[11px] text-muted uppercase">
       Default
     </span>
   )
@@ -145,7 +145,7 @@ function DefaultBadge() {
 
 function SmartBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-1.5 py-0.5 font-mono text-[10px] text-accent-ink uppercase">
+    <span className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-1.5 py-0.5 font-mono text-[11px] text-accent-ink uppercase">
       <Sparkles className="size-3" /> Smart
     </span>
   )

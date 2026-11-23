@@ -115,7 +115,7 @@ export function BottomNav() {
               key={k}
               to={hrefOf(item)}
               aria-current={active ? 'page' : undefined}
-              className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px]', active ? 'text-accent-ink' : 'text-muted')}
+              className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px]', active ? 'text-accent-ink' : 'text-muted')}
             >
               <Icon className="size-5" strokeWidth={1.75} />
               {item.short ?? item.label}
@@ -126,7 +126,7 @@ export function BottomNav() {
           type="button"
           onClick={() => setMore((m) => !m)}
           aria-expanded={more}
-          className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px]', moreActive ? 'text-accent-ink' : 'text-muted')}
+          className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px]', moreActive ? 'text-accent-ink' : 'text-muted')}
         >
           <MoreHorizontal className="size-5" strokeWidth={1.75} />
           More

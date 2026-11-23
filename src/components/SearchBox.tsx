@@ -185,7 +185,7 @@ export function SearchBox() {
           )}
 
           <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-surface px-4 py-2">
-            <p className="font-mono text-[10px] text-faint">
+            <p className="font-mono text-[11px] text-faint">
               {type === 'game'
                 ? 'PC games from IGDB'
                 : type === 'book'

@@ -232,7 +232,7 @@ export function useAdder() {
 function ResultSection({ section, empty, render }: { section: SearchSection; empty: string; render: (r: SearchResult) => ReactNode }) {
   return (
     <section className="border-b border-line last:border-b-0">
-      <p className="px-4 pt-3 pb-1 font-mono text-[10px] tracking-wider text-faint uppercase">{section.title}</p>
+      <p className="px-4 pt-3 pb-1 font-mono text-[11px] tracking-wider text-faint uppercase">{section.title}</p>
       {section.error ? (
         <p className="px-4 pb-3 text-sm text-bad">Search failed: {(section.error as Error).message}</p>
       ) : section.isLoading ? (
@@ -283,7 +283,7 @@ export function SearchResultsBody({
       ))}
       {(s.near.length > 0 || s.nearLoading) && (
         <section className="border-t border-line">
-          <p className="flex items-center gap-1.5 px-4 pt-3 pb-1 font-mono text-[10px] tracking-wider text-faint uppercase">
+          <p className="flex items-center gap-1.5 px-4 pt-3 pb-1 font-mono text-[11px] tracking-wider text-faint uppercase">
             <Sparkles className="size-3" /> Close matches
           </p>
           {s.nearLoading ? (

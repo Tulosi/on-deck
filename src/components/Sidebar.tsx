@@ -250,16 +250,16 @@ export function Sidebar() {
         </div>
 
         {/* Archive: its own quiet section under Collections */}
-        <div className="mt-3 border-t border-line pt-2">
+        <div className="mt-3 border-t border-line pt-3">
           <Link
             to="/library?archived=only"
             aria-current={archiveActive ? 'page' : undefined}
             className={clsx(
-              'flex items-center gap-3 rounded-md px-3 py-1.5 text-xs transition-colors',
+              'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
               archiveActive ? 'bg-raised text-fg' : 'text-faint hover:bg-raised/60 hover:text-muted',
             )}
           >
-            <Archive className="size-4 shrink-0" strokeWidth={1.75} />
+            <Archive className="size-[18px] shrink-0" strokeWidth={1.75} />
             Archive
           </Link>
         </div>

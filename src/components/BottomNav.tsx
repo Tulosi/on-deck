@@ -68,8 +68,8 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
           })}
         </div>
         <div className="border-t border-line p-2">
-          <Link to="/library?archived=only" onClick={onClose} className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs text-faint">
-            <Archive className="size-4 shrink-0" strokeWidth={1.75} /> Archive
+          <Link to="/library?archived=only" onClick={onClose} className={clsx(row, 'text-faint')}>
+            <Archive className="size-[18px]" strokeWidth={1.75} /> Archive
           </Link>
         </div>
         <div className="space-y-0.5 border-t border-line p-2">

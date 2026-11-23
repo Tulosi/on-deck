@@ -22,7 +22,13 @@ Things you're in the middle of, with **the next concrete step**.
   "S2 · E5 — out now" / "S2 · E5 — Wed".
 - **Movies:** In Progress (from Plex sync), with "45% through".
 - **Games / Books:** In Progress (manual for now).
-- Order: most recently updated first.
+- Order: most recently **interacted with** first, by `user_items.last_activity_at`:
+  - Status, season or episode changed (by you, or by Plex sync moving it) → that moment.
+  - Watched on Plex → Plex's own "last watched" time (saved by `plex-watch` on every check, forward only; Plex
+    sync writes don't overwrite it with the sync time).
+  - Played on Steam → Steam's "last played" time.
+  - Notes, priority, alerts, the background Plex check etc. don't count (that's why it isn't `updated_at`).
+  - Existing entries were backfilled from Steam last played / started / finished / added.
 - Each card links to the title. Later: a one-tap "Watched E5" that advances Progress (only when Plex sync is off
   for that show).
 

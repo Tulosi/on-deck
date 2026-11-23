@@ -24,3 +24,12 @@ Known rough edges to pick up in the full UI/UX/user-flow pass. Add to it as thin
 
 ## Phone tab bar ✅ done
 - Replaced by 5 chosen tabs + More (Settings → Navigation). Books and Collections are reachable from More.
+
+## Parked from Group G (to do, maybe)
+Parked on 2026-11-23 rather than built, since the broader UI/UX pass may change or replace these. Revisit
+then; drop any that no longer apply.
+- **Title page:** narrower and denser.
+- **Calendar:** narrower and denser.
+- **Poster labels toggle:** rethink it. Tap to cycle through the states, in a fixed position sized for the
+  longest label; propose a phone design during the pass.
+- **General:** review how space is used across pages.

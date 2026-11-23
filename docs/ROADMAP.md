@@ -54,9 +54,9 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
 - Optional ongoing Steam sync: newly owned games → "Add to On Deck?".
 - Home: last 5 Plex-watched titles not in the library, with "more".
 
-## Group G — UI/UX pass
-- Narrower, denser title page and Calendar; labels toggle rethink (tap to cycle, fixed position sized for the
-  longest label, phone design proposed during the pass); general space-use review.
+## Group G — UI/UX pass ⏸ parked
+- Parked (2026-11-23): much of it will likely change in the broader UI/UX pass. Its ideas are kept as to-dos
+  in `docs/UX-BACKLOG.md` → "Parked from Group G"; may or may not come back.
 
 ## Future (not scheduled)
 - **Self-hosted edition (1.0):** Docker-compatible; an admin account separate from user accounts with an admin

@@ -730,7 +730,7 @@ export function StatusControls({ item }: { item: UserItem }) {
     lastApplied.current = key
 
     const patch = plexPatch(plexStateOf(item), w)
-    if (patch) void save(patch)
+    if (patch) void save({ ...patch, fromPlex: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plexWatch.data, item.id, item.tvProgress, item.progress, item.plexSync])
 
@@ -745,7 +745,7 @@ export function StatusControls({ item }: { item: UserItem }) {
     const key = `${item.id}:${w.movie.state}<-${item.progress}`
     if (lastApplied.current === key) return
     lastApplied.current = key
-    void save({ progress: next })
+    void save({ progress: next, fromPlex: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plexWatch.data, item.id, item.progress, item.plexSync])
 

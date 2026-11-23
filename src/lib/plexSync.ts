@@ -73,7 +73,7 @@ export function usePlexBackgroundSync() {
             })
             .catch(() => null)
           const patch = plexPatch(plexStateOf(item), w as Parameters<typeof plexPatch>[1])
-          if (patch) await update(item, patch).catch(() => undefined)
+          if (patch) await update(item, { ...patch, fromPlex: true }).catch(() => undefined)
         }
       } finally {
         running.current = false

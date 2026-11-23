@@ -64,11 +64,11 @@ export function continueLine(item: UserItem): string | undefined {
   return `Caught up · ${label} not announced`
 }
 
-/** 1. Continue — in progress, most recently touched first. */
+/** 1. Continue — in progress, most recently interacted with first (watched, played, status / episode changed). */
 export function continueItems(items: UserItem[]): UserItem[] {
   return items
     .filter((i) => i.progress === 'in_progress')
-    .sort((a, b) => Date.parse(b.updatedAt ?? '0') - Date.parse(a.updatedAt ?? '0'))
+    .sort((a, b) => Date.parse(b.lastActivityAt ?? b.updatedAt ?? '0') - Date.parse(a.lastActivityAt ?? a.updatedAt ?? '0'))
 }
 
 export interface Upcoming {

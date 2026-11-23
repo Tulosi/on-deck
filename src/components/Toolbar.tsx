@@ -73,13 +73,15 @@ function LabelsToggle() {
         <span
           aria-hidden="true"
           className={clsx(
-            'pointer-events-none absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full shadow transition-[left,background-color] duration-200',
+            'pointer-events-none absolute top-1/2 left-0.5 size-3.5 rounded-full shadow transition-[transform,background-color] duration-200 ease-out will-change-transform',
             mode === 'hide' ? 'bg-faint' : 'bg-accent',
           )}
-          style={{ left: `calc(${index} * (100% - 1.125rem) / 2 + 0.125rem)` }}
+          // Slides with transform (smooth) rather than `left`. Each step = (inner track 50px − knob 14px − 2 × 2px inset) / 2 = 1rem.
+          style={{ transform: `translate(${index}rem, -50%)` }}
         />
       </div>
-      <span className="hidden text-xs whitespace-nowrap text-muted lg:inline">{MODES[index].readout}</span>
+      {/* Fixed width, so the switch doesn't shift when the text changes. */}
+      <span className="hidden w-[6.5rem] text-xs whitespace-nowrap text-muted lg:inline">{MODES[index].readout}</span>
     </div>
   )
 }
@@ -464,15 +466,20 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
             </div>
           </div>
           <FilterPanel f={f} set={set} />
+          {/* Phones: sorting and grouping live here (the toolbar has no room for them). */}
+          <div className="mt-5 space-y-2 border-t border-line pt-4 sm:hidden">
+            <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Arrange</p>
+            <ArrangeSelects f={f} set={set} stacked />
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-function ArrangeSelects({ f, set }: { f: Filters; set: (next: Filters) => void }) {
+function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) => void; stacked?: boolean }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className={stacked ? 'flex flex-wrap items-center gap-2' : 'hidden items-center gap-1.5 sm:flex'}>
       <select
         aria-label="Sort by"
         value={f.sort}
@@ -490,7 +497,7 @@ function ArrangeSelects({ f, set }: { f: Filters; set: (next: Filters) => void }
         aria-label="Group by"
         value={f.group}
         onChange={(e) => set({ ...f, group: e.target.value as GroupKey })}
-        className={clsx(selectClass, 'hidden sm:block')}
+        className={clsx(selectClass, !stacked && 'hidden sm:block')}
       >
         {LABELS.options.GROUPS.map((g) => (
           <option key={g} value={g}>

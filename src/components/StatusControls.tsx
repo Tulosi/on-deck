@@ -174,7 +174,7 @@ function SeasonOptions({
 }
 
 /** "Watched up to" label with a completion bar: watched / aired episodes. */
-function WatchedHeading({ item, seasons }: { item: UserItem; seasons: SeasonMeta[] }) {
+function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: SeasonMeta[]; checking?: boolean }) {
   const { watched, ignored, aired } = completion(item, seasons)
   const watchedPct = aired > 0 ? (watched / aired) * 100 : 0
   const ignoredPct = aired > 0 ? (ignored / aired) * 100 : 0
@@ -183,7 +183,15 @@ function WatchedHeading({ item, seasons }: { item: UserItem; seasons: SeasonMeta
     `${Math.round(watchedPct)}% watched` + (ignored > 0 ? `, ${Math.round(ignoredPct)}% ignored` : '')
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-      <p className={labelClass}>Progress</p>
+      <p className={clsx(labelClass, 'flex items-center gap-1.5')}>
+        Progress
+        {/* Inline, so it takes no extra space while Plex is being checked. */}
+        {checking && (
+          <span className="flex items-center gap-1 normal-case tracking-normal" title="Checking your Plex watch history">
+            <Loader2 className="size-3 animate-spin" /> Plex…
+          </span>
+        )}
+      </p>
       {aired > 0 && (
         <div className="flex items-center gap-2" title={tip}>
           {/* Watched (accent, green when everything's accounted for) then ignored (pale orange) then the rest. */}
@@ -216,24 +224,33 @@ function WatchedHeading({ item, seasons }: { item: UserItem; seasons: SeasonMeta
 const selectClass =
   'h-9 rounded-lg border border-line bg-bg px-2.5 text-sm text-fg outline-none focus:border-accent'
 
-/** Season + episode dropdowns, limited to the show's actual seasons and episode counts. */
+/**
+ * Season + episode dropdowns, limited to the show's actual seasons and episode counts. `value` null = not
+ * started: the episode menu reads "Not started" until you pick one.
+ */
 function EpisodePicker({
   seasons,
   value,
   onChange,
 }: {
   seasons: SeasonMeta[]
-  value: { season: number; episode: number }
+  value: { season: number; episode: number } | null
   onChange: (next: { season: number; episode: number }) => void
 }) {
-  const season = seasons.find((s) => s.season_number === value.season) ?? seasons[0]
+  const [pickedSeason, setPickedSeason] = useState<number | null>(null)
+  const season =
+    seasons.find((s) => s.season_number === (value?.season ?? pickedSeason)) ?? seasons[0]
   const episodes = season?.episode_count ?? 1
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Season"
         value={season?.season_number}
-        onChange={(e) => onChange({ season: Number(e.target.value), episode: 1 })}
+        onChange={(e) => {
+          // Not started yet: changing the season only changes the episode list; nothing is saved until an episode is picked.
+          if (!value) setPickedSeason(Number(e.target.value))
+          else onChange({ season: Number(e.target.value), episode: 1 })
+        }}
         className={selectClass}
       >
         {seasons.map((s) => (
@@ -244,10 +261,11 @@ function EpisodePicker({
       </select>
       <select
         aria-label="Episode"
-        value={Math.min(value.episode, episodes)}
-        onChange={(e) => onChange({ season: season.season_number, episode: Number(e.target.value) })}
+        value={value ? Math.min(value.episode, episodes) : 0}
+        onChange={(e) => Number(e.target.value) > 0 && onChange({ season: season.season_number, episode: Number(e.target.value) })}
         className={selectClass}
       >
+        {!value && <option value={0}>Not started</option>}
         {Array.from({ length: episodes }, (_, i) => i + 1).map((n) => (
           <option key={n} value={n}>
             Episode {n}
@@ -288,7 +306,7 @@ function TvProgressSection({
   const syncOn = plexFound && item.plexSync !== false
   const plexLast = watch?.configured && watch.found ? (watch.lastWatched ?? null) : null
   const server = watch?.configured && watch.found ? watch.server : null
-  const tv = item.tvProgress ?? { season: seasons[0]?.season_number ?? 1, episode: 1 }
+  const tv = item.tvProgress ?? null
 
   const syncButton = (
     <button type="button" onClick={onRefresh} disabled={loading} className={pillButton}>
@@ -320,7 +338,10 @@ function TvProgressSection({
   }
 
   // ── Manual ──
-  const showPicker = seasons.length > 0 && (item.progress === 'in_progress' || !!item.tvProgress || plexFound)
+  // Always shown for shows that aren't dropped (even at "not started"), so the section is there from the first
+  // moment and nothing below it jumps when Plex answers.
+  const showPicker = seasons.length > 0 && (item.progress !== 'dropped' || !!item.tvProgress || plexFound)
+  const checkingPlex = !watch && loading
   let note: ReactNode = null
   if (plexFound && item.plexSync === false) {
     note = (
@@ -346,7 +367,7 @@ function TvProgressSection({
     )
   } else if (watch?.configured && !watch.found && watch.reason === 'no_reachable_server') {
     note = <>Couldn’t reach your Plex server {syncButton}</>
-  } else if (!watch && loading) {
+  } else if (!showPicker && checkingPlex) {
     note = 'Checking your Plex watch history…'
   }
 
@@ -355,7 +376,7 @@ function TvProgressSection({
     <div className="space-y-1.5">
       {showPicker && (
         <>
-          <WatchedHeading item={item} seasons={seasons} />
+          <WatchedHeading item={item} seasons={seasons} checking={checkingPlex} />
           <div className="flex flex-wrap items-center gap-3">
             <EpisodePicker
               seasons={seasons}

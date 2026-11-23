@@ -72,7 +72,9 @@ const AVAILABILITY: AvailabilityFilter[] = ['available', 'unavailable']
 const ADDED: AddedFilter[] = ['7d', '30d', '90d', '365d']
 const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended', 'cancelled']
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
-const SORTS: SortKey[] = ['priority', 'added', 'release', 'score', 'title', 'updated', 'price', 'length']
+/** Sort when none is chosen: date added, newest first. */
+export const DEFAULT_SORT: SortKey = 'added'
+const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'price', 'length']
 const LENGTH: LengthFilter[] = ['short', 'medium', 'long', 'epic']
 const COOP: CoopFilter[] = ['online', 'local', 'split', 'pvp']
 const DECK: DeckFilter[] = ['verified', 'playable', 'unsupported']
@@ -105,7 +107,7 @@ export function parseFilters(p: URLSearchParams): Filters {
     deal: isGame ? list(p.get('deal'), DEAL) : [],
     length: isGame ? list(p.get('length'), LENGTH) : [],
     maxPrice: isGame ? int(p.get('maxprice')) : null,
-    sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : 'priority',
+    sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : DEFAULT_SORT,
     group: (GROUPS as string[]).includes(p.get('group') ?? '') ? (p.get('group') as GroupKey) : 'none',
   }
 }
@@ -139,7 +141,7 @@ export function filtersToParams(f: Filters): URLSearchParams {
     set('tvstatus', f.tvStatus.join(','))
     set('tvprogress', f.tvProgress.join(','))
   }
-  if (f.sort !== 'priority') set('sort', f.sort)
+  if (f.sort !== DEFAULT_SORT) set('sort', f.sort)
   if (f.group !== 'none') set('group', f.group)
   return p
 }
@@ -399,7 +401,7 @@ export const LABELS = {
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
-  sort: { priority: 'Priority', added: 'Date added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', price: 'Price', length: 'Length' } as Record<SortKey, string>,
+  sort: { priority: 'Priority', added: 'None (date added)', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', price: 'Price', length: 'Length' } as Record<SortKey, string>,
   coop: { online: 'Online co-op', local: 'Local co-op', split: 'Split-screen', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,

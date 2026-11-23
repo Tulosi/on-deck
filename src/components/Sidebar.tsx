@@ -67,7 +67,8 @@ function Reorderable({
   section: Section
   keys: string[]
   onReorder: (order: string[]) => void
-  render: (key: string, keyNav: (e: KeyboardEvent) => void) => ReactNode
+  /** `grip` is this row's drag handle; the row places it at the right end of its own line. */
+  render: (key: string, keyNav: (e: KeyboardEvent) => void, grip: ReactNode) => ReactNode
 }) {
   const [dragging, setDragging] = useState<string | null>(null)
   const [drop, setDrop] = useState<{ before: string | null } | null>(null)
@@ -122,19 +123,30 @@ function Reorderable({
             if (next.join() !== keys.join()) onReorder(next)
             setDrop(null)
           }}
-          className={clsx('group/row relative', dragging === key && 'opacity-40')}
+          className={clsx('relative', dragging === key && 'opacity-40')}
         >
           {drop?.before === key && dragging !== key && <span className="absolute inset-x-2 -top-px h-0.5 rounded bg-accent" />}
-          <div className="flex items-center">
-            {render(key, keyNav(key))}
+          {render(
+            key,
+            keyNav(key),
             <GripVertical
               aria-hidden="true"
-              className="mr-1 size-3.5 shrink-0 cursor-grab text-faint opacity-0 transition-opacity group-hover/row:opacity-100"
-            />
-          </div>
+              className="mr-1 size-3.5 shrink-0 cursor-grab text-faint opacity-0 transition-opacity group-hover/line:opacity-100"
+            />,
+          )}
         </div>
       ))}
       {drop && drop.before === null && <span className="mx-2 block h-0.5 rounded bg-accent" />}
+    </div>
+  )
+}
+
+/** One sidebar line: the link, then its drag handle (shown on hover of this line only). */
+function Line({ children, grip }: { children: ReactNode; grip: ReactNode }) {
+  return (
+    <div className="group/line flex items-center">
+      {children}
+      {grip}
     </div>
   )
 }
@@ -170,21 +182,30 @@ export function Sidebar() {
           section="main"
           keys={main}
           onReorder={(o) => save('main', o)}
-          render={(key, keyNav) => {
+          render={(key, keyNav, grip) => {
             const item = byKey.get(key)!
-            const link = <SideLink to={hrefOf(item)} label={item.label} icon={item.icon} active={isActive(item)} onKeyDown={keyNav} />
-            if (key !== 'library') return link
-            // Library carries its type shortcuts with it; they reorder among themselves.
+            const line = (
+              <Line grip={grip}>
+                <SideLink to={hrefOf(item)} label={item.label} icon={item.icon} active={isActive(item)} onKeyDown={keyNav} />
+              </Line>
+            )
+            if (key !== 'library') return line
+            // Library has its own handle on its own line; its types reorder among themselves underneath, each
+            // with a handle in the same right-hand column.
             return (
-              <div className="min-w-0 flex-1">
-                <div className="flex">{link}</div>
+              <div>
+                {line}
                 <Reorderable
                   section="types"
                   keys={types}
                   onReorder={(o) => save('types', o)}
-                  render={(t, tNav) => {
+                  render={(t, tNav, tGrip) => {
                     const ti = byKey.get(t)!
-                    return <SideLink to={hrefOf(ti)} label={ti.label} icon={ti.icon} active={isActive(ti)} indent onKeyDown={tNav} />
+                    return (
+                      <Line grip={tGrip}>
+                        <SideLink to={hrefOf(ti)} label={ti.label} icon={ti.icon} active={isActive(ti)} indent onKeyDown={tNav} />
+                      </Line>
+                    )
                   }}
                 />
               </div>
@@ -206,9 +227,10 @@ export function Sidebar() {
               section="collections"
               keys={colOrder}
               onReorder={(o) => save('collections', o)}
-              render={(id, cNav) => {
+              render={(id, cNav, cGrip) => {
                 const c = colById.get(id)!
                 return (
+                  <Line grip={cGrip}>
                   <SideLink
                     to={`/collections/${id}`}
                     label={c.name}
@@ -217,6 +239,7 @@ export function Sidebar() {
                     indent
                     onKeyDown={cNav}
                   />
+                  </Line>
                 )
               }}
             />

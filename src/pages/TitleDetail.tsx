@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import clsx from 'clsx'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Bell, BellOff, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
+import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { CollectionPicker } from '../components/CollectionPicker'
 import { GamePrices } from '../components/GamePrices'
 import { StatusControls } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
-import { useItems, useRemoveItem, useUpdateItem } from '../lib/library'
+import { useItems, useRemoveItem } from '../lib/library'
 import { releaseInfo, releaseLong, tvSchedule, tvScheduleLong } from '../lib/release'
-import { mediaLabels, type MediaType, type Title, type UserItem } from '../types'
+import { mediaLabels, type MediaType, type Title } from '../types'
 
 const typeIcon: Record<MediaType, typeof Film> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 
@@ -160,37 +159,6 @@ function GameLinks({ d }: { d: Record<string, unknown> }) {
   )
 }
 
-/** "Notify me": release-day, date-change, availability and price alerts for this title (bell inbox). */
-function NotifyToggle({ item }: { item: UserItem }) {
-  const update = useUpdateItem()
-  const on = item.notify !== false
-  const Icon = on ? Bell : BellOff
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => update(item, { notify: !on })}
-      className={clsx(
-        'flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left',
-        on ? 'border-accent/60 bg-accent/5' : 'border-line hover:border-faint',
-      )}
-    >
-      <Icon className={clsx('mt-0.5 size-4 shrink-0', on ? 'text-accent-ink' : 'text-muted')} />
-      <span>
-        <span className="block text-sm text-fg">{on ? 'Notifications on' : 'Notifications off'}</span>
-        <span className="block text-xs text-muted">
-          {item.title.mediaType === 'game'
-            ? 'Release dates, Early Access and 1.0, lowest-ever prices and deep discounts.'
-            : item.title.mediaType === 'book'
-              ? 'Publication date and date changes.'
-              : 'Release dates, new seasons, and when it lands on Plex or your services.'}
-        </span>
-      </span>
-    </button>
-  )
-}
-
 export function TitleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -331,8 +299,6 @@ export function TitleDetail() {
             {title.mediaType === 'book' && <BookFacts d={d} />}
           </dl>
           {(title.mediaType === 'game' || title.mediaType === 'book') && <GameLinks d={d} />}
-
-          {!isSample && <NotifyToggle item={item} />}
 
           {!isSample && (
             <div className="space-y-2">

@@ -1,6 +1,7 @@
 // Private calendar feed (iCalendar / .ics) of a user's upcoming releases. No sign-in: the secret token in the
 // URL identifies the user (see migration 20261122000000_calendar_feeds.sql).
-//   GET ?token=<64 hex chars>[&only=new|all|movie|tv|game|book] → text/calendar
+//   GET [/on-deck-<name>.ics]?token=<64 hex chars>[&only=new|all|movie|tv|game|book] → text/calendar
+// The optional file name in the path is only there so calendar apps show a readable name; it's ignored here.
 // `only` (default new) picks what's in the feed; see FeedFilter in _shared/releases.ts. One token, so each
 // filter is just a different URL — you can subscribe to several.
 // Events (all-day): movie / game releases, series premieres, new seasons and the next announced episode,
@@ -24,13 +25,22 @@ type Json = Record<string, any>
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://tulosi.github.io/on-deck').replace(/\/$/, '')
 const KEEP_PAST_DAYS = 60
 const TYPE_NAME: Record<string, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
+/** Readable file names (also used in the subscription URL's path). */
+const FEED_FILE: Record<FeedFilter, string> = {
+  new: 'on-deck-default.ics',
+  all: 'on-deck-everything.ics',
+  movie: 'on-deck-movies.ics',
+  tv: 'on-deck-tv.ics',
+  game: 'on-deck-games.ics',
+  book: 'on-deck-books.ics',
+}
 const FEED_NAME: Record<FeedFilter, string> = {
-  new: 'On Deck · New releases',
-  all: 'On Deck',
-  movie: 'On Deck · Movies',
-  tv: 'On Deck · TV',
-  game: 'On Deck · Games',
-  book: 'On Deck · Books',
+  new: 'On Deck Calendar · Default',
+  all: 'On Deck Calendar · Everything',
+  movie: 'On Deck Calendar · Movies',
+  tv: 'On Deck Calendar · TV',
+  game: 'On Deck Calendar · Games',
+  book: 'On Deck Calendar · Books',
 }
 
 const notFound = () => new Response('Not found', { status: 404, headers: corsHeaders })
@@ -94,8 +104,11 @@ serve(async (req) => {
     'PRODID:-//On Deck//Waitlist//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    // Calendar name: NAME (RFC 7986) for newer apps, X-WR-CALNAME for Google / Apple / Outlook.
+    fold(`NAME:${esc(FEED_NAME[only])}`),
     fold(`X-WR-CALNAME:${esc(FEED_NAME[only])}`),
-    'X-WR-CALDESC:Upcoming releases from your On Deck waitlist',
+    'X-WR-CALDESC:Upcoming releases from your On Deck library',
+    'X-WR-TIMEZONE:UTC',
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
     'X-PUBLISHED-TTL:PT6H',
   ]
@@ -150,7 +163,7 @@ serve(async (req) => {
     headers: {
       ...corsHeaders,
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': 'inline; filename="on-deck.ics"',
+      'Content-Disposition': `inline; filename="${FEED_FILE[only]}"`,
       'Cache-Control': 'public, max-age=900',
     },
   })

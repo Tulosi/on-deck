@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { RateFinished } from '../components/RateFinished'
-import { continueItems, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
+import { DEFAULT_DEAL_PCT, continueItems, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
 import { useItems } from '../lib/library'
+import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
 
@@ -13,6 +14,7 @@ import { useFilters } from '../lib/useFilters'
  */
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
+  const profile = useProfile()
   // Home takes only the type pills from the toolbar (?type=…), narrowing every row.
   const [filters] = useFilters()
   const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
@@ -45,7 +47,8 @@ export function Home() {
   const week = thisWeek(items)
   const weekById = new Map(week.map((u) => [u.item.id, u]))
   const ready = readyToStart(items)
-  const onDeal = deals(items)
+  const dealPct = profile.data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
+  const onDeal = deals(items, dealPct)
   const nothingGoingOn = cont.length === 0 && week.length === 0
 
   return (
@@ -102,7 +105,7 @@ export function Home() {
       />
       <PosterRow
         title="Deals"
-        hint="Games at a historical low or 50%+ off"
+        hint={`Games at a historical low or ${dealPct}%+ off`}
         items={onDeal}
         href="/library?type=game&deal=on_sale&sort=price"
       />

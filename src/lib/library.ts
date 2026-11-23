@@ -31,6 +31,7 @@ interface TitleRow {
     scores_checked_at?: string
   } & Record<string, unknown>
   metadata: Record<string, unknown> & { overview?: string | null }
+  external_ids?: Record<string, unknown> | null
   release_date: string | null
 }
 
@@ -141,7 +142,11 @@ function toUserItem(row: ItemRow): UserItem {
         // Games saved before release dates (precision, Early Access, 1.0) were stored are refreshed once to pick it up.
         // Games saved before time-to-beat was stored are refreshed once to pick it up.
         (t.source === 'igdb' &&
-          (scoresNeedRefresh(t.ratings) || t.metadata.release_milestones === undefined || t.metadata.time_to_beat === undefined)) ||
+          (scoresNeedRefresh(t.ratings) ||
+            t.metadata.release_milestones === undefined ||
+            t.metadata.time_to_beat === undefined ||
+            // Games saved before Steam's Early Access flag was read
+            (!!t.external_ids?.steam_appid && t.metadata.steam_genres === undefined))) ||
         (t.source === 'hardcover' && scoresNeedRefresh(t.ratings)),
     },
   }

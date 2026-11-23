@@ -3,6 +3,7 @@
 import { isAvailable } from './filters'
 import { cheapest } from './prices'
 import { releaseInfo, tvSchedule } from './release'
+import { overrideOf, seasonsOf, watchedIn } from './seasons'
 import type { UserItem } from '../types'
 
 const DAY = 86_400_000
@@ -11,26 +12,21 @@ const weekday = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(
 const monthDay = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
-interface SeasonMeta {
-  season_number: number
-  episode_count: number
-}
-
-const seasonsOf = (item: UserItem): SeasonMeta[] =>
-  Array.isArray(item.title.details?.seasons)
-    ? (item.title.details!.seasons as SeasonMeta[]).filter((s) => s.season_number > 0 && s.episode_count > 0)
-    : []
-
-/** TV: the episode after "Progress", or the first episode if nothing is watched yet. */
+/**
+ * TV: the first episode you haven't watched, going season by season. Seasons marked Watched or Ignored by hand
+ * (per-season overrides) count as done, so S1–S4 marked Watched → S5 · E1. Uses the same rules as the show
+ * page (lib/seasons.ts). Null when everything listed is watched.
+ */
 function nextEpisode(item: UserItem): { season: number; episode: number } | null {
   const seasons = seasonsOf(item)
   if (seasons.length === 0) return null
-  const at = item.tvProgress
-  if (!at) return { season: seasons[0].season_number, episode: 1 }
-  const cur = seasons.find((s) => s.season_number === at.season)
-  if (cur && at.episode < cur.episode_count) return { season: at.season, episode: at.episode + 1 }
-  const later = seasons.find((s) => s.season_number > at.season)
-  return later ? { season: later.season_number, episode: 1 } : null
+  for (const s of seasons) {
+    const o = overrideOf(item, s.season_number)
+    if (o === 'ignored' || o === 'watched') continue
+    const watched = watchedIn(item, s, s.episode_count)
+    if (watched < s.episode_count) return { season: s.season_number, episode: watched + 1 }
+  }
+  return null
 }
 
 /**
@@ -125,14 +121,17 @@ export function readyToStart(items: UserItem[]): UserItem[] {
 }
 
 /**
- * 5. Deals — games you don't own (not Played / Dropped) that are at a historical low or ≥ 50 % off Steam's
- * full price, cheapest first.
+ * 5. Deals — games you don't own (not Played / Dropped) at a historical low, or at least your deep-discount
+ * threshold off Steam's full price (Settings → Notifications; default 30 %), cheapest first.
  */
-export function deals(items: UserItem[]): UserItem[] {
+/** Same default as the deep-discount alert (Settings → Notifications). */
+export const DEFAULT_DEAL_PCT = 30
+
+export function deals(items: UserItem[], minDiscountPct = DEFAULT_DEAL_PCT): UserItem[] {
   return items
     .filter((i) => i.title.mediaType === 'game' && !i.owned && i.progress !== 'completed' && i.progress !== 'dropped')
     .map((i) => ({ i, best: i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null }))
-    .filter((x) => x.best && (x.best.atLow || (x.best.discountPct ?? 0) >= 50))
+    .filter((x) => x.best && (x.best.atLow || (x.best.discountPct ?? 0) >= minDiscountPct))
     .sort((a, b) => a.best!.price - b.best!.price)
     .map((x) => x.i)
 }

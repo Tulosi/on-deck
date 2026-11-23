@@ -66,10 +66,16 @@ export function PosterCard({
   const release = releaseInfo(title)
   const schedule = release.preRelease ? null : tvSchedule(title)
   const secondary = subline ?? secondaryLine(item)
+  const anyBottom =
+    (showPrice && !release.preRelease) ||
+    release.preRelease ||
+    !!schedule ||
+    (title.mediaType === 'game' && title.details?.early_access === true) ||
+    !!showPlex
 
   return (
     <Link to={`/title/${title.id}`} className={clsx('group block', className)}>
-      <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-line bg-raised transition group-hover:border-accent group-focus-visible:border-accent">
+      <div className="@container/poster relative aspect-[2/3] overflow-hidden rounded-lg border border-line bg-raised transition group-hover:border-accent group-focus-visible:border-accent">
         {title.coverUrl ? (
           <img src={title.coverUrl} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
@@ -114,84 +120,100 @@ export function PosterCard({
           </span>
         )}
 
+        {/* Bottom chips share one row: left (price / countdown / schedule) and right (Early Access / Plex).
+            When they don't fit side by side, the right one wraps upward instead of overlapping. */}
+        {anyBottom && vis('release') !== null && (
+          <>
+            {/* Soft gradient behind bottom chips, for readability (follows the labels setting). */}
+            <div className={clsx('pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent', vis('release'))} />
+            <div className="absolute inset-x-1.5 bottom-1.5 flex flex-wrap-reverse items-end justify-between gap-1">
+              <div className="flex min-w-0 flex-col items-start gap-1">
         {/* Price — games the user doesn't own yet */}
-        {showPrice && !release.preRelease && vis('price') !== null && (
-          <span
-            title={item.price?.atLow ? 'Historical low' : undefined}
-            className={clsx(
-              'absolute bottom-1.5 left-1.5 flex overflow-hidden rounded-md font-mono text-[11px] font-semibold',
-              vis('price'),
-            )}
-          >
-            {isFree ? (
-              <span className="bg-black/75 px-1.5 py-0.5 text-good">FREE-TO-PLAY</span>
-            ) : (
-              <>
-                {item.price!.discountPct ? (
-                  <span className="bg-accent px-1.5 py-0.5 text-[#0c0b0a]">-{item.price!.discountPct}%</span>
-                ) : null}
-                <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
-                {item.price!.atLow && <span className="bg-good px-1 py-0.5 text-[#0c0b0a]">LOW</span>}
-              </>
-            )}
-          </span>
-        )}
+                {showPrice && !release.preRelease && vis('price') !== null && (
+                  <span
+                    title={item.price?.atLow ? 'Historical low' : undefined}
+                    className={clsx(
+                      'flex overflow-hidden rounded-md font-mono text-[11px] font-semibold',
+                      vis('price'),
+                    )}
+                  >
+                    {isFree ? (
+                      <span className="bg-black/75 px-1.5 py-0.5 text-good">FREE-TO-PLAY</span>
+                    ) : (
+                      <>
+                        {item.price!.discountPct ? (
+                          <span className="bg-accent px-1.5 py-0.5 text-[#0c0b0a]">-{item.price!.discountPct}%</span>
+                        ) : null}
+                        <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
+                        {item.price!.atLow && <span className="bg-good px-1 py-0.5 text-[#0c0b0a]">LOW</span>}
+                      </>
+                    )}
+                  </span>
+                )}
 
-        {/* Pre-release countdown (movies/TV); bottom-left is free for them — games use it for price. */}
-        {release.preRelease && vis('release') !== null && (
-          <span
-            title={releaseLong(release)}
-            className={clsx(
-              'absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-accent backdrop-blur-sm',
-              vis('release'),
-            )}
-          >
-            <CalendarClock className="size-3" />
-            {releaseChip(release)}
-          </span>
-        )}
+                {/* Pre-release countdown (movies/TV); bottom-left is free for them — games use it for price. */}
+                {release.preRelease && vis('release') !== null && (
+                  <span
+                    title={releaseLong(release)}
+                    className={clsx(
+                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-accent backdrop-blur-sm',
+                      vis('release'),
+                    )}
+                  >
+                    <CalendarClock className="size-3" />
+                    {releaseChip(release)}
+                  </span>
+                )}
 
-        {/* TV schedule: airing (blue) or new season coming (yellow). */}
-        {schedule && vis('release') !== null && (
-          <span
-            title={tvScheduleLong(schedule)}
-            className={clsx(
-              'absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide backdrop-blur-sm',
-              schedule.kind === 'airing' ? 'border-info/70 text-info' : 'border-accent/70 text-accent',
-              vis('release'),
-            )}
-          >
-            {schedule.kind === 'airing' ? <Radio className="size-3" /> : <CalendarClock className="size-3" />}
-            {tvScheduleChip(schedule)}
-          </span>
-        )}
+                {/* TV schedule: airing (blue) or new season coming (yellow). */}
+                {schedule && vis('release') !== null && (
+                  <span
+                    title={tvScheduleLong(schedule)}
+                    className={clsx(
+                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide backdrop-blur-sm',
+                      schedule.kind === 'airing' ? 'border-info/70 text-info' : 'border-accent/70 text-accent',
+                      vis('release'),
+                    )}
+                  >
+                    {schedule.kind === 'airing' ? <Radio className="size-3" /> : <CalendarClock className="size-3" />}
+                    {tvScheduleChip(schedule)}
+                  </span>
+                )}
 
+              </div>
+              <div className="ml-auto flex flex-col items-end gap-1">
         {/* Early Access (games): bottom-right is free on game posters (Plex dots are movies/TV only). */}
-        {title.mediaType === 'game' && title.details?.early_access === true && vis('release') !== null && (
-          <span
-            title="Early Access — not at 1.0 yet"
-            className={clsx(
-              'absolute right-1.5 bottom-1.5 rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-orange-300 backdrop-blur-sm',
-              vis('release'),
-            )}
-          >
-            EARLY ACCESS
-          </span>
-        )}
+                {title.mediaType === 'game' && title.details?.early_access === true && vis('release') !== null && (
+                  <span
+                    title="Early Access — not at 1.0 yet"
+                    className={clsx(
+                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-orange-300 backdrop-blur-sm',
+                      vis('release'),
+                    )}
+                  >
+                    {/* Very narrow posters (phone rows): the short form. */}
+                    <span className="@[8.5rem]/poster:hidden">EA</span>
+                    <span className="hidden @[8.5rem]/poster:inline">EARLY ACCESS</span>
+                  </span>
+                )}
 
-        {/* Plex availability */}
-        {showPlex && vis('plex') !== null && (
-          <span
-            title={plexMeta[item.plex!].label}
-            aria-label={plexMeta[item.plex!].label}
-            className={clsx(
-              'absolute right-1.5 bottom-1.5 flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm',
-              vis('plex'),
-            )}
-          >
-            <span className={clsx('size-2 rounded-full', plexMeta[item.plex!].className)} />
-            Plex
-          </span>
+                {/* Plex availability */}
+                {showPlex && vis('plex') !== null && (
+                  <span
+                    title={plexMeta[item.plex!].label}
+                    aria-label={plexMeta[item.plex!].label}
+                    className={clsx(
+                      'flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm',
+                      vis('plex'),
+                    )}
+                  >
+                    <span className={clsx('size-2 rounded-full', plexMeta[item.plex!].className)} />
+                    Plex
+                  </span>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
 

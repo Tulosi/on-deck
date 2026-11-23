@@ -61,7 +61,7 @@ async function itadInfo(steamAppId: string) {
   }
 }
 
-/** Steam store: categories (co-op etc.) and free-to-play. */
+/** Steam store: categories (co-op etc.), genres (incl. "Early Access") and free-to-play. */
 async function steamDetails(steamAppId: string) {
   const d = await getJson(`https://store.steampowered.com/api/appdetails?appids=${steamAppId}&l=english&filters=basic,categories,genres`)
   const data = d?.[steamAppId]?.success ? d[steamAppId].data : null
@@ -69,6 +69,9 @@ async function steamDetails(steamAppId: string) {
   return {
     isFree: !!data.is_free,
     categories: ((data.categories ?? []) as Json[]).map((c) => c.description as string),
+    genres: ((data.genres ?? []) as Json[]).map((g) => g.description as string),
+    // Steam's own Early Access flag (genre id 70) — first-party, so it wins over other sources.
+    earlyAccess: ((data.genres ?? []) as Json[]).some((g) => String(g.id) === '70' || g.description === 'Early Access'),
   }
 }
 
@@ -165,6 +168,14 @@ async function timeToBeat(igdbId: number): Promise<Json | null> {
   }
 }
 
+/** Early Access launched (on or before today) and the full release hasn't happened yet (or has no date). */
+function inEarlyAccessByDates(milestones: Milestone[], today: string): boolean {
+  const ea = milestones.find((m) => m.kind === 'early_access')
+  const full = milestones.find((m) => m.kind === 'release')
+  if (!ea?.date || ea.date > today) return false
+  return !full || !full.date || full.date > today
+}
+
 // ─── Add / refresh ─────────────────────────────────────────────────────────
 
 async function add(igdbId: number) {
@@ -233,7 +244,9 @@ async function add(igdbId: number) {
       perspectives: ((g.player_perspectives ?? []) as Json[]).map((x) => x.name),
       multiplayer,
       tags: itad?.tags ?? [],
-      early_access: itad?.earlyAccess ?? false,
+      // Early Access: Steam's flag, IsThereAnyDeal's, or the release dates (Early Access launched, 1.0 still to come).
+      early_access: !!(steam?.earlyAccess || itad?.earlyAccess || inEarlyAccessByDates(milestones, nowIso.slice(0, 10))),
+      steam_genres: steam?.genres ?? [],
       is_free: steam?.isFree ?? false,
       steam_deck: deck,
       steam_categories: steam?.categories ?? [],

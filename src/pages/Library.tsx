@@ -10,8 +10,7 @@ import {
   clearFilters,
   groupItems,
   sortItems,
-  type Filters,
-} from '../lib/filters'
+  type Filters, DEFAULT_SORT } from '../lib/filters'
 import { useItems } from '../lib/library'
 import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
@@ -97,7 +96,8 @@ export function Library() {
   return (
     <div>
       <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`}>
-        {!isSample && !editing && (f.type || activeCount(f) > 0) && (
+        {/* Only once something differs from the defaults (choosing a type alone doesn't count). */}
+        {!isSample && !editing && (activeCount(f) > 0 || f.sort !== DEFAULT_SORT) && (
           <button
             type="button"
             onClick={() => setSaving((v) => !v)}

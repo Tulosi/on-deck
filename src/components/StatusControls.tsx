@@ -280,6 +280,23 @@ function EpisodePicker({
 const pillButton =
   'flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-muted hover:border-accent hover:text-fg disabled:opacity-60'
 
+/** Shown while a title is actively synced from Plex: a green status (tap to check Plex again). */
+function SyncedPill({ loading, onRefresh, server }: { loading: boolean; onRefresh: () => void; server?: string | null }) {
+  return (
+    <button
+      type="button"
+      onClick={onRefresh}
+      disabled={loading}
+      title={`Synced from Plex${server ? ` (${server})` : ''}. Tap to check again.`}
+      className="group flex items-center gap-1.5 rounded-full border border-good/60 bg-good/10 px-2.5 py-1 text-xs font-medium text-good disabled:opacity-80"
+    >
+      {loading ? <RefreshCw className="size-3 animate-spin" /> : <Check className="size-3" />}
+      {loading ? 'Syncing…' : 'Synced from Plex'}
+      {!loading && <RefreshCw className="size-3 opacity-50 group-hover:opacity-100" aria-hidden="true" />}
+    </button>
+  )
+}
+
 /**
  * "Watched up to" for TV — one source of truth at a time:
  *  - Plex sync on (show found on the user's Plex, not overridden): read-only, mirrors Plex.
@@ -323,9 +340,9 @@ function TvProgressSection({
           <span className="flex h-9 items-center rounded-lg border border-line bg-bg px-3 font-mono text-sm text-fg">
             {plexLast ? `S${plexLast.season} · E${plexLast.episode}` : 'Nothing watched yet'}
           </span>
-          <span className="text-xs text-muted">from Plex · {server}</span>
+          <span className="text-xs text-muted">{server}</span>
           <div className="ml-auto flex flex-wrap gap-2">
-            {syncButton}
+            <SyncedPill loading={loading} onRefresh={onRefresh} server={server} />
             <button type="button" onClick={() => save({ plexSync: false })} className={pillButton}>
               Override
             </button>
@@ -463,12 +480,16 @@ function MovieProgressSection({
           {label}
         </span>
         <span className="text-xs text-muted">
-          {syncOn ? `from Plex · ${watch.server}` : `Manual override · Plex says ${label.toLowerCase()}`}
+          {syncOn ? watch.server : `Manual override · Plex says ${label.toLowerCase()}`}
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
-          <button type="button" onClick={onRefresh} disabled={loading} className={pillButton}>
-            <RefreshCw className={clsx('size-3', loading && 'animate-spin')} /> Sync from Plex
-          </button>
+          {syncOn ? (
+            <SyncedPill loading={loading} onRefresh={onRefresh} server={watch.server} />
+          ) : (
+            <button type="button" onClick={onRefresh} disabled={loading} className={pillButton}>
+              <RefreshCw className={clsx('size-3', loading && 'animate-spin')} /> Sync from Plex
+            </button>
+          )}
           {syncOn ? (
             <button type="button" onClick={() => save({ plexSync: false })} className={pillButton}>
               Override

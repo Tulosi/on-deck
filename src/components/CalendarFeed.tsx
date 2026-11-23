@@ -34,7 +34,9 @@ const feedKey = (userId: string | undefined) => ['calendar-feed', userId]
 
 /** Feed URL for a token. https for copy/paste; webcal:// makes Apple Calendar / Outlook subscribe on click. */
 function feedUrls(token: string, only: FeedFilter) {
-  const https = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar?token=${token}&only=${only}`
+  // The file name in the path gives calendar apps a readable name (the function ignores it).
+  const file = only === 'new' ? 'on-deck-default' : `on-deck-${{ all: 'everything', movie: 'movies', tv: 'tv', game: 'games', book: 'books' }[only]}`
+  const https = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar/${file}.ics?token=${token}&only=${only}`
   const webcal = https.replace(/^https?:/, 'webcal:')
   return {
     https,

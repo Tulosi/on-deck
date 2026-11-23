@@ -268,6 +268,11 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
 - **Where:** Settings → Sharing (pick what to share → Create link, which copies it; existing links have Copy /
   Open / Turn off), and **Share** on each collection's page.
 
+### Early Access (games)
+- `metadata.early_access` is true when **Steam's store data** lists the "Early Access" genre (first-party, wins),
+  IsThereAnyDeal flags it, or the IGDB release dates say Early Access has launched and 1.0 hasn't
+  (`release_milestones`). `metadata.steam_genres` is stored too, and games saved before it are refreshed once.
+
 ### Game length (time to beat)
 - Source: IGDB's `game_time_to_beats`, player-submitted times in seconds. These are stored as hours in
   `metadata.time_to_beat` = `{ rushed, normal, full, players }`, or `null` when IGDB has no data.
@@ -347,7 +352,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - Home: a **Coming Soon** row, sorted by soonest release with exact dates first.
 
 ### Notifications
-**Built:** the daily job, the in-app inbox, "Notify me" and Web Push.
+**Built:** the daily job, the in-app inbox and Web Push. (The per-title "Notify me" switch was removed from title pages in Group A; `user_items.notify` stays on.)
 
 - **Daily job:** the `daily` Edge Function runs every 3 hours from `.github/workflows/daily.yml`. It's only
   callable with the private `JOB_SECRET`. Each run does what fits in about 2 minutes; the next run picks up

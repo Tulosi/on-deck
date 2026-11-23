@@ -123,10 +123,10 @@ function rulesSummary(rules: string): string {
   ].join(' · ')
 }
 
-function AutoBadge() {
+function SmartBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-1.5 py-0.5 font-mono text-[10px] text-accent-ink uppercase">
-      <Sparkles className="size-3" /> Auto
+      <Sparkles className="size-3" /> Smart
     </span>
   )
 }
@@ -197,8 +197,9 @@ export function Collections() {
                 <Collage items={list} />
                 <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-fg">
                   <span className="truncate">{c.name}</span>
-                  {c.rules != null && <AutoBadge />}
+                  {c.rules != null && <SmartBadge />}
                 </p>
+                {c.description && <p className="line-clamp-2 text-xs text-muted">{c.description}</p>}
                 <p className="font-mono text-xs text-faint">
                   {list.length} title{list.length === 1 ? '' : 's'}
                 </p>
@@ -291,15 +292,15 @@ export function CollectionDetail() {
               </button>
             </div>
           </PageHeader>
+          {c.description && <p className="-mt-4 mb-3 max-w-prose text-sm text-muted">{c.description}</p>}
           {smart && (
-            <p className="-mt-3 mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <AutoBadge /> Updates itself: {rulesSummary(c.rules!)}.
+            <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+              <SmartBadge /> Updates itself: {rulesSummary(c.rules!)}.
               <Link to={`/library?${c.rules}`} className="text-accent-ink hover:underline">
                 Open in Library
               </Link>
             </p>
           )}
-          {c.description && <p className="-mt-1 mb-4 max-w-prose text-sm text-muted">{c.description}</p>}
           <div className="mb-6">
             <ShareCollection collectionId={c.id} name={c.name} />
           </div>

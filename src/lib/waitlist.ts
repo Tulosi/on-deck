@@ -79,7 +79,7 @@ export function groupEntries(entries: WaitlistEntry[]): WaitlistGroup[] {
     const { date, precision } = e.event
     if (!date || precision === 'tbd') add('~tba', 'Date TBA', e)
     else if (precision === 'quarter' || precision === 'year') add('~fuzzy', 'Date not final', e)
-    else if (e.daysUntil != null && e.daysUntil <= 6) add('0week', 'Next 7 days', e)
+    else if (e.daysUntil != null && e.daysUntil <= 7) add('0week', 'Next 7 days', e)
     else add(date.slice(0, 7), fmt(`${date.slice(0, 7)}-01`, { month: 'long', year: 'numeric' }), e)
   }
   return [...groups.values()]

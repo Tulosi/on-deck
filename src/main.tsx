@@ -35,6 +35,11 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60_000, refetchOnWindowFocus: false } },
 })
 
+// The title page is opened from almost everywhere: load its code once the app is idle, so the first poster tap
+// can morph straight into it instead of waiting on a loading placeholder.
+const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500))
+idle(() => TitleDetail.preload())
+
 // BASE_URL is "/" in dev and "/on-deck/" on GitHub Pages.
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 

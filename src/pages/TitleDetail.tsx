@@ -1,5 +1,7 @@
+import { ViewTransition } from 'react'
 import { backdropProps, coverProps } from '../lib/images'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { posterMorphName } from '../components/PosterCard'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { CollectionPicker } from '../components/CollectionPicker'
 import { GamePrices } from '../components/GamePrices'
@@ -224,7 +226,10 @@ function SignInToTrack() {
 export function TitleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { allItems: items, isLoading, isSample } = useItems()
+  // Same name as the poster that was tapped, so it morphs into this one (and back on Back).
+  const morph = (location.state as { morph?: string } | null)?.morph ?? posterMorphName(id ?? '')
   const removeItem = useRemoveItemWithUndo()
 
   if (isLoading) {
@@ -276,6 +281,7 @@ export function TitleDetail() {
       </div>
 
       <div className="relative -mt-24 flex flex-col gap-6 px-4 sm:flex-row sm:items-end md:-mt-32 md:px-6">
+        <ViewTransition name={morph} share="poster-morph" default="none">
         <div className="aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg border border-line bg-raised shadow-2xl sm:w-44 md:w-52">
           {title.coverUrl ? (
             <img
@@ -290,6 +296,7 @@ export function TitleDetail() {
             </div>
           )}
         </div>
+        </ViewTransition>
         <div className="min-w-0 pb-1">
           <p className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-accent-ink uppercase">
             <Icon className="size-3.5" /> {mediaLabels[title.mediaType].singular}

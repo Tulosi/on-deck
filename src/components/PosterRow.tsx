@@ -61,6 +61,7 @@ export function PosterRow({
             key={item.id}
             item={item}
             subline={subline?.(item)}
+            morphKey={title}
             className="w-32 shrink-0 snap-start sm:w-36 lg:w-40"
           />
         ))}

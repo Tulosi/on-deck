@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, ViewTransition } from 'react'
 import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
@@ -47,12 +47,16 @@ function secondaryLine(item: UserItem): string | undefined {
   return item.title.byline
 }
 
+/** View-transition name shared by a poster and the title page it opens. */
+export const posterMorphName = (titleId: string, key?: string) => `poster-${titleId}${key ? `-${key}` : ''}`.replace(/[^\w-]/g, '-')
+
 /** Memoised: a library grid re-renders often (filters, saves) while most cards stay the same. */
 export const PosterCard = memo(function PosterCard({
   item,
   className,
   chipMode,
   subline,
+  morphKey,
 }: {
   item: UserItem
   className?: string
@@ -60,6 +64,8 @@ export const PosterCard = memo(function PosterCard({
   chipMode?: ChipMode
   /** Replaces the default line under the year (e.g. Home's "S2 · E5 — out now"). */
   subline?: string
+  /** Makes the morph name unique when the same title shows twice on one page (Home rows). */
+  morphKey?: string
 }) {
   const { title } = item
   const savedMode = useChipMode()
@@ -80,8 +86,12 @@ export const PosterCard = memo(function PosterCard({
     (title.mediaType === 'game' && title.details?.early_access === true) ||
     !!showPlex
 
+  // The poster morphs into the title page's poster (and back). The title page reads the name from link state.
+  const morph = posterMorphName(title.id, morphKey)
+
   return (
-    <Link to={`/title/${title.id}`} className={clsx('group block', className)}>
+    <Link to={`/title/${title.id}`} state={{ morph }} className={clsx('group block', className)}>
+      <ViewTransition name={morph} share="poster-morph" default="none">
       <div className="@container/poster relative aspect-[2/3] overflow-hidden rounded-lg border border-line bg-raised transition group-hover:border-accent group-focus-visible:border-accent">
         {title.coverUrl ? (
           <img
@@ -232,6 +242,7 @@ export const PosterCard = memo(function PosterCard({
           </>
         )}
       </div>
+      </ViewTransition>
 
       <div className="mt-2 px-0.5">
         <p className="truncate text-sm font-medium text-fg">{title.title}</p>

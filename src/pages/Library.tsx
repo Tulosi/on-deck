@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, ViewTransition } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Layers, Loader2, Sparkles, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
@@ -92,6 +92,21 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
 }
 
 /** One page for everything on deck — type, filters, sort and group all come from the URL. */
+/**
+ * Changing sort or filters glides posters to their new places. Each animated card is captured separately,
+ * so very long lists skip it and simply re-lay out.
+ */
+const REORDER_MAX = 60
+function Reorderable({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return on ? (
+    <ViewTransition default="none" update="reorder" enter="card-in" exit="card-out">
+      {children}
+    </ViewTransition>
+  ) : (
+    children
+  )
+}
+
 export function Library() {
   const { items, allItems, isLoading, isSample } = useItems()
   const [f, set] = useFilters()
@@ -226,7 +241,9 @@ export function Library() {
       ) : f.group === 'none' ? (
         <div className={grid}>
           {results.map((item) => (
-            <PosterCard key={item.id} item={item} />
+            <Reorderable key={item.id} on={results.length <= REORDER_MAX}>
+              <PosterCard item={item} />
+            </Reorderable>
           ))}
         </div>
       ) : (
@@ -239,7 +256,9 @@ export function Library() {
               </h2>
               <div className={grid}>
                 {g.items.map((item) => (
-                  <PosterCard key={item.id} item={item} />
+                  <Reorderable key={item.id} on={results.length <= REORDER_MAX}>
+                    <PosterCard item={item} />
+                  </Reorderable>
                 ))}
               </div>
             </section>

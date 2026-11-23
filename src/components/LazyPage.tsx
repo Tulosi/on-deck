@@ -1,17 +1,24 @@
-import { lazy, type ComponentType } from 'react'
+import { lazy, useState, type ComponentType } from 'react'
 
 /**
- * React.lazy for a page module's named export. If a chunk fails to load because a
- * deploy replaced it, reload once to pick up the new build instead of showing an error.
+ * React.lazy for a page module's named export. If a chunk fails to load because a deploy replaced it, reload
+ * once to pick up the new build instead of showing an error.
+ *
+ * `preload()` fetches the code ahead of time. Once it's in, the page renders straight away rather than
+ * suspending for a beat first, which is what lets a poster morph into the title page on the very first tap.
  */
 export function lazyPage<K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) {
-  return lazy(() =>
-    load().then(
+  let loaded: ComponentType | null = null
+  let pending: Promise<ComponentType> | null = null
+  const fetchPage = () =>
+    (pending ??= load().then(
       (m) => {
         sessionStorage.removeItem('ondeck.chunkReload')
-        return { default: m[name] }
+        loaded = m[name]
+        return loaded
       },
       (err) => {
+        pending = null
         if (!sessionStorage.getItem('ondeck.chunkReload')) {
           sessionStorage.setItem('ondeck.chunkReload', '1')
           location.reload()
@@ -19,8 +26,15 @@ export function lazyPage<K extends string>(load: () => Promise<Record<K, Compone
         }
         throw err
       },
-    ),
-  )
+    ))
+  const Lazy = lazy(() => fetchPage().then((c) => ({ default: c })))
+  function Page() {
+    // Chosen once per mount, so a page never swaps component (and loses its state) mid-life.
+    const [C] = useState<ComponentType>(() => loaded ?? Lazy)
+    return <C />
+  }
+  Page.preload = () => void fetchPage()
+  return Page
 }
 
 /** Shown while a page's code loads: a title bar and a few blocks, no spinner. */

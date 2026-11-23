@@ -1,7 +1,7 @@
 import { usePlexBackgroundSync } from '../lib/plexSync'
 import { useSmartCollectionSync } from '../lib/collections'
 import { useTimezoneSync } from '../lib/notifications'
-import { Suspense } from 'react'
+import { Suspense, ViewTransition } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useAvailabilityRefresh, usePriceRefresh, useRenewalCheck, useScoreBackfill } from '../lib/library'
@@ -53,8 +53,11 @@ export function AppShell() {
         )}
         <main className="flex-1 px-4 py-6 pb-24 md:px-6 md:pb-10">
           {/* Keyed by path so a slow page never leaves the previous one's placeholder up. */}
-          <Suspense key={pathname} fallback={<PageSkeleton />}>
-            <Outlet />
+          {/* A quick fade as each page arrives (and when a page's code finishes loading); the skeleton just goes. */}
+          <Suspense key={pathname} fallback={<ViewTransition default="none"><PageSkeleton /></ViewTransition>}>
+            <ViewTransition enter="page-in" exit="none" default="none">
+              <Outlet />
+            </ViewTransition>
           </Suspense>
         </main>
       </div>

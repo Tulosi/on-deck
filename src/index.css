@@ -146,3 +146,80 @@ textarea {
     transition: none;
   }
 }
+
+/*
+ * View transitions (React <ViewTransition>). One authored moment: the poster grows into the title page and
+ * shrinks back. Everything else is a short, quiet supporting move.
+ */
+:root {
+  --vt-move: 380ms;
+  --vt-quick: 180ms;
+}
+
+/* Poster ↔ title page: the box moves and resizes along one curve; the two snapshots cross-fade inside it. */
+::view-transition-group(.poster-morph) {
+  animation-duration: var(--vt-move);
+  animation-timing-function: var(--ease-drawer);
+}
+::view-transition-image-pair(.poster-morph) {
+  isolation: isolate;
+}
+::view-transition-old(.poster-morph),
+::view-transition-new(.poster-morph) {
+  animation-duration: var(--vt-move);
+  animation-timing-function: var(--ease-out);
+  /* Fill the box while its aspect ratio settles, instead of stretching. */
+  height: 100%;
+  object-fit: cover;
+  overflow: clip;
+}
+
+/* A page arriving: a short fade with a small lift. */
+::view-transition-new(.page-in) {
+  animation: vt-page-in var(--vt-quick) var(--ease-out) both;
+}
+@keyframes vt-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Library: cards glide to their new place on re-sort; cards joining or leaving fade. */
+::view-transition-group(.reorder) {
+  animation-duration: 260ms;
+  animation-timing-function: var(--ease-in-out);
+}
+::view-transition-new(.card-in) {
+  animation: vt-fade-in var(--vt-quick) var(--ease-out) both;
+}
+::view-transition-old(.card-out) {
+  animation: vt-fade-out 120ms var(--ease-out) both;
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+/* The rest of the page swaps instantly rather than cross-fading as one big snapshot. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

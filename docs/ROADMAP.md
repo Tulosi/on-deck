@@ -32,7 +32,7 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
   Steam Deck, release state, deals…), not genre. Clear visual for "excluded".
 
 ## Group C — Default smart collections ✅ built
-- Waitlist (Wanted, not yet released) · Early Access (Wanted games, out, not 1.0) · Deals (+ new Sort:
+- Waitlist (Wanted, not yet released) · Early Access (Wanted / Playing / Stalled games, out, not 1.0) · Deals (+ new Sort:
   Discount %). Hide on their own page; show again from Settings.
 
 ## Group D — Search overhaul

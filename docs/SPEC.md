@@ -266,7 +266,7 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
 - Phones: Collections isn't in the tab bar; it's linked from the Library page header.
 - Each collection's page has a **Share** button (see Sharing).
 - **Default collections** (built into the app, `BUILTIN_COLLECTIONS` in `src/lib/collections.ts`; not stored):
-  **Waitlist** (Want to, not out yet; soonest first), **Early Access** (games you want, out, not at 1.0) and
+  **Waitlist** (Want to, not out yet; soonest first), **Early Access** (games you want, are playing or have stalled on; out, not at 1.0) and
   **Deals** (games you want and don't own, at a historical low or the deep-discount % from Settings; biggest
   discount first). They're listed first, with Smart + Default badges, and follow the Archived default (hidden).
   They can't be renamed, edited, deleted or shared (yet). **Hide this collection** on its page removes it from

@@ -8,51 +8,11 @@
 // then reads which episodes *this user* has watched (Plex keeps watch state per user).
 // Caller must be signed in. The Plex token never leaves the server.
 import { HttpError, json, requireUser, serve } from '../_shared/http.ts'
-import { loadIntegration, plexHeaders } from '../_shared/plex.ts'
+import { loadIntegration } from '../_shared/plex.ts'
+import { plexGet, servers } from '../_shared/plexServers.ts'
 
 // deno-lint-ignore no-explicit-any
 type Json = any
-
-interface Server {
-  name: string
-  token: string
-  uris: string[]
-}
-
-/** Servers this user can reach, with remote https connections first (Supabase can't reach LAN addresses). */
-async function servers(clientId: string, plexToken: string): Promise<Server[]> {
-  const res = await fetch('https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1', {
-    headers: plexHeaders(clientId, plexToken),
-    signal: AbortSignal.timeout(8000),
-  })
-  if (res.status === 401) throw new HttpError(401, 'plex_token_invalid')
-  if (!res.ok) throw new HttpError(502, 'plex_unreachable')
-  const list = (await res.json()) as Json[]
-  return list
-    .filter((r) => String(r.provides ?? '').includes('server') && r.accessToken)
-    .map((r) => ({
-      name: r.name,
-      token: r.accessToken,
-      uris: ((r.connections ?? []) as Json[])
-        .filter((c) => !c.local && c.protocol === 'https')
-        .sort((a, b) => Number(a.relay) - Number(b.relay)) // direct before relay
-        .map((c) => c.uri as string),
-    }))
-    .filter((s) => s.uris.length > 0)
-}
-
-async function plexGet(uri: string, path: string, token: string): Promise<Json | null> {
-  try {
-    const res = await fetch(uri + path, {
-      headers: { Accept: 'application/json', 'X-Plex-Token': token },
-      signal: AbortSignal.timeout(6000),
-    })
-    if (!res.ok) return null
-    return await res.json()
-  } catch {
-    return null
-  }
-}
 
 /** Does this Plex item carry the given TMDB id? (needs includeGuids=1) */
 const hasTmdb = (item: Json, tmdbId: number) =>

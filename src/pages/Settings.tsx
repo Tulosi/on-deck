@@ -276,6 +276,9 @@ function SteamSection() {
             {busy && <Loader2 className="size-4 animate-spin" />}
             Check Steam library
           </button>
+          <Link to="/import/steam" className={primaryButtonClass}>
+            Import from Steam…
+          </Link>
           <button
             type="button"
             onClick={() =>
@@ -380,6 +383,9 @@ function PlexSection() {
             <span className="flex items-center gap-1.5 text-sm text-good">
               <Check className="size-4" /> Connected{plex.data.username ? ` as ${plex.data.username}` : ''}
             </span>
+            <Link to="/import/plex" className={primaryButtonClass}>
+              Import from Plex…
+            </Link>
             <button type="button" onClick={disconnect} className={buttonClass}>
               Disconnect
             </button>

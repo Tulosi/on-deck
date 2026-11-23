@@ -278,6 +278,22 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
     calls grouped by service and status, rate limits).
   - **Your data:** when alerts, availability and Plex progress were last refreshed.
 
+### Steam / Plex import pickers (Group F1)
+- **Settings → Import from Steam… / Import from Plex…** open `/import/steam` or `/import/plex` (`src/pages/Import.tsx`).
+- Candidates come from the `importer` function:
+  - **Steam:** owned games (played ones only, with playtime) plus the wishlist, matched to IGDB through Steam app ids.
+    Unmatched apps are counted, not shown. A private Steam profile shows a note.
+  - **Plex:** every watched movie and show in each library section (newest first), matched to TMDB by Plex guid.
+- **Suggested** (pre-ticked): Steam = top 20 by playtime among games played in the last 2 years; shows = top 20 by
+  episodes watched in the last 2 years; movies = top 20 watched in the last 2 years by IMDb rating (Plex's IMDb
+  rating when present, else TMDB's score). It's a starting point: any title can be ticked or unticked by hand, and
+  All / None / Suggested only reset the selection.
+- Grid (posters) or List (checkbox rows), a filter box, and "N of M picked" per group.
+- Titles already in the library are marked and can't be ticked. Titles left unticked are saved to `import_skips`
+  and stay unticked on later imports ("Skipped before"); ticking one again removes the skip.
+- Adding (3 at a time, with progress) uses each source's normal add, then sets a status: Steam played → Playing +
+  owned; wishlist → Want; Plex movie → Watched; Plex show → Watching (Plex sync then sets the episode).
+
 ### Cast (movies & TV)
 - `metadata.cast`: the top 4 billed actors (`tmdb_id`, `name`, `character`, `photo`, `imdb_id`), stored when a
   title is added or refreshed. Movies use TMDB `credits`; shows use `aggregate_credits` (the whole run). Each

@@ -470,3 +470,6 @@ verify_jwt = false
 
 [functions.status]
 verify_jwt = false
+
+[functions.importer]
+verify_jwt = false

@@ -24,24 +24,24 @@ npx supabase secrets set NAME=value
 | OMDb | ✅ Done (fallback) | `OMDB_API_KEY` |
 | Hardcover | ✅ Done (token expires — see below) | `HARDCOVER_TOKEN` |
 | IsThereAnyDeal | ✅ Done | `ITAD_API_KEY` |
-| gg.deals | ⚠️ Key done — **to do: one GitHub secret** (see below) | `GGDEALS_API_KEY` (Supabase + GitHub), `SUPABASE_SECRET_KEY` (GitHub, not added yet) |
+| gg.deals | ✅ Done | `GGDEALS_API_KEY` (Supabase + GitHub), `SUPABASE_SECRET_KEY` (GitHub, for the key-shop job) |
 | Steam | ✅ Done | `STEAM_API_KEY` (ownership check only) |
 
-## ✅ Key-shop prices (set up 2026-11-23)
+## Key-shop prices ✅ (set up 2026-11-23)
 
-Key-shop prices ("Cheaper on key shops") come from gg.deals. gg.deals doesn't answer Supabase's servers,
-so a scheduled GitHub job fetches them instead (`.github/workflows/keyshop-prices.yml`, every 6 hours).
-To save prices it needs a Supabase secret key. **Until you add it, the job skips** (each run shows a
-"not set up yet" notice) and key-shop rows stay empty. Everything else about pricing works.
+Key-shop prices ("Cheaper on key shops") come from gg.deals. gg.deals doesn't answer Supabase's servers, so a
+scheduled GitHub job fetches them instead (`.github/workflows/keyshop-prices.yml`, every 6 hours) and saves them
+with a Supabase secret key stored as the GitHub repo secret `SUPABASE_SECRET_KEY`. First run: 9 games checked,
+8 with key-shop prices.
 
-1. Supabase dashboard → **Project Settings → API Keys** → *Secret keys* → **Add new secret key**. Name it
-   `github-keyshop-prices`. Copy the value; it starts with `sb_secret_`.
-2. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**.
-   Name: `SUPABASE_SECRET_KEY`. Value: paste the key. Paste it only there: not in chat, not in a file.
-3. GitHub repo → **Actions → Key-shop prices → Run workflow** (leave the test box empty). The log should end
-   with `Done — N price row(s) updated.` Key-shop prices then show on game pages after the next refresh.
-
-If the key ever leaks, delete it in Supabase (step 1's page) and repeat steps 1–2 with a new one.
+- The key's name inside Supabase is only a label; the GitHub secret must be named exactly `SUPABASE_SECRET_KEY`.
+- **To replace the key** (e.g. if it leaks):
+  1. Supabase dashboard → **Project Settings → API Keys** → *Secret keys*: delete the old key, then **Add new
+     secret key**. Copy the value; it starts with `sb_secret_`.
+  2. GitHub repo → **Settings → Secrets and variables → Actions** → `SUPABASE_SECRET_KEY` → **Update**, and paste
+     it. Paste it only there: not in chat, not in a file.
+  3. GitHub repo → **Actions → Key-shop prices → Run workflow** (leave the test box empty). The log should end with
+     `Done — N price row(s) updated.`
 
 ## Job secret (scheduled jobs) ✅
 - `JOB_SECRET`: a random 64-character value. It's stored **both** as a Supabase secret and as a GitHub repo

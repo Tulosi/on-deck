@@ -15,6 +15,7 @@ import { NotFound } from './pages/Placeholders'
 import { SharedList } from './pages/SharedList'
 import { Settings } from './pages/Settings'
 import { Waitlist } from './pages/Waitlist'
+import { SearchPage } from './pages/Search'
 
 /** The Waitlist page was renamed Calendar; old links keep working. */
 function RedirectWaitlist() {
@@ -48,6 +49,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="books" element={<Navigate to="/library?type=book" replace />} />
             <Route path="title/:id" element={<TitleDetail />} />
             <Route path="calendar" element={<Waitlist />} />
+            <Route path="search" element={<SearchPage />} />
             <Route path="waitlist" element={<RedirectWaitlist />} />
             <Route path="collections" element={<Collections />} />
             <Route path="collections/:id" element={<CollectionDetail />} />

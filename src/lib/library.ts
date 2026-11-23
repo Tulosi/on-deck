@@ -296,21 +296,22 @@ export const resultKey = (r: SearchResult) =>
       ? `book:hardcover:${r.hardcoverId}`
       : `${r.mediaType}:tmdb:${r.tmdbId}`
 
-export async function searchBooks(query: string): Promise<SearchResult[]> {
-  const { data, error } = await supabase!.functions.invoke('hardcover', { body: { action: 'search', query } })
+export async function searchBooks(query: string, limit?: number): Promise<SearchResult[]> {
+  const { data, error } = await supabase!.functions.invoke('hardcover', { body: { action: 'search', query, limit } })
   if (error) throw await functionError(error)
   return data.results as SearchResult[]
 }
 
-export async function searchGames(query: string): Promise<SearchResult[]> {
-  const { data, error } = await supabase!.functions.invoke('igdb', { body: { action: 'search', query } })
+/** `fuzzy`: name-contains lookup for near matches (IGDB's normal search needs whole words). */
+export async function searchGames(query: string, limit?: number, fuzzy = false): Promise<SearchResult[]> {
+  const { data, error } = await supabase!.functions.invoke('igdb', { body: { action: 'search', query, limit, fuzzy } })
   if (error) throw await functionError(error)
   return data.results as SearchResult[]
 }
 
 /** Movies and/or TV from TMDB. `type` limits it to one. */
-export async function searchTmdb(query: string, type?: 'movie' | 'tv'): Promise<SearchResult[]> {
-  const { data, error } = await supabase!.functions.invoke('tmdb', { body: { action: 'search', query, type } })
+export async function searchTmdb(query: string, type?: 'movie' | 'tv', limit?: number): Promise<SearchResult[]> {
+  const { data, error } = await supabase!.functions.invoke('tmdb', { body: { action: 'search', query, type, limit } })
   if (error) throw await functionError(error)
   return data.results as SearchResult[]
 }

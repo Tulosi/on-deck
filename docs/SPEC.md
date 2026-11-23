@@ -439,6 +439,18 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 - **Search** searches one type at a time, picked with chips at the top of its panel (Movies · TV · Games · Books ·
   All). It follows the Library type you're browsing, otherwise your last pick (default Movies). Only that
   type's source is queried: TMDB's movie or TV search, IGDB, or Hardcover.
+- **Search logic** (`src/lib/search.ts`, shared by the dropdown and the full page):
+  - **Years:** a realistic year (1900 → five years ahead) in the query is searched without it, and that year's
+    results rank first, then a year either side ("dresden files 2026"; "Blade Runner 2049" keeps its title).
+  - **Near matches:** when there are fewer than 3 results, a looser search runs and its results are ranked by
+    title similarity (≥ 0.6), giving **Close matches** and **Did you mean …?** (≥ 0.6, the best one).
+    - Movies / TV (TMDB): words trimmed to ~60% ("intersteller" → "interste" → Interstellar).
+    - Games (IGDB): its search needs whole words, so it does a "name contains" lookup on the first 4 letters
+      of the longest word, most-rated first (`fuzzy: true`).
+    - Books: Hardcover's search already tolerates typos.
+  - **Full results:** `/search?q=…&type=…` asks each source for up to 40 results (the dropdown asks for 12).
+    It's opened by **Open full results** at the bottom of the dropdown, or by pressing Enter. Previews open on
+    top of the results.
   On phones the sidebar becomes a bottom tab bar.
 - **Sidebar (desktop):** media categories on top (Home · Library with Movies / TV / Games / Books · Calendar),
   then a **divider**, then **Collections** with each of your collections (✦ = smart). Everything can be

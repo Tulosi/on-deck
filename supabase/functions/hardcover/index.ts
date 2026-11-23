@@ -46,18 +46,20 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 
 // ─── Search ────────────────────────────────────────────────────────────────
 
-async function search(query: string) {
+const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (v as number) : 12))
+
+async function search(query: string, limit = 12) {
   const q = query.trim()
   if (q.length < 2) return json({ results: [] })
   const data = await gql(
-    'query Search($q: String!) { search(query: $q, query_type: "Book", per_page: 15, page: 1) { results } }',
-    { q },
+    'query Search($q: String!, $n: Int!) { search(query: $q, query_type: "Book", per_page: $n, page: 1) { results } }',
+    { q, n: Math.min(50, limit + 5) }, // a few spare: study guides are filtered out below
   )
   const hits = ((data.search?.results?.hits ?? []) as Json[]).map((h) => h.document as Json)
   const results = hits
     // Study guides and summaries of other books clutter results.
     .filter((d) => !/^(summary|study guide|analysis) (of|and|for)\b/i.test(String(d.title ?? '')))
-    .slice(0, 12)
+    .slice(0, limit)
     .map((d) => ({
       mediaType: 'book',
       hardcoverId: Number(d.id),
@@ -162,7 +164,7 @@ serve(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'method_not_allowed')
   await requireUser(req)
   const body = (await req.json().catch(() => null)) as Json | null
-  if (body?.action === 'search' && typeof body.query === 'string') return search(body.query)
+  if (body?.action === 'search' && typeof body.query === 'string') return search(body.query, limitOf(body.limit))
   if (body?.action === 'add' && Number.isInteger(body.hardcoverId)) return add(body.hardcoverId)
   throw new HttpError(400, 'unknown_action')
 })

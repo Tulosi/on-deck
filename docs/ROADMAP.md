@@ -35,7 +35,7 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
 - Waitlist (Wanted, not yet released) · Early Access (Wanted / Playing / Stalled games, out, not 1.0) · Deals (+ new Sort:
   Discount %). Hide on their own page; show again from Settings.
 
-## Group D — Search overhaul
+## Group D — Search overhaul ✅ built
 - Full-screen "Open full results" page; "did you mean" / near matches for typos; a year in the query
   ("dresden files 2026") ranks that year first.
 

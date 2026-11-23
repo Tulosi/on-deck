@@ -34,19 +34,22 @@ const img = (path: string | null | undefined, size: string) => (path ? `${IMG}/$
 const yearOf = (date: string | null | undefined) => (date ? Number(date.slice(0, 4)) || null : null)
 const dateOrNull = (date: string | null | undefined) => (date ? date : null)
 
-async function search(query: string, type: MediaType | null) {
+/** Results to return (12 by default; the full search page asks for up to 40). */
+const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (v as number) : 12))
+
+async function search(query: string, type: MediaType | null, limit = 12) {
   const q = query.trim()
   if (q.length < 2) return json({ results: [] })
-  const data = await tmdb(type ? `/search/${type}` : '/search/multi', {
-    query: q,
-    include_adult: 'false',
-    language: 'en-US',
-    page: '1',
-  })
-  const results = (data.results as Json[])
+  const params = { query: q, include_adult: 'false', language: 'en-US' }
+  const path = type ? `/search/${type}` : '/search/multi'
+  // TMDB pages hold 20; fetch a second page when more are wanted.
+  const pages = await Promise.all(
+    (limit > 20 ? ['1', '2'] : ['1']).map((page) => tmdb(path, { ...params, page }).catch(() => ({ results: [] }))),
+  )
+  const results = (pages.flatMap((p) => p.results ?? []) as Json[])
     .map((r) => (type ? { ...r, media_type: type } : r))
     .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
-    .slice(0, 12)
+    .slice(0, limit)
     .map((r) => {
       const date = r.release_date || r.first_air_date
       return {
@@ -179,7 +182,7 @@ serve(async (req) => {
 
   const body = (await req.json().catch(() => null)) as Json | null
   if (body?.action === 'search' && typeof body.query === 'string')
-    return search(body.query, body.type === 'movie' || body.type === 'tv' ? body.type : null)
+    return search(body.query, body.type === 'movie' || body.type === 'tv' ? body.type : null, limitOf(body.limit))
   if (body?.action === 'provider-list') {
     const country = typeof body.country === 'string' && /^[A-Z]{2}$/.test(body.country) ? body.country : 'US'
     return providerList(country)

@@ -9,12 +9,25 @@ import { igdb, igdbImage, PC, type Json } from '../_shared/igdb.ts'
 
 const STEAM_SOURCE = 1 // IGDB external_game_source for Steam
 
-async function search(query: string) {
+/** The first 4 letters of the longest word (letters and digits only). */
+const fuzzyStem = (q: string) =>
+  (q.split(/\s+/).sort((a, b) => b.length - a.length)[0] ?? q).replace(/[^A-Za-z0-9]/g, '').slice(0, 4)
+
+const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (v as number) : 12))
+
+/**
+ * `fuzzy`: for near matches when a search found little. IGDB's text search needs whole words, so this looks up
+ * names *containing* the start of the longest word ("hollow knigth" → "holl"), most-rated first; the app then ranks
+ * them by how similar they are to what was typed.
+ */
+async function search(query: string, limit = 12, fuzzy = false) {
   const q = query.trim().replace(/"/g, '')
   if (q.length < 2) return json({ results: [] })
   const games = await igdb(
     'games',
-    `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where platforms = (${PC}) & version_parent = null; limit 12;`,
+    fuzzy
+      ? `fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where name ~ *"${fuzzyStem(q)}"* & platforms = (${PC}) & version_parent = null; sort total_rating_count desc; limit ${limit};`
+      : `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where platforms = (${PC}) & version_parent = null; limit ${limit};`,
   )
   const results = games.map((g) => ({
     igdbId: g.id as number,
@@ -283,7 +296,7 @@ serve(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'method_not_allowed')
   await requireUser(req)
   const body = (await req.json().catch(() => null)) as Json | null
-  if (body?.action === 'search' && typeof body.query === 'string') return search(body.query)
+  if (body?.action === 'search' && typeof body.query === 'string') return search(body.query, limitOf(body.limit), body.fuzzy === true)
   if (body?.action === 'add') {
     const id = Number(body.igdbId)
     if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'bad_igdb_id')

@@ -48,6 +48,79 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 
 const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (v as number) : 12))
 
+const words = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && w !== 'the')
+
+/**
+ * The series the query is most likely about: among the series the matching books belong to, one whose name
+ * contains every query word, appearing most often, with the closest name length ("The Dresden Files" beats
+ * "Dresden Files: War Cry"). Null when there's no clear series.
+ */
+function seriesFor(query: string, hits: Json[]): { id: number; name: string } | null {
+  const qw = words(query)
+  if (qw.length === 0) return null
+  const counts = new Map<number, { id: number; name: string; n: number }>()
+  for (const d of hits) {
+    const fs = d.featured_series as Json | null
+    const sr = fs && typeof fs === 'object' ? (fs.series as Json | undefined) : undefined
+    if (!sr?.id || !sr.name) continue
+    const nw = words(sr.name)
+    if (!qw.every((w) => nw.includes(w))) continue
+    const cur = counts.get(sr.id) ?? { id: sr.id, name: sr.name, n: 0 }
+    cur.n++
+    counts.set(sr.id, cur)
+  }
+  const best = [...counts.values()].sort(
+    (a, b) => b.n - a.n || Math.abs(words(a.name).length - qw.length) - Math.abs(words(b.name).length - qw.length),
+  )[0]
+  return best && best.n >= 2 ? best : null
+}
+
+const SERIES_BOOKS = `query SeriesBooks($id: Int!) {
+  series_by_pk(id: $id) {
+    name
+    book_series(where: { featured: { _eq: true }, position: { _is_null: false } }, order_by: { position: desc }, limit: 40) {
+      position
+      book { id title release_year description pages rating ratings_count image { url } cached_contributors compilation }
+    }
+  }
+}`
+
+/** A series' numbered books, newest first, one per title (editions share a title). */
+async function seriesBooks(series: { id: number; name: string }): Promise<Json[]> {
+  const data = await gql(SERIES_BOOKS, { id: series.id }).catch(() => null)
+  const seen = new Set<string>()
+  const out: Json[] = []
+  for (const x of ((data?.series_by_pk?.book_series ?? []) as Json[])) {
+    const bk = x.book as Json
+    if (!bk?.title || bk.compilation) continue
+    const key = String(bk.title).toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const authors = ((parsed<Json[]>(bk.cached_contributors) ?? []) as Json[])
+      .filter((c) => !c.contribution || c.contribution === 'Author')
+      .map((c) => c.author?.name as string)
+      .filter(Boolean)
+    out.push({
+      mediaType: 'book',
+      hardcoverId: Number(bk.id),
+      title: bk.title as string,
+      year: typeof bk.release_year === 'number' ? bk.release_year : null,
+      posterUrl: bk.image?.url ?? null,
+      author: authors.slice(0, 2).join(', ') || null,
+      series: `${series.name} #${x.position}`,
+      rating: typeof bk.rating === 'number' && bk.ratings_count > 0 ? bk.rating : null,
+      overview: typeof bk.description === 'string' ? bk.description : null,
+      pages: typeof bk.pages === 'number' ? bk.pages : null,
+    })
+  }
+  return out
+}
+
 async function search(query: string, limit = 12) {
   const q = query.trim()
   if (q.length < 2) return json({ results: [] })
@@ -56,10 +129,9 @@ async function search(query: string, limit = 12) {
     { q, n: Math.min(50, limit + 5) }, // a few spare: study guides are filtered out below
   )
   const hits = ((data.search?.results?.hits ?? []) as Json[]).map((h) => h.document as Json)
-  const results = hits
+  const titleMatches = hits
     // Study guides and summaries of other books clutter results.
     .filter((d) => !/^(summary|study guide|analysis) (of|and|for)\b/i.test(String(d.title ?? '')))
-    .slice(0, limit)
     .map((d) => ({
       mediaType: 'book',
       hardcoverId: Number(d.id),
@@ -72,6 +144,15 @@ async function search(query: string, limit = 12) {
       overview: typeof d.description === 'string' ? d.description : null,
       pages: typeof d.pages === 'number' ? d.pages : null,
     }))
+
+  // Searching a series name ("dresden files") also brings in that series' own books, which often don't have the
+  // series name in their title (Twelve Months is Dresden Files #18). They go after the top few title matches.
+  const series = seriesFor(q, hits)
+  const fromSeries = series ? await seriesBooks(series) : []
+  const ids = new Set<number>()
+  const results = [...titleMatches.slice(0, 3), ...fromSeries.slice(0, 15), ...titleMatches.slice(3)]
+    .filter((r) => (ids.has(r.hardcoverId) ? false : (ids.add(r.hardcoverId), true)))
+    .slice(0, limit)
   return json({ results })
 }
 

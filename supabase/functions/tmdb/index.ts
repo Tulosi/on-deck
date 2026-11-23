@@ -65,14 +65,39 @@ async function search(query: string, type: MediaType | null, limit = 12) {
   return json({ results })
 }
 
+/**
+ * The top 3 billed actors: name, character, headshot and IMDb id (looked up per person; null when TMDB has none,
+ * and the app then links to their TMDB page).
+ */
+async function topCast(d: Json, mediaType: MediaType): Promise<Json[]> {
+  const raw = ((mediaType === 'movie' ? d.credits?.cast : d.aggregate_credits?.cast) ?? []) as Json[]
+  const top = [...raw].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)).slice(0, 3)
+  return await Promise.all(
+    top.map(async (p) => {
+      const ext = await tmdb(`/person/${p.id}/external_ids`).catch(() => null)
+      const character =
+        mediaType === 'movie' ? (p.character ?? null) : (((p.roles ?? []) as Json[])[0]?.character ?? null)
+      return {
+        tmdb_id: p.id as number,
+        name: p.name as string,
+        character: character || null,
+        photo: img(p.profile_path, 'w185'),
+        imdb_id: (ext?.imdb_id as string | undefined) || null,
+      }
+    }),
+  )
+}
+
 async function add(tmdbId: number, mediaType: MediaType) {
   const d = await tmdb(`/${mediaType}/${tmdbId}`, {
     language: 'en-US',
-    append_to_response: mediaType === 'movie' ? 'external_ids,release_dates' : 'external_ids',
+    // Cast: movies have `credits`; shows use `aggregate_credits` (the whole run, so long series list their stars).
+    append_to_response: mediaType === 'movie' ? 'external_ids,release_dates,credits' : 'external_ids,aggregate_credits',
   })
 
   const releaseDate = dateOrNull(mediaType === 'movie' ? d.release_date : d.first_air_date)
   const metadata: Json = {
+    cast: await topCast(d, mediaType),
     overview: d.overview || null,
     tagline: d.tagline || null,
     status: d.status ?? null,

@@ -254,6 +254,13 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   Watched-up-to to the latest aired episode.
 - Also automatic: **Watched → Caught up** for an ongoing show that was marked Watched.
 
+### Cast (movies & TV)
+- `metadata.cast`: the top 3 billed actors (`tmdb_id`, `name`, `character`, `photo`, `imdb_id`), stored when a
+  title is added or refreshed. Movies use TMDB `credits`; shows use `aggregate_credits` (the whole run). Each
+  actor's IMDb id comes from `/person/{id}/external_ids`. Titles saved before this are refreshed once.
+- Title page: a **Starring** row under the description (headshot, name, character), each linking to the
+  actor's IMDb page, or their TMDB page if IMDb has no id.
+
 ### Collections
 - Named lists that can mix movies, shows, games and books (`collections` + `collection_items` → `user_items`;
   RLS: your own only). Implementation: `src/lib/collections.ts`, `src/pages/Collections.tsx`.
@@ -448,6 +455,10 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
     - Games (IGDB): its search needs whole words, so it does a "name contains" lookup on the first 4 letters
       of the longest word, most-rated first (`fuzzy: true`).
     - Books: Hardcover's search already tolerates typos.
+  - **Series-aware book search:** when the books found belong to a series whose name contains every query word
+    (most common, closest name: "The Dresden Files" over "Dresden Files: War Cry"), that series' numbered books
+    (newest first, one per title, no boxsets) are added after the top 3 title matches. These books often lack
+    the series name in their title (Twelve Months = Dresden Files #18), so "dresden files 2026" now finds it.
   - **Full results:** `/search?q=…&type=…` asks each source for up to 40 results (the dropdown asks for 12).
     It's opened by **Open full results** at the bottom of the dropdown, or by pressing Enter. Previews open on
     top of the results.

@@ -159,6 +159,53 @@ function GameLinks({ d }: { d: Record<string, unknown> }) {
   )
 }
 
+interface CastMember {
+  tmdb_id: number
+  name: string
+  character: string | null
+  photo: string | null
+  imdb_id: string | null
+}
+
+/** Movies / TV: the top 3 billed actors, each linking to their IMDb page (or TMDB when IMDb has no id). */
+function CastRow({ d }: { d: Record<string, unknown> }) {
+  const cast = Array.isArray(d.cast) ? (d.cast as CastMember[]).slice(0, 3) : []
+  if (cast.length === 0) return null
+  return (
+    <section aria-label="Starring" className="space-y-2">
+      <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Starring</p>
+      <ul className="flex flex-wrap gap-x-6 gap-y-3">
+        {cast.map((p) => {
+          const href = p.imdb_id ? `https://www.imdb.com/name/${p.imdb_id}/` : `https://www.themoviedb.org/person/${p.tmdb_id}`
+          return (
+            <li key={p.tmdb_id}>
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                title={p.imdb_id ? `${p.name} on IMDb` : `${p.name} on TMDB`}
+                className="group flex items-center gap-3"
+              >
+                <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-raised transition group-hover:border-accent">
+                  {p.photo ? (
+                    <img src={p.photo} alt="" loading="lazy" className="size-full object-cover" />
+                  ) : (
+                    <span className="font-mono text-sm text-faint">{p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fg group-hover:text-accent-ink">{p.name}</span>
+                  {p.character && <span className="block max-w-[11rem] truncate text-xs text-muted">{p.character}</span>}
+                </span>
+              </a>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 export function TitleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -275,6 +322,7 @@ export function TitleDetail() {
         <div className="space-y-6">
           {typeof d.tagline === 'string' && d.tagline && <p className="text-muted italic">{d.tagline}</p>}
           {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
+          <CastRow d={d} />
           {!isSample && <StatusControls item={item} />}
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
           {!isSample && title.mediaType === 'game' && <GamePrices item={item} />}

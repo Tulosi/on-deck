@@ -2,7 +2,7 @@ import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 're
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { GripVertical, Layers, Settings, Sparkles } from 'lucide-react'
-import { useCollections } from '../lib/collections'
+import { useCollectionList } from '../lib/collections'
 import { DEFAULT_MAIN, DEFAULT_TYPES, moveTo, nudge, ordered, useNavLayout, type Section } from '../lib/navLayout'
 import { primaryNav, type NavItem } from './nav'
 import { Wordmark } from './Logo'
@@ -156,7 +156,7 @@ export function Sidebar() {
   const isActive = useIsActive()
   const { pathname } = useLocation()
   const [layout, save] = useNavLayout()
-  const { data: collections = [] } = useCollections()
+  const { list: collections } = useCollectionList()
 
   const byKey = new Map<string, NavItem>([
     ['home', primaryNav.find((i) => i.to === '/')!],

@@ -18,7 +18,7 @@ export type ReleaseFilter = 'released' | 'upcoming'
 export type AddedFilter = '7d' | '30d' | '90d' | '365d'
 export type TvStatusFilter = 'airing' | 'returning' | 'ended' | 'cancelled'
 export type TvProgressFilter = 'not_started' | 'midway' | 'caught_up'
-export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'price' | 'length'
+export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'price' | 'discount' | 'length'
 export type CoopFilter = 'online' | 'local' | 'split' | 'pvp'
 export type DeckFilter = 'verified' | 'playable' | 'unsupported'
 export type AccessFilter = 'early_access' | 'full_release'
@@ -102,7 +102,7 @@ const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended', 'cancelled'
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
 /** Sort when none is chosen: date added, newest first. */
 export const DEFAULT_SORT: SortKey = 'added'
-const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'price', 'length']
+const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'price', 'discount', 'length']
 const LENGTH: LengthFilter[] = ['short', 'medium', 'long', 'epic']
 const COOP: CoopFilter[] = ['online', 'local', 'split', 'pvp']
 const DECK: DeckFilter[] = ['verified', 'playable', 'unsupported']
@@ -456,6 +456,14 @@ export function sortItems(items: UserItem[], sort: SortKey): UserItem[] {
       const priceOf = (i: UserItem) => (i.gamePrice?.isFree ? 0 : i.gamePrice ? (cheapest(i.gamePrice)?.price ?? Infinity) : Infinity)
       return sorted.sort((a, b) => priceOf(a) - priceOf(b))
     }
+    case 'discount': {
+      // Biggest discount off Steam's full price first (historical lows break ties); no price last.
+      const off = (i: UserItem) => {
+        const b = i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null
+        return b ? (b.discountPct ?? 0) + (b.atLow ? 0.5 : 0) : -1
+      }
+      return sorted.sort((a, b) => off(b) - off(a))
+    }
     case 'length':
       // Shortest first; unknown last.
       return sorted.sort((a, b) => (hoursToBeat(a) ?? Infinity) - (hoursToBeat(b) ?? Infinity))
@@ -518,7 +526,7 @@ export const LABELS = {
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
-  sort: { priority: 'Priority', added: 'None (date added)', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', price: 'Price', length: 'Length' } as Record<SortKey, string>,
+  sort: { priority: 'Priority', added: 'None (date added)', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', price: 'Price', discount: 'Discount %', length: 'Length' } as Record<SortKey, string>,
   coop: { online: 'Online co-op', local: 'Local co-op', split: 'Split-screen', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,

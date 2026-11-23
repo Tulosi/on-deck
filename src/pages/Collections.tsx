@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowLeft, ChevronLeft, ChevronRight, Layers, Loader2, Pencil, Plus, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, EyeOff, Layers, Loader2, Pencil, Plus, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
 import { ShareCollection } from '../components/ShareLinks'
 import { useAuth } from '../lib/auth'
-import { smartItems, useCollectionActions, useCollections, type Collection } from '../lib/collections'
+import { builtinItems, smartItems, useCollectionActions, useCollectionList, type Collection } from '../lib/collections'
+import { DEFAULT_DEAL_PCT } from '../lib/home'
+import { useProfile } from '../lib/integrations'
+import { useNavLayout } from '../lib/navLayout'
 import { activeCount, LABELS, parseFilters } from '../lib/filters'
 import { useItems } from '../lib/library'
 import type { UserItem } from '../types'
@@ -112,12 +115,14 @@ function Collage({ items }: { items: UserItem[] }) {
  * A collection's titles: hand-picked in their order, or (smart) whatever its rules match right now. Archived titles
  * are left out unless `showArchived` (smart collections follow their own Archived rule instead).
  */
-const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[], showArchived = false) =>
-  c.rules != null
-    ? smartItems(c.rules, all)
-    : c.itemIds
-        .map((id) => byId.get(id))
-        .filter((i): i is UserItem => !!i && (showArchived || !i.archivedAt))
+const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[], showArchived = false, dealPct = DEFAULT_DEAL_PCT) =>
+  c.builtin
+    ? builtinItems(c.id, all, dealPct)
+    : c.rules != null
+      ? smartItems(c.rules, all)
+      : c.itemIds
+          .map((id) => byId.get(id))
+          .filter((i): i is UserItem => !!i && (showArchived || !i.archivedAt))
 
 /** "Games · 3 filters · sorted by Price" */
 function rulesSummary(rules: string): string {
@@ -128,6 +133,14 @@ function rulesSummary(rules: string): string {
     n ? `${n} filter${n === 1 ? '' : 's'}` : 'no filters',
     `sorted by ${LABELS.sort[f.sort]}`,
   ].join(' · ')
+}
+
+function DefaultBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-line px-1.5 py-0.5 font-mono text-[10px] text-muted uppercase">
+      Default
+    </span>
+  )
 }
 
 function SmartBadge() {
@@ -142,11 +155,12 @@ function SmartBadge() {
 export function Collections() {
   const { user, loading } = useAuth()
   const { allItems: items } = useItems()
-  const { data: collections = [], isLoading } = useCollections()
+  const { list: collections, isLoading } = useCollectionList()
   const { create } = useCollectionActions()
   const [creating, setCreating] = useState(false)
   const navigate = useNavigate()
   const byId = new Map(items.map((i) => [i.id, i]))
+  const dealPct = useProfile().data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
 
   if (!loading && !user) {
     return (
@@ -198,13 +212,14 @@ export function Collections() {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-4 gap-y-6">
           {collections.map((c) => {
-            const list = itemsOf(c, byId, items)
+            const list = itemsOf(c, byId, items, false, dealPct)
             return (
               <Link key={c.id} to={`/collections/${c.id}`} className="group block">
                 <Collage items={list} />
                 <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-fg">
                   <span className="truncate">{c.name}</span>
                   {c.rules != null && <SmartBadge />}
+                  {c.builtin && <DefaultBadge />}
                 </p>
                 {c.description && <p className="line-clamp-2 text-xs text-muted">{c.description}</p>}
                 <p className="font-mono text-xs text-faint">
@@ -225,12 +240,14 @@ export function CollectionDetail() {
   const { id } = useParams()
   const { user, loading } = useAuth()
   const { allItems: items } = useItems()
-  const { data: collections = [], isLoading } = useCollections()
+  const { list: collections, isLoading } = useCollectionList()
   const { update, remove, toggleItem, move } = useCollectionActions()
   const [editing, setEditing] = useState(false)
   const [arranging, setArranging] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const navigate = useNavigate()
+  const dealPct = useProfile().data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
+  const [layout, saveLayout] = useNavLayout()
 
   if (!loading && !user) return <SignInNote />
   if (isLoading) return <Loader2 className="mx-auto mt-16 size-5 animate-spin text-muted" />
@@ -246,8 +263,9 @@ export function CollectionDetail() {
     )
   }
   const byId = new Map(items.map((i) => [i.id, i]))
-  const list = itemsOf(c, byId, items, showArchived)
+  const list = itemsOf(c, byId, items, showArchived, dealPct)
   const smart = c.rules != null
+  const builtin = !!c.builtin
   const archivedHere = smart ? 0 : c.itemIds.filter((id) => byId.get(id)?.archivedAt).length
 
   return (
@@ -270,7 +288,20 @@ export function CollectionDetail() {
         <>
           <PageHeader title={c.name} meta={String(list.length)}>
             <div className="flex flex-wrap gap-2">
-              {smart && (
+              {builtin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    saveLayout('hidden', [...new Set([...(layout.hidden ?? []), c.id])])
+                    navigate('/collections')
+                  }}
+                  className={button}
+                  title="Hide this default collection. Turn it back on in Settings → Collections."
+                >
+                  <EyeOff className="size-4" /> Hide this collection
+                </button>
+              )}
+              {smart && !builtin && (
                 <Link to={`/library?${c.rules}${c.rules ? '&' : ''}smart=${c.id}`} className={button}>
                   <SlidersHorizontal className="size-4" /> Edit rules
                 </Link>
@@ -285,9 +316,12 @@ export function CollectionDetail() {
                   {arranging ? 'Done' : 'Arrange'}
                 </button>
               )}
+              {!builtin && (
               <button type="button" onClick={() => setEditing(true)} className={button}>
                 <Pencil className="size-4" /> Rename
               </button>
+              )}
+              {!builtin && (
               <button
                 type="button"
                 onClick={() => {
@@ -299,20 +333,29 @@ export function CollectionDetail() {
               >
                 <Trash2 className="size-4" /> Delete
               </button>
+              )}
             </div>
           </PageHeader>
           {c.description && <p className="-mt-4 mb-3 max-w-prose text-sm text-muted">{c.description}</p>}
           {smart && (
             <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <SmartBadge /> Updates itself: {rulesSummary(c.rules!)}.
+              <SmartBadge />
+              {builtin && <DefaultBadge />}
+              {builtin && c.id === 'default-deals'
+                ? `Updates itself: games you want at a historical low or ${dealPct}%+ off (your deep-discount setting).`
+                : `Updates itself: ${rulesSummary(c.rules!)}.`}
               <Link to={`/library?${c.rules}`} className="text-accent-ink hover:underline">
                 Open in Library
               </Link>
             </p>
           )}
-          <div className="mb-6">
-            <ShareCollection collectionId={c.id} name={c.name} />
-          </div>
+          {builtin ? (
+            <p className="mb-6 text-xs text-faint">A default collection. It can be hidden but not changed, and can’t be shared yet.</p>
+          ) : (
+            <div className="mb-6">
+              <ShareCollection collectionId={c.id} name={c.name} />
+            </div>
+          )}
           {archivedHere > 0 && (
             <p className="-mt-3 mb-5 text-xs text-faint">
               {showArchived

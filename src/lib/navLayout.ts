@@ -3,11 +3,12 @@
 //   main: Home · Library (with its types) · Calendar (key 'waitlist')      types: order of Movies / TV / Games / Books
 //   collections: your collections, below the divider
 //   tabs: the phone tab bar's chosen tabs, in order (the rest go under More)
+//   hidden: default collections the user has hidden (Waitlist, Early Access, Deals)
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './auth'
 import { useProfile, useUpdateProfile } from './integrations'
 
-export type Section = 'main' | 'types' | 'collections' | 'tabs'
+export type Section = 'main' | 'types' | 'collections' | 'tabs' | 'hidden'
 export type NavLayout = Partial<Record<Section, string[]>>
 
 export const DEFAULT_MAIN = ['home', 'library', 'waitlist']

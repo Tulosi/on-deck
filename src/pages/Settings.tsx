@@ -18,6 +18,8 @@ import {
 import { CalendarFeed } from '../components/CalendarFeed'
 import { ShareLinksSettings } from '../components/ShareLinks'
 import { PhoneTabsSettings } from '../components/NavSettings'
+import { BUILTIN_COLLECTIONS } from '../lib/collections'
+import { useNavLayout } from '../lib/navLayout'
 import { usePush } from '../lib/push'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
@@ -557,6 +559,32 @@ function PushControls() {
   )
 }
 
+/** Default collections (Waitlist, Early Access, Deals): show or hide each one. */
+function DefaultCollectionsSection() {
+  const [layout, save] = useNavLayout()
+  const hidden = new Set(layout.hidden ?? [])
+  return (
+    <Section title="Collections" description="Default collections that update themselves. Hide any you don't want; they come back here.">
+      <div className="space-y-3">
+        {BUILTIN_COLLECTIONS.map((c) => (
+          <Toggle
+            key={c.id}
+            checked={!hidden.has(c.id)}
+            onChange={(on) => {
+              const next = new Set(hidden)
+              if (on) next.delete(c.id)
+              else next.add(c.id)
+              save('hidden', [...next])
+            }}
+            label={c.name}
+            hint={c.description ?? ''}
+          />
+        ))}
+      </div>
+    </Section>
+  )
+}
+
 function NotificationsSection() {
   const profile = useProfile()
   const update = useUpdateProfile()
@@ -640,6 +668,7 @@ export function Settings() {
           <SteamSection />
           <StreamingSection />
           <NotificationsSection />
+          <DefaultCollectionsSection />
           <section id="navigation" className="scroll-mt-20">
             <Section
               title="Navigation"

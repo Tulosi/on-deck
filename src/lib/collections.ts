@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './auth'
 import { applyFilters, parseFilters, sortItems } from './filters'
+import { deals } from './home'
+import { useNavLayout } from './navLayout'
 import { useItems } from './library'
 import { supabase } from './supabase'
 import type { UserItem } from '../types'
@@ -17,6 +19,68 @@ export interface Collection {
   itemIds: string[]
   /** Smart collection: Library filters + sort in URL form ("type=game&length=short"). Null = hand-picked. */
   rules: string | null
+  /** One of the app's default collections (built in, not stored; can be hidden but not edited). */
+  builtin?: boolean
+}
+
+// ─── Default smart collections (docs/ROADMAP.md → Group C) ─────────────────
+
+export const BUILTIN_COLLECTIONS: Collection[] = [
+  {
+    id: 'default-waitlist',
+    name: 'Waitlist',
+    description: 'Things you want that aren’t out yet, soonest first.',
+    rules: 'status=wanted&release=upcoming&sort=release',
+    createdAt: '',
+    itemIds: [],
+    builtin: true,
+  },
+  {
+    id: 'default-early-access',
+    name: 'Early Access',
+    description: 'Games you want that are out in Early Access but haven’t hit 1.0 yet.',
+    rules: 'type=game&status=wanted&access=early_access&release=released',
+    createdAt: '',
+    itemIds: [],
+    builtin: true,
+  },
+  {
+    id: 'default-deals',
+    name: 'Deals',
+    description: 'Games you want and don’t own, at a historical low or your deep-discount % off or more.',
+    rules: 'type=game&deal=on_sale,historical_low&sort=discount',
+    createdAt: '',
+    itemIds: [],
+    builtin: true,
+  },
+]
+
+/**
+ * A default collection's titles. Waitlist: soonest release first (undated last). Deals: the same rule as Home's
+ * Deals row (historical low, or at least the user's deep-discount %), biggest discount first.
+ */
+export function builtinItems(id: string, items: UserItem[], dealPct: number): UserItem[] {
+  const visible = items.filter((i) => !i.archivedAt)
+  if (id === 'default-deals') return sortItems(deals(visible, dealPct), 'discount')
+  const c = BUILTIN_COLLECTIONS.find((b) => b.id === id)
+  if (!c?.rules) return []
+  const list = smartItems(c.rules, visible)
+  if (id === 'default-waitlist') {
+    return [...list].sort((a, b) => (a.title.releaseDate ?? '9999').localeCompare(b.title.releaseDate ?? '9999'))
+  }
+  return list
+}
+
+/**
+ * Every collection to show: the visible default collections first, then yours. `hidden` lists the defaults the
+ * user has hidden (Settings → Collections brings them back).
+ */
+export function useCollectionList() {
+  const q = useCollections()
+  const [layout] = useNavLayout()
+  const hidden = new Set(layout.hidden ?? [])
+  const defaults = BUILTIN_COLLECTIONS.filter((c) => !hidden.has(c.id))
+  return { ...q, data: q.data ? [...defaults, ...q.data] : q.data, list: [...defaults, ...(q.data ?? [])], hidden }
 }
 
 /** A smart collection's current titles: the Library filtered and sorted by its rules. */

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { Layers, MoreHorizontal, Settings, SlidersHorizontal, Sparkles, X } from 'lucide-react'
-import { useCollections } from '../lib/collections'
+import { useCollectionList } from '../lib/collections'
 import { ordered, useNavLayout } from '../lib/navLayout'
 import { NAV_KEYS, navItem, tabsFrom, type NavItem, type NavKey } from './nav'
 
@@ -24,7 +24,7 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
   const isActive = useIsActive()
   const { pathname } = useLocation()
   const [layout] = useNavLayout()
-  const { data: collections = [] } = useCollections()
+  const { list: collections } = useCollectionList()
   const colOrder = ordered(collections.map((c) => c.id), layout.collections)
   const byId = new Map(collections.map((c) => [c.id, c]))
   const row = 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm'

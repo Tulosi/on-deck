@@ -265,6 +265,14 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   create one with it already in it.
 - Phones: Collections isn't in the tab bar; it's linked from the Library page header.
 - Each collection's page has a **Share** button (see Sharing).
+- **Default collections** (built into the app, `BUILTIN_COLLECTIONS` in `src/lib/collections.ts`; not stored):
+  **Waitlist** (Want to, not out yet; soonest first), **Early Access** (games you want, out, not at 1.0) and
+  **Deals** (games you want and don't own, at a historical low or the deep-discount % from Settings; biggest
+  discount first). They're listed first, with Smart + Default badges, and follow the Archived default (hidden).
+  They can't be renamed, edited, deleted or shared (yet). **Hide this collection** on its page removes it from
+  the Collections page, sidebar and More; **Settings → Collections** shows it again (`nav_layout.hidden`).
+- **Sort: Discount %** (Games / All): the biggest discount off Steam's full price first, historical lows
+  breaking ties.
 - **Smart collections** (instead of separate "saved views"): Library → set a type, filters and sort →
   **Save as smart collection**.
   - `collections.rules` stores the Library URL form (e.g. `type=game&length=short&deal=on_sale&sort=price`).

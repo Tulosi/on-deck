@@ -49,7 +49,7 @@ export interface Profile {
   /** Game-price alert switches (missing = on). */
   alert_settings: { price_low?: boolean; deep_discount?: boolean; deep_discount_pct?: number }
   /** Sidebar order (see lib/navLayout.ts). */
-  nav_layout: { main?: string[]; types?: string[]; collections?: string[]; tabs?: string[] }
+  nav_layout: { main?: string[]; types?: string[]; collections?: string[]; tabs?: string[]; hidden?: string[] }
 }
 
 export function useProfile() {

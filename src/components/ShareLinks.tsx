@@ -9,7 +9,7 @@ const btn = 'flex h-8 items-center gap-1.5 rounded-full border border-line px-3 
 
 /** One link's row: what it shares, Copy, Open, Turn off. */
 function LinkRow({ link, label }: { link: ShareLink; label: string }) {
-  const { revoke } = useShareActions()
+  const { revokeWithUndo } = useShareActions()
   const [copied, setCopied] = useState(false)
   const url = shareUrl(link.token)
   return (
@@ -38,11 +38,9 @@ function LinkRow({ link, label }: { link: ShareLink; label: string }) {
           <button
             type="button"
             className={`${btn} hover:border-bad hover:text-bad`}
-            onClick={() => {
-              if (window.confirm(`Turn off this link to “${label}”? Anyone who has it will no longer be able to open it.`)) {
-                revoke.mutate(link.id)
-              }
-            }}
+            onClick={() => revokeWithUndo(link.id, label)}
+            title="Anyone who has the link will no longer be able to open it"
+
           >
             Turn off
           </button>

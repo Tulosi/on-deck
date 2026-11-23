@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './auth'
 import { supabase } from './supabase'
+import { undoable } from './toast'
 import type { MediaType } from '../types'
 
 export interface ShareLink {
@@ -87,7 +88,21 @@ export function useShareActions() {
     onSettled: refresh,
   })
 
-  return { getOrCreate, revoke }
+  /** Turn a link off with Undo: hidden now, turned off after a few seconds unless undone. */
+  const revokeWithUndo = (id: string, label: string) =>
+    undoable({
+      message: `Turned off the link to “${label}”`,
+      hide: () => queryClient.setQueryData<ShareLink[]>(key(user?.id), (l) => (l ?? []).filter((x) => x.id !== id)),
+      commit: async () => {
+        const { error } = await supabase!.from('share_links').update({ revoked_at: new Date().toISOString() }).eq('id', id)
+        if (error) throw error
+        await refresh()
+      },
+      restore: () => void refresh(),
+      failMessage: `Couldn’t turn off the link to “${label}”. It still works.`,
+    })
+
+  return { getOrCreate, revoke, revokeWithUndo }
 }
 
 export async function copyText(text: string): Promise<boolean> {

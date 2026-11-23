@@ -1,5 +1,4 @@
 import { backdropProps, coverProps } from '../lib/images'
-import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { CollectionPicker } from '../components/CollectionPicker'
@@ -7,7 +6,7 @@ import { GamePrices } from '../components/GamePrices'
 import { StatusControls, TrackingDetails } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
-import { useItems, useRemoveItem } from '../lib/library'
+import { useItems, useRemoveItemWithUndo } from '../lib/library'
 import { releaseInfo, releaseLong, tvSchedule, tvScheduleLong } from '../lib/release'
 import { mediaLabels, type MediaType, type Title } from '../types'
 
@@ -226,9 +225,7 @@ export function TitleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { allItems: items, isLoading, isSample } = useItems()
-  const removeItem = useRemoveItem()
-  const [removing, setRemoving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const removeItem = useRemoveItemWithUndo()
 
   if (isLoading) {
     return (
@@ -258,18 +255,8 @@ export function TitleDetail() {
     next.air_date >= new Date().toISOString().slice(0, 10)
   const statusText = currentlyAiring ? 'Currently Airing' : typeof d.status === 'string' ? d.status : undefined
 
-  async function remove() {
-    if (!window.confirm(`Remove “${title.title}” from your library?`)) return
-    setRemoving(true)
-    setError(null)
-    try {
-      await removeItem(item!.id)
-      navigate('/', { replace: true })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not remove')
-      setRemoving(false)
-    }
-  }
+  // No "Are you sure?": it's removed with an Undo toast, and only deleted once that runs out.
+  const remove = () => removeItem(item, () => navigate('/', { replace: true }))
 
   return (
     <div className="-mx-4 -mt-6 md:-mx-6">
@@ -386,13 +373,11 @@ export function TitleDetail() {
               <button
                 type="button"
                 onClick={remove}
-                disabled={removing}
                 className="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm text-muted hover:border-bad hover:text-bad disabled:opacity-60"
               >
-                {removing ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                <Trash2 className="size-4" />
                 Remove from library
               </button>
-              {error && <p className="text-sm text-bad">{error}</p>}
             </div>
           )}
         </aside>

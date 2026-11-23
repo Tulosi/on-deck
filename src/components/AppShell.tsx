@@ -9,6 +9,7 @@ import { useSteamOwnershipCheck } from '../lib/steam'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav } from './BottomNav'
 import { PageSkeleton } from './LazyPage'
+import { Toaster } from './Toaster'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
@@ -58,6 +59,7 @@ export function AppShell() {
         </main>
       </div>
       <BottomNav />
+      <Toaster />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { deals } from './home'
 import { useNavLayout } from './navLayout'
 import { useItems } from './library'
 import { supabase } from './supabase'
+import { undoable } from './toast'
 import type { UserItem } from '../types'
 
 export interface Collection {
@@ -174,6 +175,23 @@ export function useCollectionActions() {
     onSettled: refresh,
   })
 
+  /** Delete with Undo: gone from the list now, deleted after a few seconds unless undone. */
+  const removeWithUndo = (c: { id: string; name: string }, after?: () => void) =>
+    undoable({
+      message: `Deleted “${c.name}”. The titles stay in your library.`,
+      hide: () => {
+        setList((l) => l.filter((x) => x.id !== c.id))
+        after?.()
+      },
+      commit: async () => {
+        const { error } = await supabase!.from('collections').delete().eq('id', c.id)
+        if (error) throw error
+        await refresh()
+      },
+      restore: () => void refresh(),
+      failMessage: `Couldn’t delete “${c.name}”. It’s been put back.`,
+    })
+
   /** Replaces a smart collection's rules (the sync then updates its titles). */
   const setRules = useMutation({
     mutationFn: async ({ id, rules }: { id: string; rules: string }) => {
@@ -230,7 +248,7 @@ export function useCollectionActions() {
     onSettled: refresh,
   })
 
-  return { create, update, remove, toggleItem, move, setRules }
+  return { create, update, remove, removeWithUndo, toggleItem, move, setRules }
 }
 
 /**

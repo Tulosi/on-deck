@@ -241,7 +241,7 @@ export function CollectionDetail() {
   const { user, loading } = useAuth()
   const { allItems: items } = useItems()
   const { list: collections, isLoading } = useCollectionList()
-  const { update, remove, toggleItem, move } = useCollectionActions()
+  const { update, removeWithUndo, toggleItem, move } = useCollectionActions()
   const [editing, setEditing] = useState(false)
   const [arranging, setArranging] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -324,11 +324,7 @@ export function CollectionDetail() {
               {!builtin && (
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm(`Delete the collection “${c.name}”? The titles stay in your library.`)) {
-                    remove.mutate(c.id, { onSuccess: () => navigate('/collections') })
-                  }
-                }}
+                onClick={() => removeWithUndo(c, () => navigate('/collections'))}
                 className={clsx(button, 'hover:border-bad hover:text-bad')}
               >
                 <Trash2 className="size-4" /> Delete

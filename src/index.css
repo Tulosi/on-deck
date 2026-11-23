@@ -130,3 +130,19 @@ textarea {
     transform: none;
   }
 }
+
+/* Toasts rise in from just below; no exit animation (they're replaced or dismissed). */
+.toast-enter {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter {
+    transition: none;
+  }
+}

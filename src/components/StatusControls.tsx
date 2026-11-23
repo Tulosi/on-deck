@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useDialog } from '../lib/useDialog'
 import clsx from 'clsx'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
@@ -71,6 +72,7 @@ function Segmented<T extends string>({
 /** Archive: confirm, then hide the title everywhere by default. Archived titles show a notice to bring them back. */
 function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<void> }) {
   const [confirming, setConfirming] = useState(false)
+  const panel = useDialog<HTMLDivElement>(confirming, () => setConfirming(false))
   if (item.archivedAt) {
     return (
       <button
@@ -97,7 +99,7 @@ function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch
         createPortal(
           <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="archive-title">
             <div className="absolute inset-0 bg-black/60" onClick={() => setConfirming(false)} />
-            <div className="relative w-full max-w-sm space-y-3 rounded-xl border border-line bg-surface p-5 shadow-2xl">
+            <div ref={panel} tabIndex={-1} className="relative w-full max-w-sm space-y-3 rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
               <p id="archive-title" className="text-base font-semibold text-fg">
                 Archive “{item.title.title}”?
               </p>

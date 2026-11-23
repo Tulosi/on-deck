@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useDialog } from '../lib/useDialog'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
@@ -21,6 +22,7 @@ function useIsActive() {
 
 /** Sheet above the tab bar: everything not in the bar, your collections, and Settings. */
 function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
+  const panel = useDialog<HTMLDivElement>(true, onClose)
   const isActive = useIsActive()
   const { pathname } = useLocation()
   const [layout] = useNavLayout()
@@ -32,7 +34,7 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="More">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-2xl border-t border-line bg-surface pb-[calc(env(safe-area-inset-bottom)+4rem)]">
+      <div ref={panel} tabIndex={-1} className="absolute inset-x-0 bottom-0 max-h-[75dvh] outline-none overflow-y-auto rounded-t-2xl border-t border-line bg-surface pb-[calc(env(safe-area-inset-bottom)+4rem)]">
         <div className="sticky top-0 flex items-center justify-between border-b border-line bg-surface px-4 py-3">
           <p className="text-sm font-semibold text-fg">More</p>
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-full text-muted hover:bg-raised">

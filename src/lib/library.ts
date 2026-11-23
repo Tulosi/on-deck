@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
+import { undoable } from './toast'
 import type { MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
 import { cheapest, formatPrice, gamePriceFromRow, type PriceRow } from './prices'
 import { useAuth } from './auth'
@@ -618,13 +619,28 @@ export function useRenewalCheck() {
   }, [items, isSample])
 }
 
-export function useRemoveItem() {
+/**
+ * Remove a title with Undo: it disappears now, and is only deleted after a few seconds unless Undo is pressed.
+ * `after` runs straight away (e.g. leaving the title page).
+ */
+export function useRemoveItemWithUndo() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
-
-  return async (itemId: string) => {
-    const { error } = await supabase!.from('user_items').delete().eq('id', itemId)
-    if (error) throw error
-    await queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) })
-  }
+  const key = libraryKey(user?.id)
+  return (item: UserItem, after?: () => void) =>
+    undoable({
+      message: `Removed “${item.title.title}”`,
+      hide: () => {
+        queryClient.setQueryData<UserItem[]>(key, (l) => (l ?? []).filter((i) => i.id !== item.id))
+        after?.()
+      },
+      commit: async () => {
+        const { error } = await supabase!.from('user_items').delete().eq('id', item.id)
+        if (error) throw error
+        await queryClient.invalidateQueries({ queryKey: key })
+      },
+      restore: () => void queryClient.invalidateQueries({ queryKey: key }),
+      failMessage: `Couldn’t remove “${item.title.title}”. It’s back in your library.`,
+    })
 }
+

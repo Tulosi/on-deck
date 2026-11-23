@@ -28,17 +28,22 @@ function Segmented<T extends string>({
   /** Extra control to the right of the options (e.g. Archive). */
   aside?: ReactNode
 }) {
-  // Phones: 2 per row for 4 options, 3 + 2 for 5 (never a lone option on its own line). One row from sm up.
-  const cols = options.length === 5 ? 'grid-cols-3 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
+  // Laid out by the space the control actually has (a container query), not the window width: on desktop the
+  // card sits in a narrower column. Narrow: 2 per row for 4 options, 3 + 2 for 5 (never a lone option on its
+  // own line), with `aside` (Archive) on its own line. Wide enough: one row, with `aside` beside it.
+  const five = options.length === 5
+  const cols = five ? 'grid-cols-3 @[36rem]/status:grid-cols-5' : 'grid-cols-2 @[30rem]/status:grid-cols-4'
+  const row = five
+    ? 'basis-full @[36rem]/status:basis-auto @[36rem]/status:flex-1'
+    : 'basis-full @[30rem]/status:basis-auto @[30rem]/status:flex-1'
   return (
     <div className="space-y-1.5">
       <p className={labelClass}>{label}</p>
-      <div className="flex flex-wrap items-stretch gap-2">
+      <div className="@container/status flex flex-wrap items-stretch gap-2">
       <div
         role="radiogroup"
         aria-label={label}
-        // Phones: full width (anything in `aside` drops to its own line); wider: options grow beside it.
-        className={clsx('grid min-w-0 basis-full gap-1 rounded-lg border border-line bg-bg p-1 sm:basis-auto sm:flex-1', cols)}
+        className={clsx('grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', row, cols)}
       >
         {options.map((o) => (
           <button
@@ -48,7 +53,8 @@ function Segmented<T extends string>({
             aria-checked={value === o.value}
             onClick={() => onChange(o.value)}
             className={clsx(
-              'rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors',
+              // Labels wrap inside their button (never overrun it) when space is tight.
+              'rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors',
               value === o.value ? 'bg-accent font-medium text-accent-fg' : 'text-muted hover:text-fg',
             )}
           >
@@ -70,7 +76,7 @@ function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch
       <button
         type="button"
         onClick={() => void save({ archived: false })}
-        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-accent/60 bg-accent/10 px-3 text-sm text-fg hover:border-accent sm:h-auto sm:self-stretch"
+        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-accent/60 bg-accent/10 px-3 text-sm text-fg hover:border-accent @[30rem]/status:h-auto @[30rem]/status:self-stretch"
         title="Take this title out of the archive"
       >
         <ArchiveRestore className="size-4" /> Unarchive
@@ -82,7 +88,7 @@ function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-line px-3 text-sm text-muted hover:border-faint hover:text-fg sm:h-auto sm:self-stretch"
+        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-line px-3 text-sm text-muted hover:border-faint hover:text-fg @[30rem]/status:h-auto @[30rem]/status:self-stretch"
         title="Archive this title"
       >
         <Archive className="size-4" /> Archive

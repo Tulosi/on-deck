@@ -71,6 +71,14 @@ async function getAll(path) {
   return res.json()
 }
 
+/** One row in job_runs per run, for Settings → Status (counts and errors only). */
+async function logRun(ok, summary) {
+  await rest('job_runs', { method: 'POST', body: JSON.stringify({ job: 'keyshop', ok, summary }), headers: { Prefer: 'return=minimal' } }).catch(
+    () => undefined,
+  )
+}
+
+try {
 // Existing price rows (one per game per region) + each game's Steam app id.
 const rows = await getAll('game_prices?select=title_id,country_code,is_free')
 const titles = await getAll('titles?select=id,external_ids&media_type=eq.game')
@@ -102,3 +110,9 @@ for (const [country, games] of byCountry) {
   console.log(`${country}: ${games.length} game(s), ${[...prices.values()].filter((v) => v.keyshop_price != null).length} with key-shop prices`)
 }
 console.log(`Done — ${updated} price row(s) updated.`)
+await logRun(true, { updated, countries: byCountry.size })
+} catch (err) {
+  const message = String(err?.message ?? err).slice(0, 200)
+  await logRun(false, { error: message, rateLimited: /\b429\b/.test(message) })
+  throw err
+}

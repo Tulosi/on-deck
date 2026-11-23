@@ -254,8 +254,32 @@ For released shows with an announced next episode (TMDB `next_episode_to_air`):
   Watched-up-to to the latest aired episode.
 - Also automatic: **Watched → Caught up** for an ongoing show that was marked Watched.
 
+### Backup (export / import) and Status (Group E)
+- **Settings → Backup & Restore** (`src/lib/backup.ts`):
+  - **Export:** a JSON file (`format: "on-deck-export"`, `version: 1`). It contains every library entry's
+    tracking fields, collections (hand-picked titles in order; smart ones as their rules) and settings (region,
+    streaming services, labels, alert and navigation preferences). Titles are referenced by source (media type +
+    source + id), so a file works on any On Deck server.
+  - **Never exported:** account links and secrets (Plex token, Seerr key, Steam link, calendar / share tokens,
+    push devices), alerts, and cached prices / availability.
+  - **Import merges:**
+    - Titles already in the library are left untouched.
+    - New ones are matched on this server or fetched from their source (3 at a time, with progress), then
+      added with their tracking.
+    - Same-named collections are topped up, others created.
+    - Settings are replaced only when "Also replace my settings" is ticked (pre-ticked for an empty library).
+    - Importing into an empty library ends with a prompt to link Plex / Seerr / Steam.
+- **Settings → Status** (`StatusPanel.tsx` + the `status` function):
+  - **Check now** tests TMDB, IGDB, Hardcover (including an expired token), IsThereAnyDeal, MDBList, the
+    Steam store, the user's Steam account, Plex, Seerr and push.
+  - Each service reads OK / Rate limited (429) / Refused (401/403, key or token rejected or expired) / Error /
+    Not set up, with its response time.
+  - **Background jobs:** the latest `job_runs` row for `daily` and `keyshop` (when it ran, problems, failed
+    calls grouped by service and status, rate limits).
+  - **Your data:** when alerts, availability and Plex progress were last refreshed.
+
 ### Cast (movies & TV)
-- `metadata.cast`: the top 3 billed actors (`tmdb_id`, `name`, `character`, `photo`, `imdb_id`), stored when a
+- `metadata.cast`: the top 4 billed actors (`tmdb_id`, `name`, `character`, `photo`, `imdb_id`), stored when a
   title is added or refreshed. Movies use TMDB `credits`; shows use `aggregate_credits` (the whole run). Each
   actor's IMDb id comes from `/person/{id}/external_ids`. Titles saved before this are refreshed once.
 - Title page: a **Starring** row under the description (headshot, name, character), each linking to the

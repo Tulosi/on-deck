@@ -94,6 +94,9 @@ function todayPhrase(e: ReleaseEvent, mediaType: string): string {
   }
 }
 
+/** Failed calls in this run, for the job log (Settings → Status): service, HTTP status (0 = no answer), code. */
+let callErrors: { fn: string; status: number; code: string }[] = []
+
 async function callFn(fn: string, body: Json, userId?: string): Promise<Json | null> {
   try {
     const res = await fetch(`${secret('SUPABASE_URL')}/functions/v1/${fn}`, {
@@ -107,10 +110,14 @@ async function callFn(fn: string, body: Json, userId?: string): Promise<Json | n
       signal: AbortSignal.timeout(30_000),
     })
     const data = await res.json().catch(() => null)
-    if (!res.ok) console.warn(`${fn} ${res.status}`, JSON.stringify(data).slice(0, 200))
+    if (!res.ok) {
+      console.warn(`${fn} ${res.status}`, JSON.stringify(data).slice(0, 200))
+      callErrors.push({ fn, status: res.status, code: String(data?.error ?? '') })
+    }
     return res.ok ? data : null
   } catch (err) {
     console.warn(`${fn} failed`, String(err))
+    callErrors.push({ fn, status: 0, code: String(err).slice(0, 80) })
     return null
   }
 }
@@ -202,6 +209,7 @@ async function syncPlex(db: ReturnType<typeof admin>, userId: string, hasTime: (
 serve(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'method_not_allowed')
   if (!isJob(req)) throw new HttpError(401, 'not_allowed')
+  callErrors = []
   const started = Date.now()
   const elapsed = () => Date.now() - started
   const db = admin()
@@ -489,7 +497,7 @@ serve(async (req) => {
     usersDone++
   }
 
-  return json({
+  const summary = {
     titlesDue: due.length,
     titlesRefreshed: refreshed,
     releaseChanges: [...changes.values()].reduce((n, c) => n + c.length, 0),
@@ -499,5 +507,14 @@ serve(async (req) => {
     pushesSent,
     plexChecked,
     seconds: Math.round(elapsed() / 1000),
-  })
+    // Failed calls grouped by service + status, e.g. { "tmdb 429": 3 }. 429 = rate limited.
+    errors: callErrors.reduce<Record<string, number>>((acc, e) => {
+      const k = `${e.fn} ${e.status || 'no answer'}${e.code ? ` ${e.code}` : ''}`
+      acc[k] = (acc[k] ?? 0) + 1
+      return acc
+    }, {}),
+    rateLimited: callErrors.some((e) => e.status === 429),
+  }
+  await db.from('job_runs').insert({ job: 'daily', ok: callErrors.length === 0, summary })
+  return json(summary)
 })

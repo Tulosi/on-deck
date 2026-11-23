@@ -39,7 +39,7 @@ Agreed 2026-11-23. Built in groups, in this order. Decisions from the planning Q
 - Full-screen "Open full results" page; "did you mean" / near matches for typos; a year in the query
   ("dresden files 2026") ranks that year first.
 
-## Group E — Backup & health
+## Group E — Backup & health ✅ built
 - Export / import library + settings as JSON. Secrets left out (Plex link, Seerr key, calendar/share tokens).
   Import **merges**. Importing into an otherwise empty account prompts to set up Plex / Steam / Seerr.
 - Settings → Status: sync errors, API limits hit or refused, expiring tokens, last run of each job.

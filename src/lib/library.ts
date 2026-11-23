@@ -142,8 +142,8 @@ function toUserItem(row: ItemRow): UserItem {
         tmdb: t.ratings.tmdb,
       },
       needsScores:
-        // Movies / shows saved before the cast was stored are refreshed once to pick it up.
-        (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t) || t.metadata.cast === undefined)) ||
+        // Movies / shows saved before the top-4 cast was stored (cast_v 2) are refreshed once to pick it up.
+        (t.source === 'tmdb' && (scoresNeedRefresh(t.ratings) || airingInfoStale(t) || t.metadata.cast_v !== 2)) ||
         // Games saved before release dates (precision, Early Access, 1.0) were stored are refreshed once to pick it up.
         // Games saved before time-to-beat was stored are refreshed once to pick it up.
         (t.source === 'igdb' &&

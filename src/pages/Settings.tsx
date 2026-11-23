@@ -18,6 +18,8 @@ import {
 import { CalendarFeed } from '../components/CalendarFeed'
 import { ShareLinksSettings } from '../components/ShareLinks'
 import { PhoneTabsSettings } from '../components/NavSettings'
+import { StatusPanel } from '../components/StatusPanel'
+import { BackupPanel } from '../components/BackupPanel'
 import { BUILTIN_COLLECTIONS } from '../lib/collections'
 import { useNavLayout } from '../lib/navLayout'
 import { usePush } from '../lib/push'
@@ -664,8 +666,10 @@ export function Settings() {
       ) : (
         <>
           <RegionSection />
-          <PlexSection />
-          <SteamSection />
+          <div id="accounts" className="scroll-mt-20 space-y-6">
+            <PlexSection />
+            <SteamSection />
+          </div>
           <StreamingSection />
           <NotificationsSection />
           <DefaultCollectionsSection />
@@ -679,6 +683,16 @@ export function Settings() {
           </section>
           <section id="calendar" className="rounded-xl border border-line bg-surface p-5">
             <CalendarFeed />
+          </section>
+          <section id="status" className="scroll-mt-20">
+            <Section title="Status" description="Is everything working? Service checks, background jobs, and how fresh your data is.">
+              <StatusPanel />
+            </Section>
+          </section>
+          <section id="backup" className="scroll-mt-20">
+            <Section title="Backup & Restore" description="Export your library and settings to a file, or restore from one (it merges).">
+              <BackupPanel onSetUpAccounts={() => document.getElementById('accounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+            </Section>
           </section>
           <Section title="Sharing">
             <ShareLinksSettings />

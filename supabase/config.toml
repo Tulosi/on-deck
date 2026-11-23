@@ -467,3 +467,6 @@ verify_jwt = false
 
 [functions.push]
 verify_jwt = false
+
+[functions.status]
+verify_jwt = false

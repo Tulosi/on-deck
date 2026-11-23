@@ -66,12 +66,12 @@ async function search(query: string, type: MediaType | null, limit = 12) {
 }
 
 /**
- * The top 3 billed actors: name, character, headshot and IMDb id (looked up per person; null when TMDB has none,
+ * The top 4 billed actors: name, character, headshot and IMDb id (looked up per person; null when TMDB has none,
  * and the app then links to their TMDB page).
  */
 async function topCast(d: Json, mediaType: MediaType): Promise<Json[]> {
   const raw = ((mediaType === 'movie' ? d.credits?.cast : d.aggregate_credits?.cast) ?? []) as Json[]
-  const top = [...raw].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)).slice(0, 3)
+  const top = [...raw].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)).slice(0, 4)
   return await Promise.all(
     top.map(async (p) => {
       const ext = await tmdb(`/person/${p.id}/external_ids`).catch(() => null)
@@ -98,6 +98,7 @@ async function add(tmdbId: number, mediaType: MediaType) {
   const releaseDate = dateOrNull(mediaType === 'movie' ? d.release_date : d.first_air_date)
   const metadata: Json = {
     cast: await topCast(d, mediaType),
+    cast_v: 2, // 2 = top 4 (titles stored with v1's top 3 refresh once)
     overview: d.overview || null,
     tagline: d.tagline || null,
     status: d.status ?? null,

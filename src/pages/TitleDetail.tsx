@@ -167,9 +167,9 @@ interface CastMember {
   imdb_id: string | null
 }
 
-/** Movies / TV: the top 3 billed actors, each linking to their IMDb page (or TMDB when IMDb has no id). */
+/** Movies / TV: the top 4 billed actors, each linking to their IMDb page (or TMDB when IMDb has no id). */
 function CastRow({ d }: { d: Record<string, unknown> }) {
-  const cast = Array.isArray(d.cast) ? (d.cast as CastMember[]).slice(0, 3) : []
+  const cast = Array.isArray(d.cast) ? (d.cast as CastMember[]).slice(0, 4) : []
   if (cast.length === 0) return null
   return (
     <section aria-label="Starring" className="space-y-2">

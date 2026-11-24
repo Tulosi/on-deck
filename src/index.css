@@ -221,6 +221,18 @@ h1[tabindex='-1']:focus {
   }
 }
 
+/* Swipe actions (useSwipe): the action behind a row shows as the row slides, fully once a release would commit. */
+.swipe-action {
+  opacity: clamp(0, calc(var(--swipe, 0) * -1.25), 1);
+  transition: opacity 300ms var(--ease-out);
+}
+[data-swiping] > .swipe-action {
+  transition: none;
+}
+.swipe-action > svg {
+  transform: scale(clamp(0.6, calc(var(--swipe, 0) * -1), 1));
+}
+
 /* Progress bars grow to their new length. */
 .bar-fill {
   transition:

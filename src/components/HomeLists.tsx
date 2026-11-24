@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { RollingText } from './RollingText'
 import { useLeaving } from '../lib/useLeaving'
+import { useSwipe } from '../lib/useSwipe'
 import clsx from 'clsx'
 import { Check } from 'lucide-react'
 import type { MediaType, UserItem } from '../types'
@@ -53,36 +54,47 @@ function ContinueRow({ item, leaving }: { item: UserItem; leaving: boolean }) {
   const { title } = item
   const stat = continueStat(item)
   const ep = user ? nextWatchable(item) : null
+  const mark = () => {
+    if (ep) update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
+  }
+  // Swipe left to mark the next episode (the check button does the same for keyboard, mouse and screen readers).
+  const swipe = useSwipe<HTMLDivElement>({ dir: 'left', after: 'return', onCommit: mark, disabled: !ep })
   return (
-    <li className={clsx('flex items-center', leaving && 'leave-y')} inert={leaving}>
-      <Link to={`/title/${title.id}`} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 hover:bg-raised">
-        <div className="h-[42px] w-7 flex-none overflow-hidden rounded bg-raised">
-          {title.coverUrl && <img {...coverProps(title.coverUrl, '28px')} alt="" loading="lazy" className="size-full object-cover" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-fg">{title.title}</p>
-          <p className="mt-0.5 text-xs text-muted">{KIND[title.mediaType]}</p>
-        </div>
-        {(stat.num || stat.sub) && (
-          <div className="flex-none text-right">
-            {stat.num && <p className="font-mono text-sm text-fg"><RollingText text={stat.num} /></p>}
-            {stat.sub && <p className="mt-0.5 text-xs text-muted">{stat.sub}</p>}
-          </div>
-        )}
-      </Link>
+    <li className={clsx('relative overflow-hidden', leaving && 'leave-y')} inert={leaving}>
       {ep && (
-        <button
-          type="button"
-          onClick={() =>
-            update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
-          }
-          aria-label={`Mark ${episodeCode(ep)} of ${title.title} watched`}
-          title={`Mark ${episodeCode(ep)} watched`}
-          className="mr-2 grid size-11 flex-none place-items-center rounded-md text-muted hover:bg-raised hover:text-accent-ink"
-        >
+        <div aria-hidden="true" className="swipe-action absolute inset-0 flex items-center justify-end gap-2 bg-accent pr-5 text-sm font-medium text-accent-fg">
           <Check className="size-[18px]" />
-        </button>
+          {episodeCode(ep)}
+        </div>
       )}
+      <div ref={swipe} className="relative flex items-center bg-surface">
+        <Link to={`/title/${title.id}`} draggable={false} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 hover:bg-raised">
+          <div className="h-[42px] w-7 flex-none overflow-hidden rounded bg-raised">
+            {title.coverUrl && <img {...coverProps(title.coverUrl, '28px')} alt="" loading="lazy" draggable={false} className="size-full object-cover" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-fg">{title.title}</p>
+            <p className="mt-0.5 text-xs text-muted">{KIND[title.mediaType]}</p>
+          </div>
+          {(stat.num || stat.sub) && (
+            <div className="flex-none text-right">
+              {stat.num && <p className="font-mono text-sm text-fg"><RollingText text={stat.num} /></p>}
+              {stat.sub && <p className="mt-0.5 text-xs text-muted">{stat.sub}</p>}
+            </div>
+          )}
+        </Link>
+        {ep && (
+          <button
+            type="button"
+            onClick={mark}
+            aria-label={`Mark ${episodeCode(ep)} of ${title.title} watched`}
+            title={`Mark ${episodeCode(ep)} watched`}
+            className="mr-2 grid size-11 flex-none place-items-center rounded-md text-muted hover:bg-raised hover:text-accent-ink"
+          >
+            <Check className="size-[18px]" />
+          </button>
+        )}
+      </div>
     </li>
   )
 }

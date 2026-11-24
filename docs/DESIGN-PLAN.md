@@ -58,7 +58,13 @@ taking the Up next card lifts in; progress and season bars grow to their new len
 option in Status, Priority, List/Month, Dark/Light, the type pills and Import's view slides between options
 (`useSlidingIndicator`); Calendar's month arrows slide the grid in the direction you went (a view transition with
 `month-next` / `month-prev` types); the description's More/Less and `<details>` sections open and close smoothly
-(`interpolate-size`, so browsers without it simply jump). Reduced motion turns all of it off.
+(`interpolate-size`, so browsers without it simply jump). Reduced motion turns all of it off. **Stage 10, swipe gestures (no library):** swipe a Continue row left to mark
+the next episode (the lemon action shows behind it as it slides; the check button still does the same), and swipe a
+toast either way to dismiss it. `useSwipe` was checked frame by frame against Motion's `drag="x"` (`dragElastic: 0.5`,
+`dragSnapToOrigin`, `dragDirectionLock`) on identical scripted drags: the same 1:1 tracking, the same half-speed past
+the edge, the same release spring (fitted: stiffness 200, damping 40, settle within 2 to 17 ms of Motion's, no
+overshoot), catching mid-settle carries on from where it is, and a mostly vertical drag never moves it. A swipe
+commits past 40% of the width or on a quick flick; a toast thrown away leaves with a 220 ms ease-out.
 
 ## The brief, as I read it
 - **Subject:** a household's queue of films, shows, games and books. "On deck" is baseball's name for the batter

@@ -238,12 +238,23 @@ function bookFacts(item: UserItem) {
   }
 }
 
+/** Movies: the length, set large like an episode code, and where you are. Runtime moves up here from the facts row. */
+function movieFacts(item: UserItem) {
+  const d = (item.title.details ?? {}) as Record<string, unknown>
+  const runtime = typeof d.runtime === 'number' && d.runtime > 0 ? d.runtime : null
+  return {
+    length: runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : undefined,
+    about: [statusLabel(item.progress, 'movie'), item.title.year].filter(Boolean).join(', ') || undefined,
+  }
+}
+
 /** One card: cover, the next step set large, plain facts and the actions. */
 function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
   const { user } = useAuth()
   const { title } = item
   const next = upNext(item)
   const book = title.mediaType === 'book' && !next.value ? bookFacts(item) : null
+  const movie = title.mediaType === 'movie' && !next.value ? movieFacts(item) : null
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
@@ -267,6 +278,11 @@ function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
               <p className="text-3xl leading-tight font-semibold tracking-tight text-fg">{book.where}</p>
               {book.about && <p className="text-sm text-muted">{book.about}</p>}
               {book.owned && <p className="text-sm text-good">In your library</p>}
+            </>
+          ) : movie ? (
+            <>
+              <p className="font-mono text-3xl leading-tight font-medium tracking-tight text-fg">{movie.length ?? 'Movie'}</p>
+              {movie.about && <p className="text-sm text-muted">{movie.about}</p>}
             </>
           ) : (
             <p className="text-sm text-muted">{KIND[title.mediaType]}</p>
@@ -316,10 +332,7 @@ function Facts({ item }: { item: UserItem }) {
           { k: 'Network', v: Array.isArray(d.networks) ? (d.networks as string[])[0] : undefined },
           { k: 'Latest episode', v: last?.air_date ? shortDate(last.air_date) : undefined, mono: true },
         ]
-      : [
-          { k: 'Watch on', v: where },
-          { k: 'Runtime', v: typeof d.runtime === 'number' && d.runtime > 0 ? `${d.runtime} min` : undefined, mono: true },
-        ]
+      : [{ k: 'Watch on', v: where }] // the runtime is set large at the top of a movie card
   const shown = facts.filter((f) => f.v)
   if (shown.length === 0) return null
   return (

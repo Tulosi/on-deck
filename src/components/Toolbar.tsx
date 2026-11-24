@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Check, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
+import { Check, Search, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
 import { useChipModeControl } from '../lib/chips'
 import {
   LABELS,
   activeCount,
   applyFilters,
   clearFilters,
+  type AvailabilityFilter,
   toggleValue,
   withType,
   type Filters,
@@ -68,8 +69,7 @@ const selectClass = 'h-10 sm:h-7 rounded-md border border-line bg-surface px-2 t
 // instead of the old tap-twice-to-exclude chips. Each option shows how many titles it would leave.
 
 /** Explains the two statuses people ask about, for the ones this view has. */
-function statusHint(type: MediaType | null): string | undefined {
-  const opts = statusFilterOptions(type)
+function statusHint(opts: readonly string[]): string | undefined {
   const parts = [
     opts.includes('stalled') && 'Stalled: started, then set aside.',
     opts.includes('caught_up') && 'Caught up: seen everything out so far.',
@@ -168,37 +168,46 @@ function OptionGroup<T extends string>({
 
 function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
   const { allItems } = useItems()
-  const genres = useMemo(
-    () =>
-      f.type === 'movie' || f.type === 'tv' || f.type === 'game'
-        ? [...new Set(allItems.filter((i) => i.title.mediaType === f.type).flatMap((i) => i.title.genres))].sort()
-        : [],
-    [allItems, f.type],
-  )
+  // Most common first, so the few shown before a search are the ones that matter in this library.
+  const genres = useMemo(() => {
+    if (f.type !== 'movie' && f.type !== 'tv' && f.type !== 'game') return []
+    const n = new Map<string, number>()
+    for (const i of allItems) if (i.title.mediaType === f.type) for (const g of i.title.genres) n.set(g, (n.get(g) ?? 0) + 1)
+    return [...n.keys()].sort((a, b) => n.get(b)! - n.get(a)! || a.localeCompare(b))
+  }, [allItems, f.type])
   /** How many titles picking just this value would leave, with every other filter as it is. */
   const count = <K extends keyof Filters>(key: K) => (v: string) =>
     applyFilters(allItems, { ...f, [key]: [v], neg: { ...f.neg, [key]: false } }).length
   const tog = <K extends keyof Filters>(key: K) => (v: string) => set(toggleValue(f, key, v))
   const negOf = (key: NegKey) => ({ value: !!f.neg[key], set: (neg: boolean) => set({ ...f, neg: { ...f.neg, [key]: neg } }) })
-  const available = f.availability.includes('available')
+  /** Only options some title of this type in the library has (with the other filters cleared), plus any already picked. */
+  const base = clearFilters(f)
+  const present = <K extends keyof Filters, T extends string>(key: K, options: readonly T[]) =>
+    options.filter((v) => (f[key] as unknown as string[]).includes(v) || applyFilters(allItems, { ...base, [key]: [v] }).length > 0)
+  const avail = (v: AvailabilityFilter) => f.availability.includes(v)
+  const toggleAvail = (v: AvailabilityFilter) => set({ ...f, availability: avail(v) ? [] : [v] })
+  // Games and books: available means owned, so Unowned is the other half (movies and TV have no such thing).
+  const owns = f.type === 'game' || f.type === 'book'
+  // Movies and TV: not on Plex or any of your services (titles not checked yet match neither).
+  const unavailable = count('availability')('unavailable')
 
   return (
     <div className="space-y-5">
       <Section title="Your list">
         <OptionGroup
           label="Status"
-          options={statusFilterOptions(f.type)}
+          options={present('status', statusFilterOptions(f.type))}
           selected={f.status}
           render={(v) => statusLabel(v, f.type)}
-          hint={statusHint(f.type)}
+          hint={statusHint(present('status', statusFilterOptions(f.type)))}
           onToggle={tog('status')}
           count={count('status')}
           neg={negOf('status')}
         />
-        <OptionGroup label="Priority" options={LABELS.options.PRIORITY} selected={f.priority} render={(v) => LABELS.priority[v]} onToggle={tog('priority')} count={count('priority')} />
+        <OptionGroup label="Priority" options={present('priority', LABELS.options.PRIORITY)} selected={f.priority} render={(v) => LABELS.priority[v]} onToggle={tog('priority')} count={count('priority')} />
         <OptionGroup
           label="Your rating"
-          options={LABELS.options.RATING}
+          options={present('rating', LABELS.options.RATING)}
           selected={f.rating}
           render={(v) => LABELS.rating[v]}
           onToggle={tog('rating')}
@@ -208,48 +217,50 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
       </Section>
 
       <Section title="Out and available">
-        <OptionGroup label="Release" options={LABELS.options.RELEASE} selected={f.release} render={(v) => LABELS.release[v]} onToggle={tog('release')} count={count('release')}>
-          <button
-            type="button"
-            aria-pressed={available}
-            title="Movies and TV on your Plex or streaming services (set in Settings). Games and books you own."
-            onClick={() => set({ ...f, availability: available ? [] : ['available'] })}
-            className={clsx(
-              'ml-2 flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs transition-colors',
-              available ? 'border-accent bg-accent/15 text-fg' : 'border-line text-muted hover:border-faint hover:text-fg',
+        <OptionGroup label="Release" options={present('release', LABELS.options.RELEASE)} selected={f.release} render={(v) => LABELS.release[v]} onToggle={tog('release')} count={count('release')} />
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted">{owns ? 'In your library' : 'Availability'}</p>
+          <div className="flex flex-wrap gap-1.5">
+            <AvailButton
+              on={avail('available')}
+              title="Movies and TV on your Plex or streaming services (set in Settings). Games and books you own."
+              onClick={() => toggleAvail('available')}
+              n={count('availability')('available')}
+            >
+              {owns ? 'Owned' : 'Available to me'}
+            </AvailButton>
+            {(unavailable > 0 || avail('unavailable')) && (
+              <AvailButton on={avail('unavailable')} onClick={() => toggleAvail('unavailable')} n={unavailable}>
+                {owns ? 'Unowned' : 'Not available'}
+              </AvailButton>
             )}
-          >
-            {available && <Check className="size-3" />}
-            Available to me
-            <span className="font-mono text-[10px] text-faint">{count('availability')('available')}</span>
-          </button>
-        </OptionGroup>
+          </div>
+        </div>
       </Section>
 
       {f.type && f.type !== 'book' && (
         <Section title={LABELS.type[f.type]}>
-          <OptionGroup
+          <GenreGroup
             label={f.type === 'game' ? 'Genre & tags' : 'Genre'}
             options={genres}
             selected={f.genre}
-            render={(v) => v}
             onToggle={tog('genre')}
             count={count('genre')}
             neg={negOf('genre')}
           />
           {f.type === 'tv' && (
-            <OptionGroup label="Show status" options={LABELS.options.TV_STATUS} selected={f.tvStatus} render={(v) => LABELS.tvStatus[v]} onToggle={tog('tvStatus')} count={count('tvStatus')} />
+            <OptionGroup label="Show status" options={present('tvStatus', LABELS.options.TV_STATUS)} selected={f.tvStatus} render={(v) => LABELS.tvStatus[v]} onToggle={tog('tvStatus')} count={count('tvStatus')} />
           )}
           {f.type === 'game' && (
             <>
-              <OptionGroup label="Co-op & multiplayer" options={LABELS.options.COOP} selected={f.coop} render={(v) => LABELS.coop[v]} onToggle={tog('coop')} count={count('coop')} neg={negOf('coop')} />
-              <OptionGroup label="Length" hint="Time to beat at a normal pace" options={LABELS.options.LENGTH} selected={f.length} render={(v) => LABELS.length[v]} onToggle={tog('length')} count={count('length')} />
-              <OptionGroup label="Steam Deck" options={LABELS.options.DECK} selected={f.deck} render={(v) => LABELS.deck[v]} onToggle={tog('deck')} count={count('deck')} />
-              <OptionGroup label="Early access" options={LABELS.options.ACCESS} selected={f.access} render={(v) => LABELS.access[v]} onToggle={tog('access')} count={count('access')} />
+              <OptionGroup label="Players" options={present('coop', LABELS.options.COOP)} selected={f.coop} render={(v) => LABELS.coop[v]} onToggle={tog('coop')} count={count('coop')} neg={negOf('coop')} />
+              <OptionGroup label="Length" hint="Time to beat at a normal pace" options={present('length', LABELS.options.LENGTH)} selected={f.length} render={(v) => LABELS.length[v]} onToggle={tog('length')} count={count('length')} />
+              <OptionGroup label="Steam Deck" options={present('deck', LABELS.options.DECK)} selected={f.deck} render={(v) => LABELS.deck[v]} onToggle={tog('deck')} count={count('deck')} />
+              <OptionGroup label="Early access" options={present('access', LABELS.options.ACCESS)} selected={f.access} render={(v) => LABELS.access[v]} onToggle={tog('access')} count={count('access')} />
               <OptionGroup
                 label="Price & deals"
                 hint="Cheapest of the Steam-key stores and key shops, in your currency"
-                options={LABELS.options.DEAL}
+                options={present('deal', LABELS.options.DEAL)}
                 selected={f.deal}
                 render={(v) => LABELS.deal[v]}
                 onToggle={tog('deal')}
@@ -274,6 +285,76 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
         </Section>
       )}
       {!f.type && <p className="text-xs text-faint">Pick movies, TV shows or games for their own filters.</p>}
+    </div>
+  )
+}
+
+function AvailButton({ on, n, title, onClick, children }: { on: boolean; n: number; title?: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      title={title}
+      onClick={onClick}
+      className={clsx(
+        'flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs transition-colors',
+        on ? 'border-accent bg-accent/15 text-fg' : 'border-line text-muted hover:border-faint hover:text-fg',
+      )}
+    >
+      {on && <Check className="size-3" />}
+      {children}
+      <span className="font-mono text-[10px] text-faint">{n}</span>
+    </button>
+  )
+}
+
+/** How many genres show before a search. Games carry dozens of IGDB genres and themes. */
+const GENRES_SHOWN = 8
+
+/** Genres and tags: the most common few, anything picked, and a search for the rest. */
+function GenreGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+  count,
+  neg,
+}: {
+  label: string
+  options: string[]
+  selected: string[]
+  onToggle: (v: string) => void
+  count: (v: string) => number
+  neg: { value: boolean; set: (neg: boolean) => void }
+}) {
+  const [q, setQ] = useState('')
+  if (options.length === 0) return null
+  const long = options.length > GENRES_SHOWN + 2
+  const query = q.trim().toLowerCase()
+  const top = options.slice(0, GENRES_SHOWN)
+  const found = query ? options.filter((o) => o.toLowerCase().includes(query)) : []
+  // No match keeps the usual few in view, so the group doesn't jump.
+  const shown = !long ? options : found.length ? found : [...selected.filter((s) => !top.includes(s)), ...top]
+  return (
+    <div className="space-y-2">
+      <OptionGroup label={label} options={shown} selected={selected} render={(v) => v} onToggle={onToggle} count={count} neg={neg} />
+      {long && (
+        <div className="flex items-center gap-2">
+          <label className="relative block w-full max-w-60">
+            <span className="sr-only">Find a {label === 'Genre' ? 'genre' : 'genre or tag'}</span>
+            <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-faint" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={`Find one of ${options.length}`}
+              autoComplete="off"
+              className="h-10 w-full rounded-md border border-line bg-surface pr-2 pl-7 text-xs text-fg outline-none placeholder:text-faint focus:border-accent sm:h-7"
+            />
+          </label>
+          {query && found.length === 0 && <p className="text-xs text-faint">No match</p>}
+        </div>
+      )}
     </div>
   )
 }
@@ -326,7 +407,7 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
         )}
       </button>
       {open && (
-        <div className="pop-in origin-top fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl sm:origin-top-left border border-line bg-surface p-4 shadow-2xl shadow-black/40 sm:absolute sm:inset-x-auto sm:top-9 sm:left-0 sm:w-[32rem]">
+        <div className="vt-chrome-filters pop-in origin-top fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl sm:origin-top-left border border-line bg-surface p-4 shadow-2xl shadow-black/40 sm:absolute sm:inset-x-auto sm:top-9 sm:left-0 sm:w-[32rem]">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm font-semibold text-fg">Filters</p>
             <div className="flex items-center gap-3">
@@ -405,7 +486,7 @@ export function Toolbar() {
   }
 
   return (
-    <div className="sticky top-14 z-10 flex h-12 items-center gap-3 border-b sm:h-11 border-line bg-bg/85 px-4 backdrop-blur md:px-6">
+    <div className="vt-chrome-toolbar sticky top-14 z-10 flex h-12 items-center gap-3 border-b sm:h-11 border-line bg-bg/85 px-4 backdrop-blur md:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {/* Library: the sidebar sets the type on desktop, so the toolbar only offers it on phones. */}
         <TypeFilter value={f.type} onChange={setType} navOwned={isLibrary} />

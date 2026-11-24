@@ -1,11 +1,12 @@
 import clsx from 'clsx'
 import { useCallback, useMemo, useState, ViewTransition } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Layers, Loader2, Sparkles, X } from 'lucide-react'
+import { CheckSquare, Layers, LayoutGrid, Loader2, Rows3, Sparkles, X } from 'lucide-react'
 import { BulkBar, SelectableCard } from '../components/BulkBar'
 import { PageHeader } from '../components/PageHeader'
 import { PageSkeleton } from '../components/LazyPage'
 import { PosterCard } from '../components/PosterCard'
+import { ProgressRows } from '../components/ProgressRows'
 import {
   LABELS,
   activeCount,
@@ -17,6 +18,7 @@ import {
   DEFAULT_SORT,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
+import { useLibraryView } from '../lib/libraryView'
 import { statusLabel } from '../lib/statusLabels'
 import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
@@ -97,9 +99,14 @@ function Reorderable({ on, children }: { on: boolean; children: React.ReactNode 
   )
 }
 
+/** Progress view: status groups in the order you'd act on them. */
+const ROW_ORDER = ['in_progress', 'caught_up', 'stalled', 'wanted', 'completed', 'dropped']
+
 export function Library() {
   const { items, allItems, isLoading, isSample } = useItems()
   const [f, set] = useFilters()
+  const [view, setView] = useLibraryView(f.type)
+  const rows = view === 'rows'
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { data: collections = [] } = useCollections()
@@ -131,8 +138,10 @@ export function Library() {
     const results = sortItems(applyFilters(allItems, f), f.sort)
     const hiddenArchived =
       f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
-    return { inType, results, hiddenArchived, groups: groupItems(results, f.group, f.type) }
-  }, [items, allItems, f])
+    // Progress view: grouped by status unless another grouping is picked.
+    const group = rows && f.group === 'none' ? 'status' : f.group
+    return { inType, results, hiddenArchived, groups: groupItems(results, group, f.type) }
+  }, [items, allItems, f, rows])
 
   if (isLoading) return <PageSkeleton />
   // Only what's on screen counts (a filter change can hide something you'd picked).
@@ -149,6 +158,30 @@ export function Library() {
   return (
     <div>
       <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`}>
+        <div role="radiogroup" aria-label="Show as" className="flex rounded-md border border-line p-0.5 text-xs">
+          {[
+            { on: false, label: 'Covers', icon: LayoutGrid },
+            { on: true, label: 'Progress', icon: Rows3 },
+          ].map((v) => (
+            <button
+              key={v.label}
+              type="button"
+              role="radio"
+              aria-checked={rows === v.on}
+              onClick={() => {
+                if (v.on && selecting) stopSelecting()
+                setView(v.on ? 'rows' : 'covers')
+              }}
+              className={clsx(
+                'hit flex h-8 items-center gap-1.5 rounded px-2.5',
+                rows === v.on ? 'bg-raised font-medium text-fg' : 'text-muted hover:text-fg',
+              )}
+            >
+              <v.icon className="size-3.5" />
+              {v.label}
+            </button>
+          ))}
+        </div>
         {/* Only once something differs from the defaults (choosing a type alone doesn't count). */}
         {!isSample && !editing && (activeCount(f) > 0 || f.sort !== DEFAULT_SORT) && (
           <button
@@ -160,7 +193,8 @@ export function Library() {
             <Sparkles className="size-3.5" /> Save as smart collection
           </button>
         )}
-        {!isSample && results.length > 0 && (
+        {/* Selecting works on covers; the Progress view has no checkboxes. */}
+        {!isSample && !rows && results.length > 0 && (
           <button
             type="button"
             onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
@@ -265,6 +299,21 @@ export function Library() {
             Clear filters
           </button>
         </p>
+      ) : rows ? (
+        <div className="max-w-5xl space-y-8">
+          {/* What you're in the middle of leads; then what's next to start; finished last. */}
+          {(f.group === 'none' ? [...groups].sort((x, y) => ROW_ORDER.indexOf(x.key) - ROW_ORDER.indexOf(y.key)) : groups).map((g) => (
+            <section key={g.key} className="space-y-2">
+              {g.label && (
+                <h2 className="flex items-baseline gap-3 text-base font-semibold tracking-tight text-fg">
+                  {g.label}
+                  <span className="font-mono text-xs font-normal text-faint">{g.items.length}</span>
+                </h2>
+              )}
+              <ProgressRows items={g.items} />
+            </section>
+          ))}
+        </div>
       ) : f.group === 'none' ? (
         <div className={grid}>
           {results.map((item) => (

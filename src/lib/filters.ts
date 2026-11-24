@@ -21,7 +21,8 @@ export type AddedFilter = '7d' | '30d' | '90d' | '365d'
 export type TvStatusFilter = 'airing' | 'returning' | 'ended'
 export type TvProgressFilter = 'not_started' | 'midway' | 'caught_up'
 export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'played' | 'price' | 'discount' | 'length'
-export type CoopFilter = 'online' | 'local' | 'split' | 'pvp'
+/** How a game is played: alone, with others at all, together against the game (co-op), on one screen, or against each other. */
+export type CoopFilter = 'single' | 'multi' | 'coop' | 'local' | 'pvp'
 export type DeckFilter = 'verified' | 'playable' | 'unsupported'
 export type AccessFilter = 'early_access' | 'full_release'
 export type DealFilter = 'on_sale' | 'historical_low' | 'free'
@@ -90,7 +91,7 @@ const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
 export const DEFAULT_SORT: SortKey = 'added'
 const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'played', 'price', 'discount', 'length']
 const LENGTH: LengthFilter[] = ['short', 'medium', 'long', 'epic']
-const COOP: CoopFilter[] = ['online', 'local', 'split', 'pvp']
+const COOP: CoopFilter[] = ['single', 'multi', 'coop', 'local', 'pvp']
 const DECK: DeckFilter[] = ['verified', 'playable', 'unsupported']
 const ACCESS: AccessFilter[] = ['early_access', 'full_release']
 const DEAL: DealFilter[] = ['on_sale', 'historical_low', 'free']
@@ -133,7 +134,9 @@ export function parseFilters(p: URLSearchParams): Filters {
   const status = negList(p.get('status'), STATUS)
   const rating = negList(p.get('rating'), RATING)
   const genre = hasGenres ? negList(p.get('genre'), null) : { values: [], neg: false }
-  const coop = isGame ? negList(p.get('coop'), COOP) : { values: [], neg: false }
+  // Older links: "online" co-op is now plain Co-op, and Split-screen sits under Local co-op.
+  const coopParam = p.get('coop')?.replace(/\bonline\b/g, 'coop').replace(/\bsplit\b/g, 'local') ?? null
+  const coop = isGame ? negList(coopParam, COOP) : { values: [], neg: false }
   const neg: Filters['neg'] = {}
   if (status.neg) neg.status = true
   if (rating.neg) neg.rating = true
@@ -281,6 +284,18 @@ export function isAvailable(item: UserItem): boolean | null {
   return item.available ?? null
 }
 
+/** The ways a game can be played, from what IGDB and Steam say about it. */
+export function playModes(item: UserItem): Set<CoopFilter> {
+  const mp = (item.title.details?.multiplayer ?? {}) as Record<string, unknown>
+  const m = new Set<CoopFilter>()
+  if (mp.single_player) m.add('single')
+  if (mp.online_coop || mp.local_coop) m.add('coop')
+  if (mp.local_coop || mp.split_screen) m.add('local')
+  if (mp.pvp) m.add('pvp')
+  if (m.has('coop') || m.has('local') || m.has('pvp') || (typeof mp.online_max === 'number' && mp.online_max > 1)) m.add('multi')
+  return m
+}
+
 const ADDED_DAYS: Record<AddedFilter, number> = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 }
 
 // ─── Apply ─────────────────────────────────────────────────────────────────
@@ -332,16 +347,7 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
       if (!s || !f.tvStatus.includes(s)) return false
     }
     if (f.tvProgress.length && !f.tvProgress.includes(tvProgressOf(i))) return false
-    if (f.coop.length) {
-      const mp = (i.title.details?.multiplayer ?? {}) as Record<string, unknown>
-      const has: Record<CoopFilter, boolean> = {
-        online: !!mp.online_coop,
-        local: !!mp.local_coop,
-        split: !!mp.split_screen,
-        pvp: !!mp.pvp,
-      }
-      if (!keep('coop', f.coop.some((c) => has[c]))) return false
-    }
+    if (f.coop.length && !keep('coop', f.coop.some((c) => playModes(i).has(c)))) return false
     if (f.deck.length && !f.deck.includes(i.title.details?.steam_deck as DeckFilter)) return false
     if (f.access.length) {
       const ea = i.title.details?.early_access === true
@@ -496,7 +502,7 @@ export const LABELS = {
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
   sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length' } as Record<SortKey, string>,
-  coop: { online: 'Online co-op', local: 'Local co-op', split: 'Split-screen', pvp: 'PvP' } as Record<CoopFilter, string>,
+  coop: { single: 'Single player', multi: 'Multiplayer', coop: 'Co-op', local: 'Local co-op', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,
   deal: { on_sale: 'On sale', historical_low: 'Historical low', free: 'Free-To-Play' } as Record<DealFilter, string>,

@@ -421,6 +421,42 @@ details[open]::details-content {
 }
 
 /*
+ * Fixed chrome (top bar, toolbar, Filters panel, phone tab bar) gets its own layer in every transition. The moving
+ * cards are drawn in a layer above the page, so without this they'd pass over the Filters panel and the bars while
+ * they glide. As their own layers, painted after the cards, these stay on top, and they swap without animating.
+ */
+.vt-chrome-top {
+  view-transition-name: chrome-top;
+}
+.vt-chrome-toolbar {
+  view-transition-name: chrome-toolbar;
+}
+.vt-chrome-filters {
+  view-transition-name: chrome-filters;
+}
+.vt-chrome-tabs {
+  view-transition-name: chrome-tabs;
+}
+::view-transition-group(chrome-top),
+::view-transition-group(chrome-toolbar),
+::view-transition-group(chrome-filters),
+::view-transition-group(chrome-tabs) {
+  animation: none;
+}
+::view-transition-old(chrome-top),
+::view-transition-old(chrome-toolbar),
+::view-transition-old(chrome-filters),
+::view-transition-old(chrome-tabs) {
+  display: none;
+}
+::view-transition-new(chrome-top),
+::view-transition-new(chrome-toolbar),
+::view-transition-new(chrome-filters),
+::view-transition-new(chrome-tabs) {
+  animation: none;
+}
+
+/*
  * The rest of the page swaps instantly rather than cross-fading as one big snapshot. The old page's picture is
  * hidden outright (not just left un-animated): otherwise, wherever the new page's picture lets it through, the
  * old page stays visible under the arriving one (Home's rows showing around the Library's posters). The overlay

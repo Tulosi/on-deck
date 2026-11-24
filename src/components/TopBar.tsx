@@ -20,7 +20,7 @@ export function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur md:px-6">
+    <header className="vt-chrome-top sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur md:px-6">
       <Link to="/" className="hit md:hidden" aria-label="On Deck home">
         <Logo />
       </Link>

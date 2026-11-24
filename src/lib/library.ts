@@ -139,6 +139,7 @@ function toUserItem(row: ItemRow): UserItem {
             ? ((t.metadata.authors as string[])[0] ?? undefined)
             : undefined,
       details: t.metadata,
+      steamAppId: Number(t.external_ids?.steam_appid) || undefined,
       ratings: {
         imdb: t.ratings.imdb ?? undefined,
         rottenTomatoes: t.ratings.rotten_tomatoes ?? undefined,

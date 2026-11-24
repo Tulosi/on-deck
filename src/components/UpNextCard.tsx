@@ -94,7 +94,7 @@ export function UpNext({ items }: { items: UserItem[] }) {
           <li
             key={item.id}
             aria-label={`${i + 1} of ${items.length}`}
-            className="w-full flex-none snap-start @[40rem]/up:w-[calc((100%-1rem)/2)] @[60rem]/up:w-[calc((100%-2rem)/3)]"
+            className="w-full flex-none snap-start snap-always @[40rem]/up:w-[calc((100%-1rem)/2)] @[60rem]/up:w-[calc((100%-2rem)/3)]"
           >
             <UpNextCard item={item} />
           </li>
@@ -166,11 +166,13 @@ function UpNextCard({ item }: { item: UserItem }) {
       <Facts item={item} />
       {user && (item.title.mediaType === 'tv' || item.title.mediaType === 'movie') && item.plex === 'available' ? (
         <ActionsWithPlex item={item} />
+      ) : item.title.mediaType === 'game' && item.title.steamAppId ? (
+        <Actions item={item} open={steamLink(item.title.steamAppId)} />
       ) : (
         <Actions item={item} />
       )}
-  </div>
-)
+    </div>
+  )
 }
 
 const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -211,26 +213,36 @@ function Facts({ item }: { item: UserItem }) {
 function ActionsWithPlex({ item }: { item: UserItem }) {
   const seerr = useSeerrStatus(item.title)
   const plexUrl = seerr.data?.configured ? (seerr.data.plexUrl ?? undefined) : undefined
-  return <Actions item={item} plexUrl={plexUrl} />
+  return <Actions item={item} open={plexUrl ? { label: 'Open in Plex', href: plexUrl } : undefined} />
+}
+
+/**
+ * A Steam game's page. With a mouse (a computer, where the Steam app is usually installed) it opens the game in
+ * your Steam library, with its Play button; on touch screens, the store page in the browser or the Steam app.
+ */
+function steamLink(appId: number) {
+  const desktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  return { label: 'Open in Steam', href: desktop ? `steam://nav/games/details/${appId}` : `https://store.steampowered.com/app/${appId}` }
 }
 
 const primary = 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
 const secondary = 'grid h-11 place-items-center rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
 
 /**
- * One bold action: Mark watched when that's yours to do, else Open in Plex when it's there, else open the
- * title. A quieter second button covers the next most likely step.
+ * One bold action: Mark watched when that's yours to do, else open it where you play or watch it (Plex,
+ * Steam), else open the title. A quieter second button covers the next most likely step.
  */
-function Actions({ item, plexUrl }: { item: UserItem; plexUrl?: string }) {
+function Actions({ item, open }: { item: UserItem; open?: { label: string; href: string } }) {
   const { user } = useAuth()
   const update = useUpdateItem()
   const { title } = item
   const ep = user ? upNext(item).watchable : null
-  const plexLink = (cls: string) => (
-    <a href={plexUrl} target="_blank" rel="noreferrer" className={cls}>
-      Open in Plex
-    </a>
-  )
+  const openLink = (cls: string) =>
+    open && (
+      <a href={open.href} target={open.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className={cls}>
+        {open.label}
+      </a>
+    )
   const details = (cls: string, label: string) => (
     <Link to={`/title/${title.id}`} className={cls}>
       {label}
@@ -249,11 +261,11 @@ function Actions({ item, plexUrl }: { item: UserItem; plexUrl?: string }) {
           >
             Mark {episodeCode(ep)} watched
           </button>
-          {plexUrl ? plexLink(secondary) : details(secondary, 'Details')}
+          {open ? openLink(secondary) : details(secondary, 'Details')}
         </>
-      ) : plexUrl ? (
+      ) : open ? (
         <>
-          {plexLink(primary)}
+          {openLink(primary)}
           {details(secondary, 'Details')}
         </>
       ) : (

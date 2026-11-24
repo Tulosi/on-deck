@@ -26,6 +26,8 @@ export interface Title {
   sourceKey?: string
   /** Type-specific extras from the source (runtime, seasons, networks …). */
   details?: Record<string, unknown>
+  /** Games on Steam: the store app id (for Open in Steam). */
+  steamAppId?: number
   /** All known review scores (the poster shows only `score`). */
   ratings?: {
     imdb?: string

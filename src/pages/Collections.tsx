@@ -214,11 +214,14 @@ export function Collections() {
             return (
               <Link key={c.id} to={`/collections/${c.id}`} className="group block">
                 <Collage items={list} />
-                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-fg">
-                  <span className="truncate">{c.name}</span>
-                  {c.rules != null && <SmartBadge />}
-                  {c.builtin && <DefaultBadge />}
-                </p>
+                {/* The name gets the whole line; its tags sit under it, so it's never cut to "Waitl…". */}
+                <p className="mt-2 truncate text-sm font-medium text-fg">{c.name}</p>
+                {(c.rules != null || c.builtin) && (
+                  <div className="mt-1 mb-0.5 flex flex-wrap items-center gap-1.5">
+                    {c.rules != null && <SmartBadge />}
+                    {c.builtin && <DefaultBadge />}
+                  </div>
+                )}
                 {c.description && <p className="line-clamp-2 text-xs text-muted">{c.description}</p>}
                 <p className="text-xs text-faint tabular-nums">
                   {list.length} title{list.length === 1 ? '' : 's'}

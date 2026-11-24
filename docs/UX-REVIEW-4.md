@@ -82,11 +82,11 @@ Nothing here has been built.
 - #5: the sign-in page has one logo, and a "Back to the sample library" link.
 - #6: no top-bar search on the Search page on phones.
 - #7: a sample Early Access game, Saltmarsh Keepers.
+- #3: collection names get the whole line, with the Smart and Default tags under them.
+- #4: Up next book cards say where you are ("Reading"), the length and author, and "In your library" when you own it.
 
 ---
 
 ## 4. Suggested order
 
-1. **#3, collection names:** pick chips on their own line or Default dropped.
-2. **#4, Up next card heights:** needs a look at what books should show.
-3. **The signed-in check:** Not now on two devices, and the title page's right column.
+1. **The signed-in check:** Not now on two devices, and the title page's right column.

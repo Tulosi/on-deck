@@ -11,6 +11,7 @@ import { useUpdateItem } from '../lib/library'
 import { useAuth } from '../lib/auth'
 import { useSeerrStatus } from '../lib/integrations'
 import { markWatched } from '../lib/markWatched'
+import { statusLabel } from '../lib/statusLabels'
 import type { MediaType } from '../types'
 
 const NOUN: Record<MediaType, string> = { movie: 'movie', tv: 'show', game: 'game', book: 'book' }
@@ -223,11 +224,26 @@ export function UpNext({ items }: { items: UserItem[] }) {
   )
 }
 
+/**
+ * Books have no next step to count (no page tracking), so their card says where you are in words and what there is
+ * to know: length, author, and whether you own it. Keeps a book card from being a cover and the word "Book".
+ */
+function bookFacts(item: UserItem) {
+  const d = (item.title.details ?? {}) as Record<string, unknown>
+  const pages = typeof d.pages === 'number' && d.pages > 0 ? `${d.pages} pages` : undefined
+  return {
+    where: item.progress === 'in_progress' ? 'Reading' : statusLabel(item.progress, 'book'),
+    about: [pages, item.title.byline].filter(Boolean).join(', ') || undefined,
+    owned: item.owned,
+  }
+}
+
 /** One card: cover, the next step set large, plain facts and the actions. */
 function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
   const { user } = useAuth()
   const { title } = item
   const next = upNext(item)
+  const book = title.mediaType === 'book' && !next.value ? bookFacts(item) : null
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
@@ -246,6 +262,12 @@ function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
             <p className="font-mono text-3xl leading-tight font-medium tracking-tight text-fg">
               <RollingText text={next.value} />
             </p>
+          ) : book ? (
+            <>
+              <p className="text-3xl leading-tight font-semibold tracking-tight text-fg">{book.where}</p>
+              {book.about && <p className="text-sm text-muted">{book.about}</p>}
+              {book.owned && <p className="text-sm text-good">In your library</p>}
+            </>
           ) : (
             <p className="text-sm text-muted">{KIND[title.mediaType]}</p>
           )}

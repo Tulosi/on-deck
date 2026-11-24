@@ -192,7 +192,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={releaseLong(release)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold text-accent',
+                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-accent',
                       vis('release'),
                     )}
                   >
@@ -206,13 +206,21 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={tvScheduleLong(schedule)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold',
-                      schedule.kind === 'airing' ? 'border-info/70 text-info' : 'border-accent/70 text-accent',
+                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap',
+                      // Fixed blue: the chip is always dark, so the light theme's deep blue would vanish on it.
+                      schedule.kind === 'airing' ? 'border-[#7fb8e8]/70 text-[#7fb8e8]' : 'border-accent/70 text-accent',
                       vis('release'),
                     )}
                   >
-                    {schedule.kind === 'airing' ? <Radio className="size-3" /> : <CalendarClock className="size-3" />}
-                    {tvScheduleChip(schedule)}
+                    {/* Narrow posters drop the icon so the words fit; the chip's colour still says which kind it is. */}
+                    {schedule.kind === 'airing' ? (
+                      <Radio className="hidden size-3 @[8.5rem]/poster:block" />
+                    ) : (
+                      <CalendarClock className="hidden size-3 @[8.5rem]/poster:block" />
+                    )}
+                    {/* One line always: the short form on narrow posters, the full one when there's room. */}
+                    <span className="@[8.5rem]/poster:hidden">{tvScheduleChip(schedule, true)}</span>
+                    <span className="hidden @[8.5rem]/poster:inline">{tvScheduleChip(schedule)}</span>
                   </span>
                 )}
 

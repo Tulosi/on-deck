@@ -109,16 +109,22 @@ const weekday = (iso: string, style: 'short' | 'long' = 'short') =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: style })
 
 /** Poster chip: "NEW EP TODAY", "NEXT EP WED", "NEXT EP DEC 3"; "S3 IN 12 DAYS", "S3 · MAR 14". */
-export function tvScheduleChip(s: TvSchedule): string {
+/**
+ * Poster chip text. `short` fits one line on a narrow poster (3 across on a phone): "S6 in 15d", "S1 today".
+ * The long form is for wider posters: "Season 6 in 15 days".
+ */
+export function tvScheduleChip(s: TvSchedule, short = false): string {
   if (s.kind === 'airing') {
-    if (s.daysUntil === 0) return 'New episode today'
+    if (s.daysUntil === 0) return short ? 'New ep today' : 'New episode today'
     if (s.daysUntil < 7) return `Next ep ${weekday(s.date)}`
     return `Next ep ${monthDay(s.date)}`
   }
-  if (s.daysUntil === 0) return `Season ${s.season} today`
-  if (s.daysUntil <= 30) return `Season ${s.season} in ${s.daysUntil} days`
+  const season = short ? `S${s.season}` : `Season ${s.season}`
+  if (s.daysUntil === 0) return `${season} today`
+  if (s.daysUntil <= 30) return short ? `${season} in ${s.daysUntil}d` : `${season} in ${s.daysUntil} days`
   const sameYear = s.date.slice(0, 4) === todayIso().slice(0, 4)
-  return `Season ${s.season}, ${sameYear ? monthDay(s.date) : `${monthDay(s.date)} '${s.date.slice(2, 4)}`}`
+  const when = sameYear ? monthDay(s.date) : `${monthDay(s.date)} '${s.date.slice(2, 4)}`
+  return short ? `${season} ${when}` : `${season}, ${when}`
 }
 
 /** Title-page badge text (after the "Airing" / "New season" label). */

@@ -1,8 +1,8 @@
-// Poster chip display mode — one global setting, chosen from the toolbar's Display control:
-//   "show" (default) · "hover" (revealed on hover / keyboard focus) · "hide".
+// Poster chip display mode, one global setting, switched by the toolbar's Labels button: "show" (default) or
+// "hide". "hover" (revealed on hover / keyboard focus) is from the old three-way switch; still honoured if saved.
 // Saved to the profile when signed in (profiles.card_chips = { "all": mode }) so it follows the user across
 // devices; remembered in this browser when signed out.
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useAuth } from './auth'
 import { useProfile, useUpdateProfile } from './integrations'
 
@@ -20,11 +20,28 @@ function readLocal(): ChipMode {
   }
 }
 
+// Signed out: a tiny store over localStorage, so every poster updates the moment the setting changes
+// (reading localStorage once per render left already-drawn posters on the old setting until a reload).
+const listeners = new Set<() => void>()
+const subscribe = (fn: () => void) => {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+function writeLocal(mode: ChipMode) {
+  try {
+    localStorage.setItem(STORAGE_KEY, mode)
+  } catch {
+    // storage unavailable — the choice just won't persist
+  }
+  listeners.forEach((fn) => fn())
+}
+
 /** Current chip mode (read-only), for posters. */
 export function useChipMode(): ChipMode {
   const { user } = useAuth()
   const profile = useProfile()
-  if (!user) return readLocal()
+  const local = useSyncExternalStore(subscribe, readLocal, readLocal)
+  if (!user) return local
   const saved = (profile.data?.card_chips as Record<string, unknown> | undefined)?.all
   return isMode(saved) ? saved : 'show'
 }
@@ -39,12 +56,7 @@ export function useChipModeControl(): [ChipMode, (mode: ChipMode) => void] {
 
   const set = (next: ChipMode) => {
     if (!user) {
-      try {
-        localStorage.setItem(STORAGE_KEY, next)
-      } catch {
-        // storage unavailable — the choice just won't persist
-      }
-      setPending(next)
+      writeLocal(next)
       return
     }
     setPending(next) // instant feedback; cleared once the profile reloads with it

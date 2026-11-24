@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Check, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
-import { useChipModeControl, type ChipMode } from '../lib/chips'
+import { Check, ChevronRight, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
+import { useChipModeControl } from '../lib/chips'
 import {
   LABELS,
   activeCount,
@@ -20,74 +20,30 @@ import { useFilters } from '../lib/useFilters'
 import { TypeFilter } from './TypeFilter'
 import type { MediaType } from '../types'
 
-// ─── Poster labels switch ──────────────────────────────────────────────────
-
-const MODES: { value: ChipMode; readout: string }[] = [
-  { value: 'show', readout: 'Labels shown' },
-  { value: 'hover', readout: 'Labels on hover' },
-  { value: 'hide', readout: 'Labels hidden' },
-]
+// ─── Poster labels button ──────────────────────────────────────────────────
 
 /**
- * Compact 3-position switch: a pill with a round knob that slides between three slots.
- * Click a slot to jump to it; click the knob's own slot (or press Space/Enter on the switch) to cycle.
- * Arrow keys move left/right. The readout to the right says what the current position does.
+ * One on/off button for the chips on posters (scores, Plex, prices, dates). A saved "on hover" setting from
+ * the old three-way switch still works and counts as on; this button only switches between shown and hidden.
  */
-function LabelsToggle() {
+function LabelsButton() {
   const [mode, setMode] = useChipModeControl()
-  const index = Math.max(0, MODES.findIndex((m) => m.value === mode))
-  const go = (i: number) => setMode(MODES[(i + MODES.length) % MODES.length].value)
-
+  const on = mode !== 'hide'
   return (
-    <div className="flex items-center gap-2.5">
-      <div
-        role="slider"
-        tabIndex={0}
-        aria-label="Poster labels"
-        aria-valuemin={0}
-        aria-valuemax={MODES.length - 1}
-        aria-valuenow={index}
-        aria-valuetext={MODES[index].readout}
-        // Touch: the tap area around the small switch (see .hit) lands on the switch itself → next position.
-        onClick={(e) => e.target === e.currentTarget && go(index + 1)}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowRight') go(Math.min(index + 1, MODES.length - 1))
-          else if (e.key === 'ArrowLeft') go(Math.max(index - 1, 0))
-          else if (e.key === ' ' || e.key === 'Enter') go(index + 1)
-          else return
-          e.preventDefault()
-        }}
-        className="hit relative flex h-5 w-[3.25rem] shrink-0 cursor-pointer items-center rounded-full border border-line bg-surface outline-none focus-visible:border-accent"
-      >
-        {MODES.map((m, i) => (
-          <button
-            key={m.value}
-            type="button"
-            tabIndex={-1}
-            aria-hidden="true"
-            title={m.readout}
-            onClick={() => go(i === index ? index + 1 : i)}
-            className="relative z-10 h-full flex-1"
-          />
-        ))}
-        <span className="pointer-events-none absolute inset-x-[0.4375rem] flex justify-between">
-          {MODES.map((m) => (
-            <span key={m.value} className="size-1 rounded-full bg-faint/60" />
-          ))}
-        </span>
-        <span
-          aria-hidden="true"
-          className={clsx(
-            'pointer-events-none absolute top-1/2 left-0.5 size-3.5 rounded-full shadow transition-[transform,background-color] duration-200 ease-out will-change-transform',
-            mode === 'hide' ? 'bg-faint' : 'bg-accent-ink',
-          )}
-          // Slides with transform (smooth) rather than `left`. Each step = (inner track 50px − knob 14px − 2 × 2px inset) / 2 = 1rem.
-          style={{ transform: `translate(${index}rem, -50%)` }}
-        />
-      </div>
-      {/* Fixed width, so the switch doesn't shift when the text changes. */}
-      <span className="hidden w-[6.5rem] text-xs whitespace-nowrap text-muted lg:inline">{MODES[index].readout}</span>
-    </div>
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label="Poster labels"
+      title={on ? 'Hide poster labels' : 'Show poster labels'}
+      onClick={() => setMode(on ? 'hide' : 'show')}
+      className={clsx(
+        'hit flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
+        on ? 'border-line bg-raised text-fg' : 'border-line text-muted hover:text-fg',
+      )}
+    >
+      {on ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
+      <span className="hidden sm:inline">{on ? 'Labels on' : 'Labels off'}</span>
+    </button>
   )
 }
 
@@ -547,7 +503,7 @@ export function Toolbar() {
           </>
         )}
       </div>
-      <LabelsToggle />
+      <LabelsButton />
     </div>
   )
 }

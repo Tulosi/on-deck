@@ -62,7 +62,7 @@ Unsupported) · HowLongToBeat length · themes · perspective · Early Access ·
 
 ## 4. UI
 ```
-[ All · Movies · TV · Games · Books ]  [ ⚙ Filters (3) ]  [ Sort: Priority ▾ ]  [ Group: none ▾ ]   ( ●○○ ) Labels shown
+[ All · Movies · TV · Games · Books ]  [ ⚙ Filters (3) ]  [ Sort: Priority ▾ ]  [ Group: none ▾ ]   [ 🏷 Labels on ]
   active: [Status: Wanted ×] [Co-op ×] [Steam ≥ 85% ×]                                                   Clear all · Save view
 ```
 - **Toolbar row** (already in place), left to right: type pills · **Filters** button (active-count badge) ·

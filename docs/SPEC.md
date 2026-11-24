@@ -544,10 +544,10 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 ### Toolbar & poster labels
 Browsing pages (Home, Movies, TV, Games, Books, Collections) have a toolbar row under the search bar. It holds
 view options now; filtering and sorting will move there too.
-- **Poster labels** (the badges on posters: score, status, rating, price, Plex, release …): a compact 3-position
-  switch, a pill with a sliding round knob, with a readout to its right: **Labels shown** (default) ·
-  **Labels on hover** (revealed on hover or keyboard focus) · **Labels hidden**.
-- Click a position to jump to it, or the current one to cycle. Arrow keys work too.
+- **Poster labels** (the badges on posters: score, status, rating, price, Plex, release …): one on/off button
+  with a tag icon (crossed-out tag when off; "Labels on" / "Labels off" beside it on wider screens). Default on.
+  (Replaced the old three-way switch on 2026-11-23. A saved "on hover" mode still works and counts as on; the
+  button only switches between shown and hidden.)
 - Saved to the profile (`profiles.card_chips = {"all": mode}`) when signed in, or kept in the browser when
   signed out.
 

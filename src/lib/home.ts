@@ -2,11 +2,10 @@
 // computed from data the app already has. "New for you", stored availability and Deals come later.
 import { hoursToBeat, isAvailable } from './filters'
 import { cheapest } from './prices'
-import { episodeCode, releaseInfo, tvSchedule } from './release'
-import { overrideOf, seasonsOf, watchedIn } from './seasons'
+import { episodeCode, releaseInfo, todayIso, tvSchedule } from './release'
+import { firstUnaired, nextIsStale, overrideOf, seasonsOf, watchedIn } from './seasons'
 import type { UserItem } from '../types'
 
-const todayIso = () => new Date().toISOString().slice(0, 10)
 const weekday = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
 const monthDay = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -29,21 +28,21 @@ function nextEpisode(item: UserItem): { season: number; episode: number } | null
 }
 
 /**
- * Has this episode aired? It's out if it comes before TMDB's next announced episode; it's the announced one →
- * its air date; after it → not out. With no announced episode, everything listed has aired.
+ * Has this episode aired? Out if it comes before the first episode not known to have aired (firstUnaired, which
+ * corrects TMDB's lag on premiere days). The announced next episode: its air date. Past that: not out, and
+ * `unknown` when TMDB's "next" is itself out of date, so nothing claims a date is "not announced" that may be.
  */
-function airState(item: UserItem, ep: { season: number; episode: number }): { out: boolean; date?: string } {
+function airState(item: UserItem, ep: { season: number; episode: number }): { out: boolean; date?: string; unknown?: boolean } {
+  const first = firstUnaired(item)
+  if (!first) return { out: true }
+  if (ep.season < first.season || (ep.season === first.season && ep.episode < first.episode)) return { out: true }
   const next = item.title.details?.next_episode_to_air as
     | { season_number?: number; episode_number?: number; air_date?: string }
     | null
     | undefined
-  if (!next?.season_number || !next.episode_number) return { out: true }
-  const before =
-    ep.season < next.season_number || (ep.season === next.season_number && ep.episode < next.episode_number)
-  if (before) return { out: true }
-  const isNext = ep.season === next.season_number && ep.episode === next.episode_number
-  if (isNext && next.air_date && next.air_date <= todayIso()) return { out: true }
-  return { out: false, date: isNext ? next.air_date : undefined }
+  const isNext = ep.season === next?.season_number && ep.episode === next.episode_number
+  if (isNext && next?.air_date && next.air_date <= todayIso()) return { out: true }
+  return { out: false, date: isNext ? next?.air_date : undefined, unknown: nextIsStale(item) }
 }
 
 /**
@@ -178,7 +177,13 @@ export function upNext(item: UserItem): UpNext {
   const ep = nextEpisode(item)
   if (!ep) return { note: 'Caught up' }
   const state = airState(item, ep)
-  const note = state.out ? 'Out now' : state.date ? `Out ${weekday(state.date)}, ${monthDay(state.date)}` : 'Not announced yet'
+  const note = state.out
+    ? 'Out now'
+    : state.date
+      ? `Out ${weekday(state.date)}, ${monthDay(state.date)}`
+      : state.unknown
+        ? undefined
+        : 'Not announced yet'
   const s = seasons.find((x) => x.season_number === ep.season)
   const done = s ? watchedIn(item, s, s.episode_count) : 0
   return {

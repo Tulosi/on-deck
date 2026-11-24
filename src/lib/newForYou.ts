@@ -158,9 +158,23 @@ export function newForYou(items: UserItem[], notifications: Notification[], sinc
 }
 
 /** Hook for Home: entries for the given (type-filtered) items. */
-export function useNewForYou(items: UserItem[]) {
+export function useNewForYou(items: UserItem[], sample = false) {
   const { since, clear } = useNewSince()
   const { data: notifications = [] } = useNotifications()
-  const entries = since ? newForYou(items, notifications, since) : []
+  // The sample library has no notifications, so it shows a fixed pair until Clear (signed out, Clear sets `since`).
+  const entries = sample ? (since ? [] : sampleNewForYou(items)) : since ? newForYou(items, notifications, since) : []
   return { entries, clear, since }
+}
+
+/** Two believable "new for you" reasons from the sample titles, so the sandbox shows the row. */
+const SAMPLE_NEW: [title: string, label: string, rank: number][] = [
+  ['Saltmarsh Keepers', 'Early Access is out', RANK.released],
+  ['Low Orbit', 'New season dated', RANK.announced],
+]
+function sampleNewForYou(items: UserItem[]): NewEntry[] {
+  const at = new Date().toISOString()
+  return SAMPLE_NEW.flatMap(([t, label, rank]) => {
+    const item = items.find((i) => i.title.title === t)
+    return item ? [{ item, label, rank, at }] : []
+  })
 }

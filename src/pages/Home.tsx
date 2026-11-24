@@ -30,7 +30,7 @@ export function Home() {
   const [filters] = useFilters()
   const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
   const typeParam = filters.type ? `&type=${filters.type}` : ''
-  const fresh = useNewForYou(isSample ? [] : items)
+  const fresh = useNewForYou(items, isSample)
   // Pick it back up? Each title can be put away for a month (Not now).
   const notNow = useSnoozed('stalled', 30)
   // The New for you / Pick it back up? pair: rows slide over when one of them empties.

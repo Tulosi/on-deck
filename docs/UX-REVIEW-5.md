@@ -66,13 +66,15 @@ A re-run of [UX-REVIEW-4.md](UX-REVIEW-4.md) after all of its items shipped, plu
 | 1 | P2 | **Price chips run past phone posters.** In the phone Library grid, Outer Wilds' "-60% · $9.99 · Low" chip is wider than the poster, so "Low" is cut to "Lov". | On narrow posters, show "Low" as a small green dot (with "historical low" as its label), or let the chip drop the % off when space is short. | XS |
 | 2 | P3 | **The sample library never shows New for you**, so signed-out visitors can't see the row or the new pairing. | Give the sample two "new for you" entries (a season premiere and a game that just hit its low), in sample mode only. | S |
 
+**Fixed the same day:**
+- #1: on narrow posters "Low" is a small dot, so the tag stays inside the poster. Screen readers still hear "Historical low".
+- #2: the sample shows New for you (Saltmarsh Keepers, Early Access is out; Low Orbit, New season dated) until Clear.
+
 ---
 
 ## 4. Suggested order
 
-1. **#1 price chips:** a quick fix with no design decision.
-2. **#2 sample New for you:** makes the sandbox show the newest layout.
-3. **The signed-in check, still outstanding:**
+1. **The signed-in check, still outstanding:**
    - the paired rows on a wide window
    - Not now on two devices
    - the title page's right column

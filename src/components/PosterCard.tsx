@@ -177,7 +177,7 @@ export const PosterCard = memo(function PosterCard({
           <>
             {/* Soft gradient behind bottom chips, for readability (follows the labels setting). */}
             <div className={clsx('pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent', vis('release'))} />
-            <div className="absolute inset-x-1.5 bottom-1.5 flex flex-wrap-reverse items-end justify-between gap-1">
+            <div className="@container/chips absolute inset-x-1.5 bottom-1.5 flex flex-wrap-reverse items-end justify-between gap-1">
               <div className="flex min-w-0 flex-col items-start gap-1">
         {/* Price — games the user doesn't own yet */}
                 {showPrice && !release.preRelease && (
@@ -196,7 +196,14 @@ export const PosterCard = memo(function PosterCard({
                           <span className="bg-accent px-1.5 py-0.5 text-accent-fg">-{item.price!.discountPct}%</span>
                         ) : null}
                         <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
-                        {item.price!.atLow && <span className="bg-good px-1 py-0.5 font-sans text-accent-fg">Low</span>}
+                        {/* Narrow posters (phone grids): "Low" becomes a dot so the tag stays inside the poster. */}
+                        {item.price!.atLow && (
+                          <span className="flex items-center bg-good px-1 py-0.5 font-sans text-accent-fg">
+                            <span aria-hidden="true" className="hidden @[7rem]/chips:inline">Low</span>
+                            <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-fg @[7rem]/chips:hidden" />
+                            <span className="sr-only">Historical low</span>
+                          </span>
+                        )}
                       </>
                     )}
                   </span>

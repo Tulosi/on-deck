@@ -158,30 +158,6 @@ export function Library() {
   return (
     <div>
       <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`}>
-        <div role="radiogroup" aria-label="Show as" className="flex rounded-md border border-line p-0.5 text-xs">
-          {[
-            { on: false, label: 'Covers', icon: LayoutGrid },
-            { on: true, label: 'Progress', icon: Rows3 },
-          ].map((v) => (
-            <button
-              key={v.label}
-              type="button"
-              role="radio"
-              aria-checked={rows === v.on}
-              onClick={() => {
-                if (v.on && selecting) stopSelecting()
-                setView(v.on ? 'rows' : 'covers')
-              }}
-              className={clsx(
-                'hit flex h-8 items-center gap-1.5 rounded px-2.5',
-                rows === v.on ? 'bg-raised font-medium text-fg' : 'text-muted hover:text-fg',
-              )}
-            >
-              <v.icon className="size-3.5" />
-              {v.label}
-            </button>
-          ))}
-        </div>
         {/* Only once something differs from the defaults (choosing a type alone doesn't count). */}
         {!isSample && !editing && (activeCount(f) > 0 || f.sort !== DEFAULT_SORT) && (
           <button
@@ -214,6 +190,31 @@ export function Library() {
         >
           <Layers className="size-3.5" /> Collections
         </Link>
+        {/* Last, so it keeps its place at the right edge whichever buttons are showing. */}
+        <div role="radiogroup" aria-label="Show as" className="flex rounded-md border border-line p-0.5 text-xs">
+          {[
+            { on: false, label: 'Covers', icon: LayoutGrid },
+            { on: true, label: 'Progress', icon: Rows3 },
+          ].map((v) => (
+            <button
+              key={v.label}
+              type="button"
+              role="radio"
+              aria-checked={rows === v.on}
+              onClick={() => {
+                if (v.on && selecting) stopSelecting()
+                setView(v.on ? 'rows' : 'covers')
+              }}
+              className={clsx(
+                'hit flex h-8 items-center gap-1.5 rounded px-2.5',
+                rows === v.on ? 'bg-raised font-medium text-fg' : 'text-muted hover:text-fg',
+              )}
+            >
+              <v.icon className="size-3.5" />
+              {v.label}
+            </button>
+          ))}
+        </div>
       </PageHeader>
       {editing && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/60 bg-accent/5 px-4 py-3">

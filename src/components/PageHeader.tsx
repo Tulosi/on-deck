@@ -7,7 +7,8 @@ export function PageHeader({ title, meta, children }: { title: string; meta?: st
         <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
         {meta && <span className="text-sm text-faint tabular-nums">{meta}</span>}
       </div>
-      {children}
+      {/* One cluster on the right, so buttons don't spread across the row or shift when one comes and goes. */}
+      {children && <div className="flex flex-wrap items-center justify-end gap-2">{children}</div>}
     </div>
   )
 }

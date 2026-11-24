@@ -32,6 +32,9 @@ export function UpNext({ items }: { items: UserItem[] }) {
   const [edges, setEdges] = useState({ start: true, end: true })
   const drag = useRef<{ id: number; x: number; left: number; moved: boolean; from: number; samples: { t: number; x: number }[] } | null>(null)
   const swallowClick = useRef(false)
+  /** Cancels a pending "snapping back on" from the last release, so it can't fire during the next drag. */
+  const pendingRestore = useRef<(() => void) | null>(null)
+  useEffect(() => () => pendingRestore.current?.(), [])
 
   // Which card is first in view, and whether there's more to either side (for the dots and arrows).
   const measure = useCallback(() => {
@@ -89,6 +92,8 @@ export function UpNext({ items }: { items: UserItem[] }) {
       if (Math.abs(dx) < 5) return
       d.moved = true
       el.setPointerCapture(e.pointerId)
+      pendingRestore.current?.()
+      pendingRestore.current = null
       el.style.scrollSnapType = 'none'
       el.style.scrollBehavior = 'auto'
       el.dataset.dragging = ''
@@ -113,13 +118,23 @@ export function UpNext({ items }: { items: UserItem[] }) {
     let target = Math.round(el.scrollLeft / stride)
     if (Math.abs(v) > 0.3 && target === d.from) target = d.from + (v < 0 ? 1 : -1)
     scrollToCard(target)
-    // Snapping back on only once the glide has finished, or it would cut the glide short.
-    const restore = () => {
-      el.style.scrollSnapType = ''
-      el.style.scrollBehavior = ''
+    // Snapping back on once the glide has finished (or it would cut the glide short). A release that doesn't move
+    // the row has no glide and no scrollend, so a timer covers that (and browsers without scrollend). Never while
+    // a new drag is under way: that's what made some drags rigid, stepping only between cards.
+    const cancel = () => {
+      el.removeEventListener('scrollend', done)
+      clearTimeout(timer)
     }
-    if ('onscrollend' in el) el.addEventListener('scrollend', restore, { once: true })
-    else setTimeout(restore, 450)
+    function done() {
+      cancel()
+      if (pendingRestore.current === cancel) pendingRestore.current = null
+      if (drag.current?.moved) return
+      el!.style.scrollSnapType = ''
+      el!.style.scrollBehavior = ''
+    }
+    el.addEventListener('scrollend', done)
+    const timer = setTimeout(done, 700)
+    pendingRestore.current = cancel
   }
 
   const many = items.length > 1

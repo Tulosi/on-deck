@@ -34,15 +34,19 @@ function ago(iso: string | null | undefined): string {
   const mins = Math.round((Date.now() - Date.parse(iso)) / 60_000)
   if (mins < 1) return 'just now'
   if (mins < 60) return `${mins} min ago`
-  const h = Math.round(mins / 60)
-  if (h < 48) return `${h} h ago`
+  // Hours and minutes, not rounded hours: "6 h 32 min ago", so it can be read against a job's interval.
+  const h = Math.floor(mins / 60)
+  if (h < 48) return mins % 60 ? `${h} h ${mins % 60} min ago` : `${h} h ago`
   return `${Math.round(h / 24)} days ago`
 }
 
-const JOBS: { job: string; label: string; every: string }[] = [
-  { job: 'daily', label: 'Refresh & alerts', every: 'every 3 hours' },
-  { job: 'keyshop', label: 'Key-shop prices', every: 'every 6 hours' },
+const JOBS: { job: string; label: string; every: string; hours: number }[] = [
+  { job: 'daily', label: 'Refresh & alerts', every: 'every 3 hours', hours: 3 },
+  { job: 'keyshop', label: 'Key-shop prices', every: 'every 6 hours', hours: 6 },
 ]
+
+/** Overdue: no run for more than one and a half intervals (a run can take a few minutes, never that long). */
+const isLate = (iso: string, hours: number) => Date.now() - Date.parse(iso) > hours * 1.5 * 3_600_000
 
 /** Settings → Status: service checks, background job runs, and how fresh this user's data is. */
 export function StatusPanel() {
@@ -139,6 +143,7 @@ export function StatusPanel() {
               .map(([k, n]) => `${k}${n > 1 ? ` ×${n}` : ''}`)
               .join(', ')
             const limited = !!run?.summary?.rateLimited
+            const late = !!run && isLate(run.ran_at, j.hours)
             return (
               <li key={j.job} className="flex items-start gap-3 px-3 py-2.5">
                 {!run ? (
@@ -161,6 +166,7 @@ export function StatusPanel() {
                         ? 'No runs recorded yet'
                         : `Last run ${ago(run.ran_at)}, ${run.ok ? 'no problems' : limited ? 'rate limited' : 'had errors'}`}
                   </p>
+                  {late && <p className="mt-0.5 text-xs text-warn">Overdue: it should have run again by now.</p>}
                   {run && (errorText || typeof run.summary.error === 'string') && (
                     <p className="mt-0.5 font-mono text-[11px] break-words text-bad">{errorText || String(run.summary.error)}</p>
                   )}

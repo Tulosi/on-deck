@@ -3,9 +3,9 @@
 # added, every run skips with a notice (see docs/API-KEYS.md → "To do: key-shop prices").
 name: Key-shop prices
 
+# Started every 6 hours by Supabase's pg_cron through the GitHub API (workflow_dispatch; see
+# supabase/migrations/20261210000000_job_schedule.sql). GitHub's own `schedule` ran it hours late or not at all.
 on:
-  schedule:
-    - cron: '17 */6 * * *' # every 6 hours
   workflow_dispatch:
     inputs:
       test_app_ids:

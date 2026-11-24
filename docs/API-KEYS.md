@@ -30,7 +30,8 @@ npx supabase secrets set NAME=value
 ## Key-shop prices ✅ (set up 2026-11-23)
 
 Key-shop prices ("Cheaper on key shops") come from gg.deals. gg.deals doesn't answer Supabase's servers, so a
-scheduled GitHub job fetches them instead (`.github/workflows/keyshop-prices.yml`, every 6 hours) and saves them
+GitHub job fetches them instead (`.github/workflows/keyshop-prices.yml`, started every 6 hours by Supabase's
+pg_cron through the GitHub API, which needs the Vault secret `github_dispatch_token`) and saves them
 with a Supabase secret key stored as the GitHub repo secret `SUPABASE_SECRET_KEY`. First run: 9 games checked,
 8 with key-shop prices.
 
@@ -131,7 +132,7 @@ with a Supabase secret key stored as the GitHub repo secret `SUPABASE_SECRET_KEY
   (`currentKeyshops`, `historicalKeyshops`) in the region's currency, plus the gg.deals page URL.
 - Takes up to 100 app ids per call.
 - **gg.deals times out from Supabase's servers**, so key-shop prices are fetched by a GitHub Actions job
-  (`scripts/keyshop-prices.mjs`, run every 6 h by `.github/workflows/keyshop-prices.yml`). It updates
+  (`scripts/keyshop-prices.mjs`, run every 6 h by `.github/workflows/keyshop-prices.yml`, which pg_cron starts). It updates
   the key-shop columns of existing `game_prices` rows. The `prices` Edge Function still tries gg.deals, but
   keeps the stored values when there's no answer. To test the lookup alone, run the workflow by hand and put app ids in the
   test box (nothing is saved).
@@ -154,3 +155,15 @@ with a Supabase secret key stored as the GitHub repo secret `SUPABASE_SECRET_KEY
 - **Plex / Seerr** — each user links these themselves in On Deck's Settings page.
 - **Custom SMTP** — optional. Lifts Supabase's few-emails-per-hour limit on sign-up
   and reset emails (e.g. Brevo free tier or a Gmail app password).
+
+## Job scheduler (pg_cron) — Vault secrets
+
+Both background jobs run on Supabase's pg_cron (`supabase/migrations/20261210000000_job_schedule.sql`); GitHub's
+own `schedule` ran them hours late or skipped them. pg_cron reads three secrets from Supabase Vault, added by hand
+in the SQL editor:
+
+- `project_url`: the project's URL (`https://<ref>.supabase.co`).
+- `job_secret`: the same value as the `JOB_SECRET` Edge Function secret.
+- `github_dispatch_token`: a GitHub fine-grained token for this repo only, with **Actions: Read and write**. It
+  lets pg_cron start the key-shop workflow. Expiry: _(fill in)_. When it lapses, key-shop prices stop updating and
+  Settings → Status shows the job as overdue.

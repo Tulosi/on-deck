@@ -829,6 +829,39 @@ function StatusSection({ open }: { open: boolean }) {
   )
 }
 
+/**
+ * Phone tab bar card. Open on phones, where it applies; collapsed on a computer (md and up, where the sidebar shows),
+ * unless a link points at it.
+ */
+function PhoneTabsSection({ open }: { open: boolean }) {
+  const [isOpen, setOpen] = useState(() => open || !window.matchMedia('(min-width: 768px)').matches)
+  useEffect(() => {
+    if (open) setOpen(true)
+  }, [open])
+  return (
+    <details
+      id="navigation"
+      open={isOpen}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+      className="group scroll-mt-20 rounded-lg border border-line bg-surface"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg p-4 select-none sm:p-5 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold tracking-tight text-fg">Phone tab bar</h2>
+          <p className="mt-1 text-sm text-muted">
+            Pick up to five pages for the bar at the bottom of your phone; everything else sits under More. On a
+            computer, drag the sidebar to rearrange it.
+          </p>
+        </div>
+        <ChevronDown className="size-4 flex-none text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+        <PhoneTabsSettings />
+      </div>
+    </details>
+  )
+}
+
 const JUMPS: [id: string, label: string][] = [
   ['accounts', 'Connections'],
   ['region', 'Region'],
@@ -870,8 +903,13 @@ export function Settings() {
         </p>
       ) : (
         <>
-          <nav aria-label="Settings sections" className="no-scrollbar -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-            <ul className="flex gap-1.5">
+          {/* Phones: one row that scrolls sideways. From sm, where most or all of them fit: wrap, so none is cut off. */}
+          <nav
+            aria-label="Settings sections"
+            // On phones the row fades at the right edge, so it's clear there's more to swipe to.
+            className="no-scrollbar -mx-4 overflow-x-auto px-4 [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)] sm:mx-0 sm:overflow-visible sm:px-0 sm:[mask-image:none]"
+          >
+            <ul className="flex gap-1 sm:flex-wrap">
               {JUMPS.map(([id, label]) => (
                 <li key={id} className="flex-none">
                   <a
@@ -879,9 +917,12 @@ export function Settings() {
                     onClick={(e) => {
                       e.preventDefault()
                       history.replaceState(null, '', `#${id}`)
-                      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      const el = document.getElementById(id)
+                      // A collapsed card opens when you jump to it.
+                      if (el instanceof HTMLDetailsElement) el.open = true
+                      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                     }}
-                    className="flex h-8 items-center rounded-full border border-line px-3 text-sm text-muted hover:border-accent hover:text-fg"
+                    className="flex h-8 items-center rounded-full border border-line px-2 text-sm whitespace-nowrap text-muted hover:border-accent hover:text-fg"
                   >
                     {label}
                   </a>
@@ -897,13 +938,7 @@ export function Settings() {
           <StreamingSection />
           <NotificationsSection />
           <DefaultCollectionsSection />
-          <Section
-            id="navigation"
-            title="Phone tab bar"
-            description="Pick up to five pages for the bar at the bottom of your phone; everything else sits under More. On a computer, drag the sidebar to rearrange it."
-          >
-            <PhoneTabsSettings />
-          </Section>
+          <PhoneTabsSection open={hash === '#navigation'} />
           <Section id="data" title="Your data" description="Share your list, keep a copy of it, and check that everything is running.">
             <Section sub id="sharing" title="Sharing">
               <ShareLinksSettings />

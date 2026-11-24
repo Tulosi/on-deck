@@ -442,7 +442,8 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 ### Notifications
 **Built:** the daily job, the in-app inbox and Web Push. (The per-title "Notify me" switch was removed from title pages in Group A; `user_items.notify` stays on.)
 
-- **Daily job:** the `daily` Edge Function runs every 3 hours from `.github/workflows/daily.yml`. It's only
+- **Daily job:** the `daily` Edge Function runs every 3 hours, called by Supabase's pg_cron (`.github/workflows/daily.yml`
+  runs it by hand). It's only
   callable with the private `JOB_SECRET`. Each run does what fits in about 2 minutes; the next run picks up
   the rest.
   1. Refreshes titles whose dates can still change (anything with an upcoming event, unreleased statuses,

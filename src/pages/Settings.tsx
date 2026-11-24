@@ -68,11 +68,12 @@ function Section({
       className={
         sub
           ? 'scroll-mt-20 space-y-3 border-t border-line pt-5 first:border-t-0 first:pt-0'
-          : 'scroll-mt-20 space-y-3 rounded-lg border border-line bg-surface p-4 sm:p-5'
+          : 'scroll-mt-20 space-y-4 rounded-lg border border-line bg-surface p-4 sm:p-5'
       }
     >
       <div>
-        <Heading className={sub ? 'text-sm font-medium text-fg' : 'text-sm font-semibold text-fg'}>{title}</Heading>
+        {/* Three levels: card title (lg), part of a card (sm semibold), and small muted group labels inside. */}
+        <Heading className={sub ? 'text-sm font-semibold text-fg' : 'text-lg font-semibold tracking-tight text-fg'}>{title}</Heading>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       </div>
       {children}
@@ -80,22 +81,20 @@ function Section({
   )
 }
 
-/** Region picker, at the top of Streaming services (it decides which services are listed). */
-function RegionField() {
+/** Region: streaming services listed, and the stores and currency game prices come from. */
+function RegionSection() {
   const profile = useProfile()
   const update = useUpdateProfile()
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   return (
-    <>
-      {profile.isLoading ? null : (
+    <Section id="region" title="Region" description="Decides which streaming services are listed and which stores and currency game prices come from.">
+      {profile.isLoading ? (
+        <Loader2 className="size-4 animate-spin text-muted" />
+      ) : (
         <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="region" className="text-sm text-muted">
-            Region
-          </label>
           <select
-            id="region"
             aria-label="Region"
             value={profile.data?.country_code ?? 'US'}
             onChange={async (e) => {
@@ -124,7 +123,7 @@ function RegionField() {
           {error && <span className="text-sm text-bad">{error}</span>}
         </div>
       )}
-    </>
+    </Section>
   )
 }
 
@@ -162,9 +161,8 @@ function StreamingSection() {
     <Section
       id="streaming"
       title="Streaming services"
-      description="Pick your region and the services you have. Title pages show where to watch on these only."
+      description="Pick the services you have. Title pages show where to watch on these only."
     >
-      <RegionField />
       {profile.isLoading || list.isLoading ? (
         <Loader2 className="size-4 animate-spin text-muted" />
       ) : list.error ? (
@@ -209,7 +207,7 @@ function StreamingSection() {
             </button>
           )}
           <p className="text-xs text-faint">
-            {selected.size} selected. Data by JustWatch.
+            {selected.size} selected. Changing your region shows that region’s services. Data by JustWatch.
           </p>
           {error && <p className="text-sm text-bad">{error}</p>}
         </div>
@@ -584,11 +582,11 @@ function DealThreshold({ value, disabled, onSave }: { value: number; disabled: b
   }, [pct, onSave])
   return (
     <div className={clsx('ml-7 space-y-1.5', disabled && 'opacity-50')}>
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex max-w-sm items-baseline justify-between gap-3">
         <label htmlFor="deal-threshold" className="text-xs text-muted">
           Alert at
         </label>
-        <span className="font-mono text-sm font-semibold text-fg">{pct}% off or more</span>
+        <span className="text-sm font-medium text-fg tabular-nums">{pct}% off or more</span>
       </div>
       <input
         id="deal-threshold"
@@ -602,7 +600,7 @@ function DealThreshold({ value, disabled, onSave }: { value: number; disabled: b
         aria-valuetext={`${pct}% off or more`}
         className="w-full max-w-sm accent-[var(--color-accent)]"
       />
-      <div className="flex max-w-sm justify-between font-mono text-[11px] text-faint">
+      <div className="flex max-w-sm justify-between text-[11px] text-faint tabular-nums">
         <span>10%</span>
         <span>50%</span>
         <span>90%</span>
@@ -657,10 +655,18 @@ function PushControls() {
       {others.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-xs text-muted">Also receiving push:</p>
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {others.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-fg">{d.device ?? 'Device'}</span>
+                <div className="min-w-0">
+                  {/* Saved labels read "Windows · Firefox"; shown with a comma like the rest of the app. */}
+                  <p className="text-fg">{(d.device ?? 'Device').replace(' · ', ', ')}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {d.ip
+                      ? [d.city, d.region ?? d.country].filter(Boolean).concat(d.ip).join(', ')
+                      : 'Location shows the next time this device opens On Deck.'}
+                  </p>
+                </div>
                 <button type="button" onClick={() => void push.removeDevice(d.id)} className="text-xs text-muted hover:text-bad">
                   Remove
                 </button>
@@ -809,7 +815,7 @@ function StatusSection({ open }: { open: boolean }) {
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 rounded-md select-none [&::-webkit-details-marker]:hidden">
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-medium text-fg">Status</h3>
+          <h3 className="text-sm font-semibold text-fg">Status</h3>
           <p className="mt-1 text-sm text-muted">Service checks, background jobs, and how fresh your data is.</p>
         </div>
         <ChevronDown className="size-4 flex-none text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -825,6 +831,7 @@ function StatusSection({ open }: { open: boolean }) {
 
 const JUMPS: [id: string, label: string][] = [
   ['accounts', 'Connections'],
+  ['region', 'Region'],
   ['streaming', 'Streaming'],
   ['notifications', 'Notifications'],
   ['collections', 'Collections'],
@@ -886,6 +893,7 @@ export function Settings() {
             <PlexSection />
             <SteamSection />
           </Section>
+          <RegionSection />
           <StreamingSection />
           <NotificationsSection />
           <DefaultCollectionsSection />
@@ -900,7 +908,7 @@ export function Settings() {
             <Section sub id="sharing" title="Sharing">
               <ShareLinksSettings />
             </Section>
-            <Section sub id="backup" title="Backup & Restore" description="Export your library and settings to a file, or restore from one (it merges).">
+            <Section sub id="backup" title="Backup & Restore" description="Save your library, collections and settings to a file, or import one. Importing adds to what you have; account links aren’t included.">
               <BackupPanel onSetUpAccounts={() => document.getElementById('accounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
             </Section>
             <StatusSection open={hash === '#status'} />

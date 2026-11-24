@@ -26,7 +26,7 @@ export function pushSupport(): PushSupport {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window ? 'supported' : 'unsupported'
 }
 
-/** "iPhone · Safari", "Mac · Chrome" … for the device list. */
+/** "iPhone, Safari", "Mac, Chrome" … for the device list. */
 function deviceLabel(): string {
   const ua = navigator.userAgent
   const os = /iPhone/.test(ua)
@@ -51,7 +51,7 @@ function deviceLabel(): string {
         : /Safari\//.test(ua)
           ? 'Safari'
           : 'Browser'
-  return `${os} · ${browser}`
+  return `${os}, ${browser}`
 }
 
 /** Brave exposes navigator.brave.isBrave(); its user agent looks like Chrome. */
@@ -79,7 +79,15 @@ export interface PushDevice {
   device: string | null
   createdAt: string
   lastPushAt: string | null
+  /** Last address it was seen from, and its approximate place (filled in by the push function). */
+  ip: string | null
+  city: string | null
+  region: string | null
+  country: string | null
 }
+
+// Once per page load: tell the server this device is here, so its IP and city stay current.
+let reported = false
 
 /** This device's push state plus the user's other devices. */
 export function usePush() {
@@ -97,7 +105,8 @@ export function usePush() {
     if (!user || !supabase) return
     const { data } = await supabase
       .from('push_subscriptions')
-      .select('id, endpoint, device, created_at, last_push_at')
+      // '*' so the list still loads if the location columns aren't there yet.
+      .select('*')
       .order('created_at', { ascending: false })
     const list = (data ?? []).map((d) => ({
       id: d.id as string,
@@ -105,6 +114,10 @@ export function usePush() {
       device: d.device as string | null,
       createdAt: d.created_at as string,
       lastPushAt: d.last_push_at as string | null,
+      ip: (d.ip as string | null) ?? null,
+      city: (d.city as string | null) ?? null,
+      region: (d.region as string | null) ?? null,
+      country: (d.country as string | null) ?? null,
     }))
     setDevices(list)
     if (support !== 'supported') return
@@ -112,7 +125,13 @@ export function usePush() {
       const reg = await registration()
       const sub = await reg.pushManager.getSubscription()
       setEndpoint(sub?.endpoint ?? null)
-      setEnabled(!!sub && Notification.permission === 'granted' && list.some((d) => d.endpoint === sub.endpoint))
+      const mine = !!sub && list.some((d) => d.endpoint === sub.endpoint)
+      setEnabled(mine && Notification.permission === 'granted')
+      if (mine && !reported) {
+        reported = true
+        const { data: seen } = await supabase.functions.invoke('push', { body: { action: 'seen', endpoint: sub!.endpoint } })
+        if ((seen as { ok?: boolean } | null)?.ok) void load()
+      }
     } catch {
       setEnabled(false)
     }
@@ -183,6 +202,7 @@ export function usePush() {
         setError('Couldn’t save this device. Please try again.')
         return
       }
+      reported = false
       await load()
     } finally {
       setBusy(false)

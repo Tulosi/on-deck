@@ -74,31 +74,19 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
     : ''
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-sm text-muted">
-          Download everything in your library (statuses, ratings, notes, progress, archive) plus your collections and
-          settings, as a JSON file. Account links and keys (Plex, Seerr, Steam, calendar and share links) are never
-          included.
-        </p>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => void doExport()} disabled={exporting} className={btn}>
           {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-          Export library
+          Export
+        </button>
+        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void pick(e.target.files?.[0])} />
+        <button type="button" onClick={() => fileInput.current?.click()} disabled={!!pending || !!progress} className={btn}>
+          <Upload className="size-4" /> Import…
         </button>
       </div>
 
-      <div className="space-y-2 border-t border-line pt-4">
-        <p className="text-sm text-muted">
-          Import an On Deck export, from this server or another. It <b>merges</b>: titles you already have are left as
-          they are, and new ones are added with their tracking.
-        </p>
-        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void pick(e.target.files?.[0])} />
-        {!pending && !progress && (
-          <button type="button" onClick={() => fileInput.current?.click()} className={btn}>
-            <Upload className="size-4" /> Choose a file…
-          </button>
-        )}
-
+      <div className="space-y-2">
         {pending && !progress && (
           <div className="space-y-3 rounded-lg border border-line bg-bg p-3">
             <p className="text-sm text-fg">

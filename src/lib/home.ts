@@ -3,7 +3,7 @@
 import { hoursToBeat, isAvailable } from './filters'
 import { cheapest } from './prices'
 import { episodeCode, releaseInfo, todayIso, tvSchedule } from './release'
-import { firstUnaired, nextIsStale, overrideOf, seasonsOf, watchedIn } from './seasons'
+import { episodeAirDate, firstUnaired, nextIsStale, overrideOf, seasonsOf, watchedIn } from './seasons'
 import type { UserItem } from '../types'
 
 const weekday = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
@@ -40,6 +40,9 @@ function airState(item: UserItem, ep: { season: number; episode: number }): { ou
     | { season_number?: number; episode_number?: number; air_date?: string }
     | null
     | undefined
+  // A dated episode of the airing season: its own date. Otherwise the announced next episode's.
+  const own = episodeAirDate(item, ep)
+  if (own) return own <= todayIso() ? { out: true } : { out: false, date: own }
   const isNext = ep.season === next?.season_number && ep.episode === next.episode_number
   if (isNext && next?.air_date && next.air_date <= todayIso()) return { out: true }
   return { out: false, date: isNext ? next?.air_date : undefined, unknown: nextIsStale(item) }

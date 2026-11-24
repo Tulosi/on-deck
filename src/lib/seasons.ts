@@ -11,6 +11,19 @@ export interface SeasonMeta {
 
 type Ep = { season_number?: number; episode_number?: number; air_date?: string | null }
 
+/** The airing season's per-episode air dates (stored by the tmdb function since airing_v 1), if any. */
+export function airingDates(item: UserItem): { season_number: number; air_dates: (string | null)[] } | null {
+  const a = item.title.details?.airing_season as { season_number?: number; air_dates?: unknown } | null | undefined
+  if (!a || typeof a.season_number !== 'number' || !Array.isArray(a.air_dates) || a.air_dates.length === 0) return null
+  return { season_number: a.season_number, air_dates: a.air_dates as (string | null)[] }
+}
+
+/** The stored air date of one episode of the airing season, if known. */
+export function episodeAirDate(item: UserItem, ep: { season: number; episode: number }): string | null {
+  const a = airingDates(item)
+  return a && a.season_number === ep.season ? (a.air_dates[ep.episode - 1] ?? null) : null
+}
+
 /**
  * The first episode we can't yet show has aired, as { season, episode }, or null when everything listed has.
  * TMDB's "next episode" is the starting point, but it lags: on a premiere day it still names the episode airing
@@ -21,6 +34,23 @@ type Ep = { season_number?: number; episode_number?: number; air_date?: string |
 export function firstUnaired(item: UserItem): { season: number; episode: number } | null {
   const d = item.title.details ?? {}
   const next = d.next_episode_to_air as Ep | null | undefined
+  // Best evidence: the airing season's own episode dates (a whole season dropped today counts in full).
+  const dates = airingDates(item)
+  if (dates) {
+    const today = todayIso()
+    const i = dates.air_dates.findIndex((a) => !a || a > today)
+    if (i < 0) {
+      // The whole airing season is out; anything later hasn't started (or we'd be fetching that season).
+      return next?.season_number != null && next.season_number > dates.season_number
+        ? { season: next.season_number, episode: next.episode_number ?? 1 }
+        : { season: dates.season_number + 1, episode: 1 }
+    }
+    const at = item.tvProgress
+    // Your progress still wins if it's ahead of the dates (proof it's out).
+    if (at && (at.season > dates.season_number || (at.season === dates.season_number && at.episode > i)))
+      return { season: at.season, episode: at.episode + 1 }
+    return { season: dates.season_number, episode: i + 1 }
+  }
   if (next?.season_number == null) return null
   let season = next.season_number
   let episode = next.episode_number ?? 1
@@ -39,6 +69,7 @@ export function firstUnaired(item: UserItem): { season: number; episode: number 
 
 /** True when what TMDB calls the next episode has already aired by the evidence above (its data is a day behind). */
 export function nextIsStale(item: UserItem): boolean {
+  if (airingDates(item)) return false
   const next = item.title.details?.next_episode_to_air as Ep | null | undefined
   const f = firstUnaired(item)
   return !!next?.season_number && !!f && (f.season !== next.season_number || f.episode !== (next.episode_number ?? 1))
@@ -86,10 +117,12 @@ export function seasonsOf(item: UserItem): SeasonMeta[] {
   if (!Array.isArray(raw)) return []
   const next = item.title.details?.next_episode_to_air as { season_number?: number; episode_number?: number } | null
   const at = item.tvProgress
-  // Raise a lagging count to the next announced episode, or to what you've watched.
+  const dates = airingDates(item)
+  // Raise a lagging count to the airing season's episode list, the next announced episode, or what you've watched.
   const atLeast = (s: SeasonMeta) =>
     Math.max(
       s.episode_count,
+      dates?.season_number === s.season_number ? dates.air_dates.length : 0,
       next?.season_number === s.season_number ? (next.episode_number ?? 0) : 0,
       at?.season === s.season_number ? at.episode : 0,
     )

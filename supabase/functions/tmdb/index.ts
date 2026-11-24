@@ -128,6 +128,25 @@ async function add(tmdbId: number, mediaType: MediaType) {
       air_date: s.air_date,
       episode_count: s.episode_count,
     }))
+
+    // The airing season's per-episode air dates. The show summary only names the "next" and "last" episodes,
+    // and on a release day both lag (a whole season dropped at once still reads "next: E1"), so the app counts
+    // what's out from these dates instead. Fetched while a season is airing or ended in the last 30 days.
+    metadata.airing_v = 1
+    metadata.airing_season = null
+    const airing = d.next_episode_to_air?.season_number ?? d.last_episode_to_air?.season_number
+    const recent = d.last_air_date && Date.now() - Date.parse(d.last_air_date) < 30 * 86_400_000
+    if (airing != null && airing > 0 && (d.next_episode_to_air || recent)) {
+      try {
+        const season = await tmdb(`/tv/${tmdbId}/season/${airing}`, { language: 'en-US' })
+        metadata.airing_season = {
+          season_number: airing,
+          air_dates: (season.episodes ?? []).map((e: Json) => dateOrNull(e.air_date)),
+        }
+      } catch {
+        // Optional: without it the app falls back to the next/last episode.
+      }
+    }
   }
 
   // Review scores: reuse cached ones if recent, otherwise ask MDBList (OMDb as fallback).

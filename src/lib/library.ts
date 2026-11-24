@@ -90,6 +90,8 @@ function scoresNeedRefresh(r: TitleRow['ratings']): boolean {
 function airingInfoStale(t: TitleRow): boolean {
   if (t.media_type !== 'tv') return false
   const next = t.metadata.next_episode_to_air as { air_date?: string } | null | undefined
+  // Shows airing now that were stored before per-episode dates existed: fetch them once.
+  if (next && t.metadata.airing_v !== 1) return true
   return !!next?.air_date && next.air_date <= new Date().toISOString().slice(0, 10)
 }
 

@@ -10,7 +10,7 @@ import { coverProps } from '../lib/images'
 import { useUpdateItem } from '../lib/library'
 import { useAuth } from '../lib/auth'
 import { useSeerrStatus } from '../lib/integrations'
-import { toast } from '../lib/toast'
+import { markWatched } from '../lib/markWatched'
 import type { MediaType } from '../types'
 
 const NOUN: Record<MediaType, string> = { movie: 'movie', tv: 'show', game: 'game', book: 'book' }
@@ -198,7 +198,8 @@ export function UpNext({ items }: { items: UserItem[] }) {
               items.length > 3 ? '@[60rem]/up:w-[calc((100%-5rem)/3)]' : '@[60rem]/up:w-[calc((100%-2rem)/3)]',
             )}
           >
-            <UpNextCard item={item} />
+            {/* The first card is the pick: only its main button is lemon, the rest read as alternatives. */}
+            <UpNextCard item={item} lead={i === 0} />
           </li>
         ))}
       </ul>
@@ -223,7 +224,7 @@ export function UpNext({ items }: { items: UserItem[] }) {
 }
 
 /** One card: cover, the next step set large, plain facts and the actions. */
-function UpNextCard({ item }: { item: UserItem }) {
+function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
   const { user } = useAuth()
   const { title } = item
   const next = upNext(item)
@@ -267,11 +268,11 @@ function UpNextCard({ item }: { item: UserItem }) {
       <div className="flex-1" />
       <Facts item={item} />
       {user && (item.title.mediaType === 'tv' || item.title.mediaType === 'movie') && item.plex === 'available' ? (
-        <ActionsWithPlex item={item} />
+        <ActionsWithPlex item={item} lead={lead} />
       ) : item.title.mediaType === 'game' && item.title.steamAppId ? (
-        <Actions item={item} open={steamStore(item.title.steamAppId)} launch={steamLaunch(item.title.steamAppId)} />
+        <Actions item={item} lead={lead} open={steamStore(item.title.steamAppId)} launch={steamLaunch(item.title.steamAppId)} />
       ) : (
-        <Actions item={item} />
+        <Actions item={item} lead={lead} />
       )}
     </div>
   )
@@ -312,22 +313,35 @@ function Facts({ item }: { item: UserItem }) {
 }
 
 /** On your Plex: ask Seerr for the Plex link, so the card can open it there. */
-function ActionsWithPlex({ item }: { item: UserItem }) {
+function ActionsWithPlex({ item, lead }: { item: UserItem; lead: boolean }) {
   const seerr = useSeerrStatus(item.title)
   const plexUrl = seerr.data?.configured ? (seerr.data.plexUrl ?? undefined) : undefined
-  return <Actions item={item} open={plexUrl ? { label: 'Open in Plex', href: plexUrl } : undefined} />
+  return <Actions item={item} lead={lead} open={plexUrl ? { label: 'Open in Plex', href: plexUrl } : undefined} />
 }
 
-const primary = 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
+const lemon = 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
 const secondary = 'grid h-11 place-items-center rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
+/** The main action on cards after the first: same size and place, outlined instead of lemon. */
+const quietMain = 'grid h-11 flex-1 place-items-center rounded-md border border-line px-4 text-sm font-medium text-fg hover:bg-raised active:scale-[0.98]'
 
 /**
  * One bold action: Mark watched when that's yours to do, else open it where you watch or buy it (Plex, the
  * Steam store page), else open the title. Quieter buttons cover the next most likely steps: Details, and for a
  * Steam game on a computer, Launch (starts it in the Steam app).
  */
-function Actions({ item, open, launch }: { item: UserItem; open?: { label: string; href: string }; launch?: { label: string; href: string } }) {
+function Actions({
+  item,
+  lead,
+  open,
+  launch,
+}: {
+  item: UserItem
+  lead: boolean
+  open?: { label: string; href: string }
+  launch?: { label: string; href: string }
+}) {
   const { user } = useAuth()
+  const primary = lead ? lemon : quietMain
   const update = useUpdateItem()
   const { title } = item
   const ep = user ? upNext(item).watchable : null
@@ -348,9 +362,7 @@ function Actions({ item, open, launch }: { item: UserItem; open?: { label: strin
         <>
           <button
             type="button"
-            onClick={() =>
-              update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
-            }
+            onClick={() => markWatched(update, item, ep)}
             className={primary}
           >
             Mark {episodeCode(ep)} watched

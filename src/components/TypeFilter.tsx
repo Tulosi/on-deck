@@ -59,7 +59,8 @@ export function TypeFilter({
         <div
           ref={setPills}
           role="radiogroup" aria-label="Media type" className="no-scrollbar relative hidden gap-1 overflow-x-auto sm:flex">
-          <span aria-hidden="true" className="slide-ind rounded-full bg-accent" />
+          {/* The quiet raised selection used by the app's other segmented controls; lemon is for actions. */}
+          <span aria-hidden="true" className="slide-ind rounded-full bg-raised shadow-[inset_0_0_0_1px_var(--color-line)]" />
           {options.map((o) => (
             <button
               key={o.label}
@@ -69,7 +70,7 @@ export function TypeFilter({
               onClick={() => onChange(o.value)}
               className={clsx(
                 'relative h-7 shrink-0 rounded-full px-3 text-xs whitespace-nowrap transition-colors',
-                value === o.value ? 'font-medium text-accent-fg' : 'text-muted hover:bg-raised hover:text-fg',
+                value === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
               )}
             >
               {o.label}

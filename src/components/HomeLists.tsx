@@ -10,7 +10,7 @@ import { continueStat, episodeCode, nextWatchable, weekDay, type Upcoming } from
 import { coverProps } from '../lib/images'
 import { useUpdateItem } from '../lib/library'
 import { useAuth } from '../lib/auth'
-import { toast } from '../lib/toast'
+import { markWatched } from '../lib/markWatched'
 
 const KIND: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
 
@@ -22,7 +22,8 @@ function ListHeader({ id, title, href, more }: { id: string; title: string; href
         {title}
       </h2>
       {href && more && (
-        <Link to={href} className="hit text-sm text-accent-ink hover:underline">
+        // Quiet: lemon on Home is kept for the next action (the first Up next card).
+        <Link to={href} className="hit text-sm text-muted hover:text-fg hover:underline">
           {more}
         </Link>
       )}
@@ -55,7 +56,7 @@ function ContinueRow({ item, leaving }: { item: UserItem; leaving: boolean }) {
   const stat = continueStat(item)
   const ep = user ? nextWatchable(item) : null
   const mark = () => {
-    if (ep) update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
+    if (ep) markWatched(update, item, ep)
   }
   // Swipe left to mark the next episode (the check button does the same for keyboard, mouse and screen readers).
   const swipe = useSwipe<HTMLDivElement>({ dir: 'left', after: 'return', onCommit: mark, disabled: !ep })
@@ -111,7 +112,7 @@ export function WeekList({ upcoming, href }: { upcoming: Upcoming[]; href: strin
             <Link to={`/title/${u.item.title.id}`} className="flex items-baseline gap-3 py-2 hover:text-accent-ink">
               <span className="w-20 flex-none font-mono text-xs text-muted">{weekDay(u)}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-fg">{u.item.title.title}</span>
-              <span className={/^S\d/.test(u.label) ? 'font-mono text-xs text-accent-ink' : 'text-xs text-accent-ink'}>{u.label}</span>
+              <span className={/^S\d/.test(u.label) ? 'font-mono text-xs text-muted' : 'text-xs text-muted'}>{u.label}</span>
             </Link>
           </li>
         ))}

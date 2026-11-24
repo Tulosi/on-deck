@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { LogIn, LogOut, Settings } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
+import { useSampleCardOpen } from '../lib/sampleCard'
 import { supabase } from '../lib/supabase'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
@@ -13,6 +14,11 @@ export function TopBar() {
   const { user, loading } = useAuth()
   const { pathname } = useLocation()
   const queryClient = useQueryClient()
+  // Home's sample card has its own Sign in; one lemon one is enough.
+  const cardOpen = useSampleCardOpen()
+  const quiet = pathname === '/' && cardOpen
+  // The sign-in page keeps only the logo: no search or Settings to pull you away mid-sign-in.
+  const bare = pathname === '/login'
 
   async function signOut() {
     await supabase?.auth.signOut()
@@ -21,14 +27,14 @@ export function TopBar() {
 
   return (
     <header className="vt-chrome-top sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur md:px-6">
-      <Link to="/" className="hit md:hidden" aria-label="On Deck home">
+      <Link to="/" className={bare ? 'hit' : 'hit md:hidden'} aria-label="On Deck home">
         <Logo />
       </Link>
 
-      <SearchBox />
+      {!bare && <SearchBox />}
 
       <div className="ml-auto flex items-center gap-1">
-        <Link to="/settings" className={`${iconButton} md:hidden`} aria-label="Settings">
+        <Link to="/settings" className={`${iconButton} md:hidden`} aria-label="Settings" hidden={bare}>
           <Settings className="size-[18px]" />
         </Link>
 
@@ -54,7 +60,11 @@ export function TopBar() {
               <span className="mr-1 hidden text-xs text-muted sm:inline">Trying the sample library</span>
               <Link
                 to="/login"
-                className="hit flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95"
+                className={
+                  quiet
+                    ? 'hit flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-sm font-medium text-fg hover:border-faint'
+                    : 'hit flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95'
+                }
               >
                 <LogIn className="size-4" />
                 Sign in

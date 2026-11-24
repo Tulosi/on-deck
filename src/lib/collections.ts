@@ -9,6 +9,7 @@ import { useNavLayout } from './navLayout'
 import { useItems } from './library'
 import { supabase } from './supabase'
 import { undoable } from './toast'
+import { sampleItems } from '../data/sample'
 import type { UserItem } from '../types'
 
 export interface Collection {
@@ -72,16 +73,43 @@ export function builtinItems(id: string, items: UserItem[], dealPct: number): Us
   return list
 }
 
+const sampleIds = (...names: string[]) =>
+  names.map((n) => sampleItems.find((i) => i.title.title === n)?.id).filter((id): id is string => !!id)
+
+/** Signed out: two collections over the sample library, one hand-picked and one smart, to show what they're for. */
+export const SAMPLE_COLLECTIONS: Collection[] = [
+  {
+    id: 'sample-weekend',
+    name: 'Slow weekend',
+    description: 'Hand-picked, across types: a show, a film, a game and a book.',
+    rules: null,
+    createdAt: '',
+    itemIds: sampleIds('The Bear', 'Perfect Days', 'Outer Wilds', 'Project Hail Mary'),
+  },
+  {
+    id: 'sample-short-games',
+    name: 'Short games',
+    description: 'A smart collection: games under 30 hours to beat. It keeps itself up to date.',
+    rules: 'type=game&length=short,medium&sort=length',
+    createdAt: '',
+    itemIds: [],
+  },
+]
+
 /**
  * Every collection to show: the visible default collections first, then yours. `hidden` lists the defaults the
  * user has hidden (Settings → Collections brings them back).
  */
 export function useCollectionList() {
   const q = useCollections()
+  const { user, loading } = useAuth()
   const [layout] = useNavLayout()
   const hidden = new Set(layout.hidden ?? [])
   const defaults = BUILTIN_COLLECTIONS.filter((c) => !hidden.has(c.id))
-  return { ...q, data: q.data ? [...defaults, ...q.data] : q.data, list: [...defaults, ...(q.data ?? [])], hidden }
+  // Signed out there's nothing stored; the sample collections stand in.
+  const mine = !loading && !user ? SAMPLE_COLLECTIONS : (q.data ?? [])
+  const isLoading = !!user && q.isLoading
+  return { ...q, isLoading, data: [...defaults, ...mine], list: [...defaults, ...mine], hidden }
 }
 
 /** A smart collection's current titles: the Library filtered and sorted by its rules. */

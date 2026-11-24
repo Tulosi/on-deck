@@ -24,13 +24,15 @@ const button =
 const primary =
   'flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60'
 
-function SignInNote() {
+/** Signed out: the collections are samples over the sample library. */
+function SampleNote({ className }: { className?: string }) {
   return (
-    <p className="py-16 text-center text-sm text-muted">
+    <p className={clsx('text-muted', className)}>
+      Sample collections over the sample library.{' '}
       <Link to="/login" className="hit text-accent-ink hover:underline">
         Sign in
       </Link>{' '}
-      to make collections: named lists that can mix movies, shows, games and books.
+      to make your own: named lists that can mix movies, shows, games and books.
     </p>
   )
 }
@@ -164,25 +166,19 @@ export function Collections() {
   const byId = new Map(items.map((i) => [i.id, i]))
   const dealPct = useProfile().data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
 
-  if (!loading && !user) {
-    return (
-      <div>
-        <PageHeader title="Collections" />
-        <SignInNote />
-      </div>
-    )
-  }
+  const signedOut = !loading && !user
 
   return (
     <div>
       <PageHeader title="Collections" meta={isLoading ? undefined : String(collections.length)}>
-        {!creating && (
+        {!creating && !signedOut && (
           <button type="button" onClick={() => setCreating(true)} className={primary}>
             <Plus className="size-4" /> New collection
           </button>
         )}
       </PageHeader>
 
+      {signedOut && <SampleNote className="-mt-3 mb-6 max-w-prose text-sm" />}
       {creating && (
         <div className="mb-6 max-w-md">
           <CollectionForm
@@ -251,7 +247,7 @@ export function CollectionDetail() {
   const dealPct = useProfile().data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
   const [layout, saveLayout] = useNavLayout()
 
-  if (!loading && !user) return <SignInNote />
+  const signedOut = !loading && !user
   if (isLoading) return <PageSkeleton />
   const c = collections.find((x) => x.id === id)
   if (!c) {
@@ -274,7 +270,7 @@ export function CollectionDetail() {
 
   return (
     <div>
-      <Link to="/collections" className="mb-3 inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg">
+      <Link to="/collections" className="hit mb-3 inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg">
         <ArrowLeft className="size-3.5" /> Collections
       </Link>
 
@@ -291,7 +287,8 @@ export function CollectionDetail() {
       ) : (
         <>
           <PageHeader title={c.name} meta={String(list.length)}>
-            <div className="flex flex-wrap gap-2">
+            {/* Signed out it's all sample data: look, don't change. */}
+            <div className={clsx('flex flex-wrap gap-2', signedOut && 'hidden')}>
               {builtin && (
                 <button
                   type="button"
@@ -349,7 +346,9 @@ export function CollectionDetail() {
               </Link>
             </p>
           )}
-          {builtin ? (
+          {signedOut ? (
+            <SampleNote className="mb-6 max-w-prose text-xs" />
+          ) : builtin ? (
             <p className="mb-6 text-xs text-faint">A default collection. It can be hidden but not changed, and can’t be shared yet.</p>
           ) : (
             <div className="mb-6">

@@ -899,6 +899,43 @@ const JUMPS: [id: string, label: string][] = [
   ['data', 'Your data'],
 ]
 
+/** What each part of Settings does once you're signed in, so signed out isn't a blank page. */
+const PREVIEW: [title: string, what: string][] = [
+  ['Connections', 'Link Plex to see what’s already on your server, Seerr to request what isn’t, and Steam to bring in your games and playtime.'],
+  ['Region and streaming', 'Pick your country and services, so “where to watch” and game prices match what you can use.'],
+  ['Notifications', 'New episodes, release days and price drops, sent to this device.'],
+  ['Collections', 'Turn the default Waitlist, Early Access and Deals collections on or off.'],
+  ['Phone tab bar', 'Choose which pages sit in the bar at the bottom of your phone.'],
+  ['Your data', 'Share your list, back it up to a file, or bring one in.'],
+]
+
+function SignedOutSettings() {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted">These are set per account, so they open once you sign in. The theme above works now.</p>
+      <dl className="divide-y divide-line rounded-lg border border-line bg-surface">
+        {PREVIEW.map(([title, what]) => (
+          <div key={title} className="px-4 py-3">
+            <dt className="text-sm font-medium text-fg">{title}</dt>
+            <dd className="mt-0.5 text-sm text-muted">{what}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap gap-2">
+        <Link to="/login" className="flex h-11 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 sm:h-9">
+          Sign in
+        </Link>
+        <Link
+          to="/login?mode=sign-up"
+          className="flex h-11 items-center rounded-lg border border-line bg-surface px-4 text-sm text-fg hover:border-faint sm:h-9"
+        >
+          Create an account
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export function Settings() {
   const { user, loading } = useAuth()
   const { hash } = useLocation()
@@ -922,12 +959,7 @@ export function Settings() {
         <ThemeToggle />
       </div>
       {!loading && !user ? (
-        <p className="text-sm text-muted">
-          <Link to="/login" className="hit text-accent-ink hover:underline">
-            Sign in
-          </Link>{' '}
-          to change your settings.
-        </p>
+        <SignedOutSettings />
       ) : (
         <>
           {/* Phones: one row that scrolls sideways. From sm, where most or all of them fit: wrap, so none is cut off. */}

@@ -1,32 +1,14 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
-
-const KEY = 'ondeck.sampleWelcomeClosed'
-
-function closedThisVisit() {
-  try {
-    return sessionStorage.getItem(KEY) === '1'
-  } catch {
-    return false
-  }
-}
+import { closeSampleCard, useSampleCardOpen } from '../lib/sampleCard'
 
 /**
  * Top of Home while signed out: says plainly that this is a sample library, what you can do with it, and that
  * nothing you change is kept, with Sign in and Create account. Closing it lasts until the tab is closed.
  */
 export function SampleWelcome() {
-  const [closed, setClosed] = useState(closedThisVisit)
-  if (closed) return null
-  const close = () => {
-    setClosed(true)
-    try {
-      sessionStorage.setItem(KEY, '1')
-    } catch {
-      // Storage blocked: it comes back on the next load.
-    }
-  }
+  const open = useSampleCardOpen()
+  if (!open) return null
   return (
     <section
       aria-labelledby="sample-welcome"
@@ -57,7 +39,7 @@ export function SampleWelcome() {
       </div>
       <button
         type="button"
-        onClick={close}
+        onClick={closeSampleCard}
         aria-label="Close for this visit"
         title="Close for this visit"
         className="hit absolute top-3 right-3 text-muted hover:text-fg"

@@ -14,6 +14,7 @@ import { useFilters } from '../lib/useFilters'
 import { plainError } from '../lib/errors'
 import { useSnoozed } from '../lib/snooze'
 import { SampleWelcome } from '../components/SampleWelcome'
+import { useSampleCardOpen } from '../lib/sampleCard'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
@@ -30,6 +31,7 @@ export function Home() {
   const fresh = useNewForYou(isSample ? [] : items)
   // Pick it back up? Each title can be put away for a month (Not now).
   const notNow = useSnoozed('stalled', 30)
+  const sampleCardOpen = useSampleCardOpen()
   const freshById = new Map(fresh.entries.map((e) => [e.item.id, e]))
 
   if (isLoading) return <HomeSkeleton />
@@ -128,7 +130,8 @@ export function Home() {
         items={onDeal}
         href="/collections/default-deals"
       />
-      {isSample && (
+      {/* The card at the top already says this; the footer note is for after it's closed. */}
+      {isSample && !sampleCardOpen && (
         <p className="text-center text-xs text-faint">
           A sample library to try out: mark episodes, change statuses, search it. Changes last until you reload.{' '}
           <Link to="/login" className="hit text-accent-ink hover:underline">

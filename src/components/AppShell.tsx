@@ -18,7 +18,8 @@ import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
 
 /** Browsing pages get the toolbar row (display options now; filters and sorting later). */
-const TOOLBAR_PATHS = ['/', '/library', '/collections']
+// (Not Collections: its list doesn't filter by type, so the pills there did nothing.)
+const TOOLBAR_PATHS = ['/', '/library']
 
 const bannerClass =
   'border-b border-line bg-surface px-4 py-1.5 text-center text-xs text-muted md:px-6'
@@ -36,6 +37,8 @@ export function AppShell() {
   useRouteFocus()
   useLibraryCache()
   const { pathname } = useLocation()
+  // The sign-in page stands alone: no sidebar or tab bar to pull you away mid-sign-in.
+  const bare = pathname === '/login'
   return (
     <div className="flex min-h-dvh">
       {/* First stop for Tab: past the sidebar and search, to the page's heading (or the page itself). */}
@@ -52,7 +55,7 @@ export function AppShell() {
       >
         Skip to content
       </a>
-      <Sidebar />
+      {!bare && <Sidebar />}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         {TOOLBAR_PATHS.includes(pathname) && <Toolbar />}
@@ -70,7 +73,7 @@ export function AppShell() {
           </Suspense>
         </main>
       </div>
-      <BottomNav />
+      {!bare && <BottomNav />}
       <Toaster />
       <ShortcutsSheet />
     </div>

@@ -99,7 +99,7 @@ export function GamePrices({ item }: { item: UserItem }) {
               best={options.length > 1 && o === best}
             />
           ))}
-          <p className="text-[11px] text-faint">
+          <p className="text-xs text-faint">
             Other stores only appear when they’re cheaper than Steam. Discounts are against Steam’s full price.
           </p>
         </>

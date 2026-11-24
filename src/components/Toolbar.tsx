@@ -60,7 +60,7 @@ function LabelsButton() {
 
 // ─── Type pills (Layer 1) ──────────────────────────────────────────────────
 
-const selectClass = 'h-10 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
+const selectClass = 'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 
 // ─── Filters panel ─────────────────────────────────────────────────────────
 //
@@ -349,7 +349,7 @@ function GenreGroup({
               onChange={(e) => setQ(e.target.value)}
               placeholder={`Find one of ${options.length}`}
               autoComplete="off"
-              className="h-10 w-full rounded-md border border-line bg-surface pr-2 pl-7 text-xs text-fg outline-none placeholder:text-faint focus:border-accent sm:h-7"
+              className="h-11 w-full rounded-md border border-line bg-surface pr-2 pl-7 text-xs text-fg outline-none placeholder:text-faint focus:border-accent sm:h-7"
             />
           </label>
           {query && found.length === 0 && <p className="text-xs text-faint">No match</p>}

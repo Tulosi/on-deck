@@ -213,7 +213,7 @@ export function UpNext({ items }: { items: UserItem[] }) {
               onClick={() => scrollToCard(i)}
               aria-label={`Show ${item.title.title}`}
               aria-current={i === active}
-              className="grid h-11 w-8 place-items-center"
+              className="grid h-11 w-11 place-items-center"
             >
               <span className={clsx('block h-1.5 rounded-full transition-[width,background-color] duration-200', i === active ? 'w-4 bg-fg' : 'w-1.5 bg-line')} />
             </button>

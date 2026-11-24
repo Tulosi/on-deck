@@ -5,7 +5,7 @@ import type { MediaType } from '../types'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 
 const selectClass =
-  'h-10 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
+  'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 
 /**
  * The one media-type picker (All · Movies · TV Shows · Games · Books), used by the toolbar and Calendar so the

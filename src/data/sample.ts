@@ -46,4 +46,6 @@ export const sampleItems: UserItem[] = [
   { id: id(), title: { id: id(), mediaType: 'game', title: 'Hollow Tide', genres: ['Metroidvania'], byline: 'Small Lantern', releaseDate: inDays(40), details: { status: 'Upcoming', release_precision: 'day' } }, owned: false, progress: 'wanted', favourite: false, priority: 'medium' },
   { id: id(), title: { id: id(), mediaType: 'game', title: 'Ironvale', genres: ['Strategy'], byline: 'Northgate', releaseDate: `${nextYear}-06-30`, details: { status: 'Upcoming', release_precision: 'quarter', release_label: `Q2 ${nextYear}` } }, owned: false, progress: 'wanted', favourite: false, priority: 'low' },
   { id: id(), title: { id: id(), mediaType: 'movie', title: 'The Quiet Cartographer', genres: ['Drama'], details: { status: 'In Production' } }, owned: false, progress: 'wanted', favourite: false, priority: 'medium' },
+  // Out in Early Access, so the sample Early Access collection isn't empty.
+  { id: id(), title: { id: id(), mediaType: 'game', title: 'Saltmarsh Keepers', year: 2026, genres: ['Simulation', 'Strategy'], score: { label: 'Steam', value: '88%' }, byline: 'Tidewright', releaseDate: inDays(-120), details: { early_access: true, multiplayer: { single_player: true, online_coop: true, online_max: 4 } } }, owned: true, progress: 'in_progress', favourite: false, priority: 'medium', steamPlaytimeMinutes: 380 },
 ]

@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2 } from 'lucide-react'
-import { Wordmark } from '../components/Logo'
 import { authRedirectUrl, resetRedirectUrl, useAuth } from '../lib/auth'
 import { requestPasswordReset, supabase } from '../lib/supabase'
 import { plainError } from '../lib/errors'
@@ -63,8 +62,10 @@ export function Login() {
   }
 
   return (
-    <div className="mx-auto mt-6 max-w-sm space-y-6 rounded-lg border border-line bg-surface p-6 md:mt-12">
-      <Wordmark />
+    <div className="mx-auto mt-6 max-w-sm md:mt-12">
+    <div className="space-y-6 rounded-lg border border-line bg-surface p-6">
+      {/* The logo is in the top bar already; the heading is for screen readers. */}
+      {mode !== 'forgot' && <h1 className="sr-only">{mode === 'sign-up' ? 'Create an On Deck account' : 'Sign in to On Deck'}</h1>}
 
       {!supabase ? (
         <p className="text-sm text-muted">
@@ -157,6 +158,12 @@ export function Login() {
           )}
         </>
       )}
+    </div>
+      <p className="mt-4 text-center">
+        <Link to="/" className="hit text-sm text-muted hover:text-fg">
+          Back to the sample library
+        </Link>
+      </p>
     </div>
   )
 }

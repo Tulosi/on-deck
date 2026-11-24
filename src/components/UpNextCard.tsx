@@ -363,9 +363,12 @@ function Actions({
           <button
             type="button"
             onClick={() => markWatched(update, item, ep)}
-            className={primary}
+            aria-label={`Mark ${episodeCode(ep)} watched`}
+            className={clsx(primary, 'whitespace-nowrap')}
           >
-            Mark {episodeCode(ep)} watched
+            {/* Phones: the season is on the card already, so the label keeps to one line with just the episode. */}
+            <span className="sm:hidden">Mark {episodeCode(ep).slice(3)} watched</span>
+            <span className="hidden sm:inline">Mark {episodeCode(ep)} watched</span>
           </button>
           {open ? openLink(secondary) : details(secondary, 'Details')}
         </>

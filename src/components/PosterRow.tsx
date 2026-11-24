@@ -38,7 +38,7 @@ export function PosterRow({
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg font-semibold tracking-tight text-fg">
             {href ? (
-              <Link to={href} className="hover:text-accent-ink">
+              <Link to={href} className="hit hover:text-accent-ink">
                 {title}
               </Link>
             ) : (

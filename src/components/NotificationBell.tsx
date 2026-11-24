@@ -93,7 +93,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-40 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14 max-sm:w-auto">
+        <div className="pop-in origin-top-right absolute right-0 top-11 z-40 max-sm:origin-top w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14 max-sm:w-auto">
           <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
             <p className="text-sm font-semibold text-fg">Notifications</p>
             {unread > 0 && (
@@ -108,7 +108,7 @@ export function NotificationBell() {
               services, or a game you want goes on a big sale.
             </p>
           ) : (
-            <ul className="max-h-[60vh] divide-y divide-line overflow-y-auto">
+            <ul className="max-h-[60vh] divide-y divide-line overflow-y-auto overscroll-contain">
               {list.map((n) => (
                 <Row
                   key={n.id}

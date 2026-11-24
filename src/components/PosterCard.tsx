@@ -25,7 +25,7 @@ function Badge({ icon: Icon, label, className }: { icon: LucideIcon; label: stri
       role="img"
       title={label}
       aria-label={label}
-      className={clsx('grid size-6 place-items-center rounded-md bg-black/65 text-white backdrop-blur-sm', className)}
+      className={clsx('grid size-6 place-items-center rounded-md bg-black/75 text-white', className)}
     >
       <Icon className="size-3.5" strokeWidth={2.25} />
     </span>
@@ -125,7 +125,7 @@ export const PosterCard = memo(function PosterCard({
             alt=""
             loading="lazy"
             decoding="async"
-            className="size-full object-cover"
+            className="size-full object-cover transition-transform duration-300 ease-[var(--ease-out)] group-hover:scale-[1.02]"
           />
         ) : (
           <CoverPlaceholder item={item} />
@@ -144,7 +144,7 @@ export const PosterCard = memo(function PosterCard({
         {title.score && vis('score') !== null && (
           <span
             className={clsx(
-              'absolute top-1.5 right-1.5 rounded-md bg-black/65 px-1.5 py-0.5 font-mono text-[11px] font-medium text-white backdrop-blur-sm',
+              'absolute top-1.5 right-1.5 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-medium text-white',
               vis('score'),
             )}
           >
@@ -189,7 +189,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={releaseLong(release)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-accent backdrop-blur-sm',
+                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-accent',
                       vis('release'),
                     )}
                   >
@@ -203,7 +203,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={tvScheduleLong(schedule)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide backdrop-blur-sm',
+                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide',
                       schedule.kind === 'airing' ? 'border-info/70 text-info' : 'border-accent/70 text-accent',
                       vis('release'),
                     )}
@@ -220,7 +220,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title="Early Access — not at 1.0 yet"
                     className={clsx(
-                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-orange-300 backdrop-blur-sm',
+                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-orange-300',
                       vis('release'),
                     )}
                   >
@@ -235,7 +235,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={plexMeta[item.plex!].label}
                     className={clsx(
-                      'flex items-center gap-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm',
+                      'flex items-center gap-1 rounded-full bg-black/75 px-1.5 py-0.5 text-[11px] font-medium text-white',
                       vis('plex'),
                     )}
                   >

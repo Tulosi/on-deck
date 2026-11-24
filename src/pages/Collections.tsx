@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowLeft, ChevronLeft, ChevronRight, EyeOff, Layers, Loader2, Pencil, Plus, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, EyeOff, Layers, ListFilter, Loader2, Pencil, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
 import { ShareCollection } from '../components/ShareLinks'
@@ -146,7 +146,7 @@ function DefaultBadge() {
 function SmartBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-1.5 py-0.5 font-mono text-[11px] text-accent-ink uppercase">
-      <Sparkles className="size-3" /> Smart
+      <ListFilter className="size-3" /> Smart
     </span>
   )
 }

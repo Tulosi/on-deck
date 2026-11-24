@@ -215,7 +215,7 @@ function SignInToTrack() {
       <p className="text-sm text-muted">Track your status, progress and ratings for this title.</p>
       <Link
         to="/login"
-        className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent/90"
+        className="hit rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent/90"
       >
         Sign in to track
       </Link>
@@ -274,7 +274,7 @@ export function TitleDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-sm text-white backdrop-blur hover:bg-black/70 md:left-6"
+          className="hit absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-sm text-white backdrop-blur hover:bg-black/70 md:left-6"
         >
           <ArrowLeft className="size-4" /> Back
         </button>

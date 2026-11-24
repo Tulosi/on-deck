@@ -151,7 +151,8 @@ export function Library() {
   const selected = selecting ? results.filter((i) => picked.has(i.id)) : []
   const card = (item: (typeof results)[number]) => (
     <SelectableCard selecting={selecting} selected={picked.has(item.id)} onToggle={() => togglePick(item.id)} label={item.title.title}>
-      <PosterCard item={item} />
+      {/* Big libraries: the browser skips laying out and painting cards that are off screen. */}
+      <PosterCard item={item} className={results.length > REORDER_MAX ? 'cv-auto' : undefined} />
     </SelectableCard>
   )
 
@@ -177,7 +178,7 @@ export function Library() {
             onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
             aria-pressed={selecting}
             className={clsx(
-              'flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs hover:border-accent',
+              'hit flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs hover:border-accent',
               selecting ? 'border-accent bg-accent/10 text-fg' : 'border-line text-fg',
             )}
           >
@@ -187,7 +188,7 @@ export function Library() {
         {/* Phones: Collections isn't in the tab bar, so it's reached from here. */}
         <Link
           to="/collections"
-          className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent md:hidden"
+          className="hit flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent md:hidden"
         >
           <Layers className="size-3.5" /> Collections
         </Link>

@@ -134,7 +134,7 @@ export function SearchPage() {
         createPortal(
           <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label={preview.title}>
             <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} />
-            <div ref={previewPanel} tabIndex={-1} className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface shadow-2xl outline-none">
+            <div ref={previewPanel} tabIndex={-1} className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface shadow-2xl outline-none">
               <Preview
                 result={preview}
                 added={onDeck.has(resultKey(preview)) || addStates[resultKey(preview)] === 'added'}

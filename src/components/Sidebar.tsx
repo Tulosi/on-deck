@@ -1,7 +1,8 @@
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
-import { Archive, GripVertical, Layers, Settings, Sparkles } from 'lucide-react'
+import { collectionIcon } from './collectionIcon'
+import { Archive, GripVertical, Layers, Settings } from 'lucide-react'
 import { useCollectionList } from '../lib/collections'
 import { DEFAULT_MAIN, DEFAULT_TYPES, moveTo, nudge, ordered, useNavLayout, type Section } from '../lib/navLayout'
 import { primaryNav, type NavItem } from './nav'
@@ -179,7 +180,7 @@ export function Sidebar() {
           <Wordmark />
         </NavLink>
       </div>
-      <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-2">
+      <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 py-2">
         {/* Media categories */}
         <Reorderable
           section="main"
@@ -237,7 +238,7 @@ export function Sidebar() {
                   <SideLink
                     to={`/collections/${id}`}
                     label={c.name}
-                    icon={c.rules != null ? Sparkles : Layers}
+                    icon={collectionIcon(c)}
                     active={pathname === `/collections/${id}`}
                     indent
                     onKeyDown={cNav}

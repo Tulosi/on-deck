@@ -214,7 +214,7 @@ function SeasonPicker({
         All missing seasons
         <span className="font-mono text-xs text-faint">{open.length}</span>
       </label>
-      <ul className="max-h-72 overflow-y-auto py-1">
+      <ul className="max-h-72 overflow-y-auto overscroll-contain py-1">
         {seasons.map((s) => {
           const state = seasonState(s)
           const selectable = open.some((o) => o.number === s.number)

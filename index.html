@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Browser / phone status bar colour; switched with the theme (lib/theme.ts). -->
+    <meta name="theme-color" content="#0c0b0a" />
     <meta name="description" content="The movies, shows, games and books you actually intend to get to." />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -16,6 +18,7 @@
       try {
         var t = localStorage.getItem('ondeck.theme')
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+        if (t === 'light') document.querySelector('meta[name="theme-color"]').content = '#f5f2ec'
       } catch (e) {}
     </script>
   </head>

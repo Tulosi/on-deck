@@ -8,7 +8,7 @@ import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { SearchBox } from './SearchBox'
 
-const iconButton = 'grid size-9 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg'
+const iconButton = 'hit grid size-9 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg'
 
 export function TopBar() {
   const { theme, toggle } = useTheme()
@@ -22,7 +22,7 @@ export function TopBar() {
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur md:px-6">
-      <Link to="/" className="md:hidden" aria-label="On Deck home">
+      <Link to="/" className="hit md:hidden" aria-label="On Deck home">
         <Logo />
       </Link>
 
@@ -57,7 +57,7 @@ export function TopBar() {
         ) : (
           <Link
             to="/login"
-            className="ml-1 flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-95"
+            className="hit ml-1 flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-95"
             aria-label="Sign in"
           >
             <LogIn className="size-4" />

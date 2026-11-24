@@ -146,7 +146,7 @@ export function SearchBox() {
           document.body,
         )}
       {open && (
-        <div className="absolute inset-x-0 top-11 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14">
+        <div className="absolute inset-x-0 top-11 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14">
           {/* Type picker + close */}
           <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-surface py-2 pr-2 pl-3">
             <div role="radiogroup" aria-label="Search for" className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">

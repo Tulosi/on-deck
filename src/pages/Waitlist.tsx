@@ -48,7 +48,7 @@ function Segmented<T extends string | null>({
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={clsx(
-              'flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors',
+              'hit flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors',
               active ? 'bg-raised text-fg' : 'text-muted hover:text-fg',
             )}
           >

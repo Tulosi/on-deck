@@ -108,8 +108,27 @@ textarea {
 :where(input, textarea, select):focus-visible {
   outline-offset: 0;
 }
+/* Headings get focus after a page change (useRouteFocus) only so the next Tab starts there: no ring. */
+h1[tabindex='-1']:focus {
+  outline: none;
+}
 
 @layer base {
+  /* Numbers line up (counts, scores, prices, episode numbers), and taps don't wait for a double-tap zoom. */
+  html {
+    font-variant-numeric: tabular-nums;
+    touch-action: manipulation;
+  }
+  /* No lone word on a paragraph's last line; headings break into even lines. */
+  p {
+    text-wrap: pretty;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
   /* Press feedback: every button answers the tap. Opt out with .no-press.
      In the base layer so a component's own transition utilities still win. */
   button:not(:disabled, .no-press),
@@ -141,8 +160,27 @@ textarea {
     transform: translateY(8px) scale(0.98);
   }
 }
+/* Popovers (filters, notifications) grow out of the button that opened them: set the origin with origin-*. */
+.pop-in {
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+/* The phone More sheet slides up from the tab bar. */
+.sheet-in {
+  transition: transform 320ms var(--ease-drawer);
+  @starting-style {
+    transform: translateY(100%);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .toast-enter {
+  .toast-enter,
+  .pop-in,
+  .sheet-in {
     transition: none;
   }
 }
@@ -222,4 +260,26 @@ textarea {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
   }
+}
+
+/* Touch screens: small controls get an invisible 44 × 44 px tap area around them (they keep their look). */
+@media (pointer: coarse) {
+  .hit:not(.absolute, .fixed, .sticky) {
+    position: relative;
+  }
+  .hit::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Off-screen cards in a long grid aren't laid out or painted until they scroll near. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }

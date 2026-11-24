@@ -3,10 +3,53 @@ import { useDialog } from '../lib/useDialog'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
-import { Archive, Layers, MoreHorizontal, Settings, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { collectionIcon } from './collectionIcon'
+import { Archive, Layers, MoreHorizontal, Settings, SlidersHorizontal, X } from 'lucide-react'
 import { useCollectionList } from '../lib/collections'
 import { ordered, useNavLayout } from '../lib/navLayout'
 import { NAV_KEYS, navItem, tabsFrom, type NavItem, type NavKey } from './nav'
+
+/**
+ * Swipe-down-to-close for the More sheet. Follows the finger 1:1 downward (with resistance upward), closes
+ * past 80px or on a quick flick, and otherwise springs back.
+ */
+function useSheetDrag(panel: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
+  const start = useRef<{ y: number; t: number } | null>(null)
+  const dy = useRef(0)
+  const set = (y: number, animate: boolean) => {
+    const el = panel.current
+    if (!el) return
+    el.style.transition = animate ? 'transform 240ms var(--ease-drawer)' : 'none'
+    el.style.transform = y ? `translateY(${y}px)` : ''
+  }
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button') || start.current) return
+      start.current = { y: e.clientY, t: performance.now() }
+      dy.current = 0
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!start.current) return
+      const raw = e.clientY - start.current.y
+      dy.current = raw > 0 ? raw : raw * 0.2 // dragging up meets resistance
+      set(dy.current, false)
+    },
+    onPointerUp: () => {
+      if (!start.current) return
+      const velocity = dy.current / (performance.now() - start.current.t)
+      start.current = null
+      if (dy.current > 80 || (dy.current > 20 && velocity > 0.11)) {
+        set(panel.current?.offsetHeight ?? 600, true)
+        setTimeout(onClose, 200)
+      } else set(0, true)
+    },
+    onPointerCancel: () => {
+      start.current = null
+      set(0, true)
+    },
+  }
+}
 
 const hrefOf = (item: NavItem) =>
   item.libraryType !== undefined ? `/library${item.libraryType ? `?type=${item.libraryType}` : ''}` : item.to!
@@ -23,6 +66,7 @@ function useIsActive() {
 /** Sheet above the tab bar: everything not in the bar, your collections, and Settings. */
 function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
   const panel = useDialog<HTMLDivElement>(true, onClose)
+  const drag = useSheetDrag(panel, onClose)
   const isActive = useIsActive()
   const { pathname } = useLocation()
   const [layout] = useNavLayout()
@@ -34,12 +78,16 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="More">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div ref={panel} tabIndex={-1} className="absolute inset-x-0 bottom-0 max-h-[75dvh] outline-none overflow-y-auto rounded-t-2xl border-t border-line bg-surface pb-[calc(env(safe-area-inset-bottom)+4rem)]">
-        <div className="sticky top-0 flex items-center justify-between border-b border-line bg-surface px-4 py-3">
+      <div ref={panel} tabIndex={-1} className="sheet-in absolute inset-x-0 bottom-0 max-h-[75dvh] outline-none overflow-y-auto overscroll-contain rounded-t-2xl border-t border-line bg-surface pb-[calc(env(safe-area-inset-bottom)+4rem)]">
+        {/* Drag the header down to close (a quick flick is enough). */}
+        <div {...drag} className="sticky top-0 touch-none border-b border-line bg-surface px-4 pt-2 pb-3 select-none">
+          <div aria-hidden className="mx-auto mb-2 h-1 w-9 rounded-full bg-line" />
+          <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-fg">More</p>
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-full text-muted hover:bg-raised">
             <X className="size-4" />
           </button>
+          </div>
         </div>
         <div className="space-y-0.5 p-2">
           {keys.map((k) => {
@@ -60,7 +108,7 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
           </Link>
           {colOrder.map((id) => {
             const c = byId.get(id)!
-            const Icon = c.rules != null ? Sparkles : Layers
+            const Icon = collectionIcon(c)
             const active = pathname === `/collections/${id}`
             return (
               <Link key={id} to={`/collections/${id}`} onClick={onClose} className={clsx(row, 'pl-8', active ? 'bg-raised text-fg' : 'text-muted')}>

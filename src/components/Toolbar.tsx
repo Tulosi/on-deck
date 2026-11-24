@@ -48,6 +48,8 @@ function LabelsToggle() {
         aria-valuemax={MODES.length - 1}
         aria-valuenow={index}
         aria-valuetext={MODES[index].readout}
+        // Touch: the tap area around the small switch (see .hit) lands on the switch itself → next position.
+        onClick={(e) => e.target === e.currentTarget && go(index + 1)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowRight') go(Math.min(index + 1, MODES.length - 1))
           else if (e.key === 'ArrowLeft') go(Math.max(index - 1, 0))
@@ -55,7 +57,7 @@ function LabelsToggle() {
           else return
           e.preventDefault()
         }}
-        className="relative flex h-5 w-[3.25rem] shrink-0 cursor-pointer items-center rounded-full border border-line bg-surface outline-none focus-visible:border-accent"
+        className="hit relative flex h-5 w-[3.25rem] shrink-0 cursor-pointer items-center rounded-full border border-line bg-surface outline-none focus-visible:border-accent"
       >
         {MODES.map((m, i) => (
           <button
@@ -443,7 +445,7 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className={clsx(
-          'flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors',
+          'hit flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors',
           open || count ? 'border-accent text-fg' : 'border-line text-muted hover:text-fg',
         )}
       >
@@ -456,7 +458,7 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
         )}
       </button>
       {open && (
-        <div className="fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface p-4 shadow-2xl shadow-black/40 sm:absolute sm:inset-x-auto sm:top-9 sm:left-0 sm:w-[32rem]">
+        <div className="pop-in origin-top fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl sm:origin-top-left border border-line bg-surface p-4 shadow-2xl shadow-black/40 sm:absolute sm:inset-x-auto sm:top-9 sm:left-0 sm:w-[32rem]">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm font-semibold text-fg">Filters</p>
             <div className="flex items-center gap-3">

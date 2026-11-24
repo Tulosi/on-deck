@@ -11,6 +11,7 @@ import { BottomNav } from './BottomNav'
 import { PageSkeleton } from './LazyPage'
 import { Toaster } from './Toaster'
 import { useScrollMemory } from '../lib/useScrollMemory'
+import { useRouteFocus } from '../lib/useRouteFocus'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
@@ -32,6 +33,7 @@ export function AppShell() {
   useSmartCollectionSync()
   usePlexBackgroundSync()
   useScrollMemory()
+  useRouteFocus()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

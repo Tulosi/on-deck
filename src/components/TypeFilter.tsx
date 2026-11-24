@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { LABELS, TYPES } from '../lib/filters'
 import type { MediaType } from '../types'
 
-const selectClass = 'h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
+const selectClass = 'h-9 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 
 /**
  * The one media-type picker (All · Movies · TV Shows · Games · Books), used by the toolbar and Calendar so the

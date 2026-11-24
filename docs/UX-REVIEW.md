@@ -468,3 +468,31 @@ No P0s: nothing blocks a task.
 - **Not done:**
   - Calendar stays under More, by choice: the type tabs are kept.
   - The type dropdown and labels toggle are still at the top, out of thumb reach.
+
+---
+
+## 12. Frontend Design skill (Anthropic, `anthropics/skills`)
+
+Installed after section 11. It's a visual-direction skill. It lists the traits generated designs cluster around, and asks for a design plan (palette, type, layout, principles) that's checked against the brief before any code. Nothing has been changed from it yet: the findings point to an identity decision, which is the owner's call.
+
+### On Deck against its "generic default" list
+| Trait it names | On Deck today |
+|---|---|
+| Near-black background with a single bright accent | `#0c0b0a` with one yellow accent: a match |
+| Tinted near-black standing in for black | `#0c0b0a`: a match |
+| A monospace face for small data labels | JetBrains Mono, 91 uses: years, scores, chips, counts |
+| Meta strings joined with middle dots | 76 places ("2022 · S2 · E4", "Drama · Sci-Fi") |
+| "WORD — fragment" labels with a spaced em dash | About 33 ("S2 · E5 — out now") |
+| ALL-CAPS labels | 32 uses: the sample banner, "Default" / "Smart" tags, chips, section labels |
+| Default type families | Inter + JetBrains Mono, the usual pair |
+| One radius everywhere | Mostly fine: full / md / lg / xl are used by role |
+
+This agrees with Impeccable's verdict in section 11: the shell is generic and the content model is not.
+
+### What it asks for next
+A short design plan grounded in the subject: household TV, films, games and books, with a busy parent picking tonight's thing on a phone. "On deck" means next up. The plan would include:
+- 4–6 named colours.
+- One or two type families, chosen on purpose, with a type scale. Numbers would come from the type family's own tabular figures, not a mono face.
+- Where the one bold moment goes. The poster → title morph is the obvious candidate, with everything else kept quiet.
+
+That plan is then reviewed for defaults before any code changes.

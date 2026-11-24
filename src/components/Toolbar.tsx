@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Check, ChevronRight, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
+import { Check, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
 import { useChipModeControl } from '../lib/chips'
 import {
   LABELS,
   activeCount,
-  moreActive,
+  applyFilters,
   clearFilters,
+  toggleValue,
   withType,
-  cycleTri,
   type Filters,
+  type NegKey,
   type GroupKey,
   type SortKey,
 } from '../lib/filters'
@@ -61,316 +62,207 @@ function LabelsButton() {
 const selectClass = 'h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 
 // ─── Filters panel ─────────────────────────────────────────────────────────
+//
+// One panel, no hidden section: what's on your list (status, priority, rating), what's out and available, then the
+// selected type's own filters. Tapping an option always selects it. A few groups have an "is / is not" switch
+// instead of the old tap-twice-to-exclude chips. Each option shows how many titles it would leave.
+
+/** Small "is / is not" switch beside a group's label. */
+function NegSwitch({ label, neg, onChange }: { label: string; neg: boolean; onChange: (neg: boolean) => void }) {
+  const opt = (on: boolean, text: string, value: boolean) => (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => onChange(value)}
+      className={clsx('rounded px-1.5 py-0.5 transition-colors', on ? 'bg-raised text-fg' : 'text-faint hover:text-fg')}
+    >
+      {text}
+    </button>
+  )
+  return (
+    <span role="group" aria-label={`${label}: include or exclude`} className="inline-flex rounded-md border border-line p-px text-[11px]">
+      {opt(!neg, 'is', false)}
+      {opt(neg, 'is not', true)}
+    </span>
+  )
+}
 
 function OptionGroup<T extends string>({
   label,
+  hint,
   options,
   selected,
-  excluded,
   render,
   onToggle,
+  count,
+  neg,
+  children,
 }: {
   label: string
+  /** Shown as a tooltip on the label. */
+  hint?: string
   options: readonly T[]
   selected: readonly T[]
-  /** 3-state groups: values currently excluded ("not …"). Omit for include-only groups. */
-  excluded?: readonly string[]
   render: (v: T) => string
   onToggle: (v: T) => void
+  /** Titles this option would leave, given the other filters. */
+  count?: (v: T) => number
+  /** Groups that can exclude: whether they're set to "is not", and how to switch. */
+  neg?: { value: boolean; set: (neg: boolean) => void }
+  /** Extra controls on the same row (e.g. Max price). */
+  children?: ReactNode
 }) {
   if (options.length === 0) return null
+  const excluding = !!neg?.value
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted">{label}</p>
+      <div className="flex items-center gap-2">
+        <p className="text-xs font-medium text-muted" title={hint}>
+          {label}
+        </p>
+        {neg && <NegSwitch label={label} neg={neg.value} onChange={neg.set} />}
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {
           const on = selected.includes(o)
-          const off = !!excluded?.includes(o)
           const name = render(o)
+          const n = count?.(o)
           return (
             <button
               key={o}
               type="button"
-              aria-pressed={on ? 'true' : off ? 'mixed' : 'false'}
-              aria-label={on ? `${name}: included` : off ? `${name}: excluded` : name}
-              title={excluded ? (on ? 'Included. Tap to exclude' : off ? 'Excluded. Tap to clear' : 'Tap to include') : undefined}
+              aria-pressed={on}
+              aria-label={`${excluding ? 'Not ' : ''}${name}${n != null ? `, ${n}` : ''}`}
               onClick={() => onToggle(o)}
               className={clsx(
                 'flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs transition-colors',
                 on
-                  ? 'border-accent bg-accent/15 text-fg'
-                  : off
-                    ? 'border-bad/70 bg-bad/10 text-bad'
-                    : 'border-line text-muted hover:border-faint hover:text-fg',
+                  ? excluding
+                    ? 'border-bad/70 bg-bad/10 text-fg'
+                    : 'border-accent bg-accent/15 text-fg'
+                  : 'border-line text-muted hover:border-faint hover:text-fg',
+                !on && n === 0 && 'opacity-50',
               )}
             >
-              {on && <Check className="size-3" />}
-              {off && <X className="size-3" />}
-              <span className={clsx(off && 'line-through decoration-bad/70')}>{name}</span>
+              {on && (excluding ? <X className="size-3 text-bad" /> : <Check className="size-3" />)}
+              {name}
+              {n != null && <span className="font-mono text-[10px] text-faint">{n}</span>}
             </button>
           )
         })}
+        {children}
       </div>
     </div>
   )
 }
 
-const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
-
 function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
-  const { items } = useItems()
-  const genres =
-    f.type === 'movie' || f.type === 'tv' || f.type === 'game'
-      ? [...new Set(items.filter((i) => i.title.mediaType === f.type).flatMap((i) => i.title.genres))].sort()
-      : []
-  const years = items.map((i) => i.title.year).filter((y): y is number => !!y)
-  const minYear = years.length ? Math.min(...years) : 1950
-  const maxYear = Math.max(new Date().getFullYear() + 3, ...years)
-  const yearOptions = Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
+  const { allItems } = useItems()
+  const genres = useMemo(
+    () =>
+      f.type === 'movie' || f.type === 'tv' || f.type === 'game'
+        ? [...new Set(allItems.filter((i) => i.title.mediaType === f.type).flatMap((i) => i.title.genres))].sort()
+        : [],
+    [allItems, f.type],
+  )
+  /** How many titles picking just this value would leave, with every other filter as it is. */
+  const count = <K extends keyof Filters>(key: K) => (v: string) =>
+    applyFilters(allItems, { ...f, [key]: [v], neg: { ...f.neg, [key]: false } }).length
+  const tog = <K extends keyof Filters>(key: K) => (v: string) => set(toggleValue(f, key, v))
+  const negOf = (key: NegKey) => ({ value: !!f.neg[key], set: (neg: boolean) => set({ ...f, neg: { ...f.neg, [key]: neg } }) })
+  const available = f.availability.includes('available')
 
   return (
     <div className="space-y-5">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-faint">
-        Tap a filter once to include it, again to exclude it
-        <span className="inline-flex items-center gap-0.5 rounded-md border border-bad/70 bg-bad/10 px-1.5 text-bad">
-          <X className="size-2.5" />
-          <span className="line-through">like this</span>
-        </span>
-        , a third time to clear.
-      </p>
-      {f.type && (
+      <Section title="Your list">
+        <OptionGroup
+          label="Status"
+          options={statusFilterOptions(f.type)}
+          selected={f.status}
+          render={(v) => statusLabel(v, f.type)}
+          onToggle={tog('status')}
+          count={count('status')}
+          neg={negOf('status')}
+        />
+        <OptionGroup label="Priority" options={LABELS.options.PRIORITY} selected={f.priority} render={(v) => LABELS.priority[v]} onToggle={tog('priority')} count={count('priority')} />
+        <OptionGroup
+          label="Your rating"
+          options={LABELS.options.RATING}
+          selected={f.rating}
+          render={(v) => LABELS.rating[v]}
+          onToggle={tog('rating')}
+          count={count('rating')}
+          neg={negOf('rating')}
+        />
+      </Section>
+
+      <Section title="Out and available">
+        <OptionGroup label="Release" options={LABELS.options.RELEASE} selected={f.release} render={(v) => LABELS.release[v]} onToggle={tog('release')} count={count('release')}>
+          <button
+            type="button"
+            aria-pressed={available}
+            title="Movies and TV on your Plex or streaming services (set in Settings). Games and books you own."
+            onClick={() => set({ ...f, availability: available ? [] : ['available'] })}
+            className={clsx(
+              'ml-2 flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs transition-colors',
+              available ? 'border-accent bg-accent/15 text-fg' : 'border-line text-muted hover:border-faint hover:text-fg',
+            )}
+          >
+            {available && <Check className="size-3" />}
+            Available to me
+            <span className="font-mono text-[10px] text-faint">{count('availability')('available')}</span>
+          </button>
+        </OptionGroup>
+      </Section>
+
+      {f.type && f.type !== 'book' && (
         <Section title={LABELS.type[f.type]}>
-          {f.type === 'movie' || f.type === 'tv' ? (
+          <OptionGroup
+            label={f.type === 'game' ? 'Genre & tags' : 'Genre'}
+            options={genres}
+            selected={f.genre}
+            render={(v) => v}
+            onToggle={tog('genre')}
+            count={count('genre')}
+            neg={negOf('genre')}
+          />
+          {f.type === 'tv' && (
+            <OptionGroup label="Show status" options={LABELS.options.TV_STATUS} selected={f.tvStatus} render={(v) => LABELS.tvStatus[v]} onToggle={tog('tvStatus')} count={count('tvStatus')} />
+          )}
+          {f.type === 'game' && (
             <>
+              <OptionGroup label="Co-op & multiplayer" options={LABELS.options.COOP} selected={f.coop} render={(v) => LABELS.coop[v]} onToggle={tog('coop')} count={count('coop')} neg={negOf('coop')} />
+              <OptionGroup label="Length" hint="Time to beat at a normal pace" options={LABELS.options.LENGTH} selected={f.length} render={(v) => LABELS.length[v]} onToggle={tog('length')} count={count('length')} />
+              <OptionGroup label="Steam Deck" options={LABELS.options.DECK} selected={f.deck} render={(v) => LABELS.deck[v]} onToggle={tog('deck')} count={count('deck')} />
+              <OptionGroup label="Early access" options={LABELS.options.ACCESS} selected={f.access} render={(v) => LABELS.access[v]} onToggle={tog('access')} count={count('access')} />
               <OptionGroup
-                label="Genre"
-                options={genres}
-                selected={f.genre}
-                render={(v) => v}
-                onToggle={(v) => set({ ...f, genre: toggle(f.genre, v) })}
-              />
-              {f.type === 'tv' && (
-                <>
-                  <OptionGroup
-                    label="Show status"
-                    options={LABELS.options.TV_STATUS}
-                    selected={f.tvStatus}
-                    render={(v) => LABELS.tvStatus[v]}
-                    excluded={f.not.tvStatus ?? []}
-          onToggle={(v) => set(cycleTri(f, 'tvStatus', v))}
-                  />
-                  <OptionGroup
-                    label="Watch progress"
-                    options={LABELS.options.TV_PROGRESS}
-                    selected={f.tvProgress}
-                    render={(v) => LABELS.tvProgress[v]}
-                    excluded={f.not.tvProgress ?? []}
-          onToggle={(v) => set(cycleTri(f, 'tvProgress', v))}
-                  />
-                </>
-              )}
-              <p className="text-[11px] text-faint">More filters (runtime, Plex, streaming service …) are on the way.</p>
-            </>
-          ) : f.type === 'game' ? (
-            <>
-              <OptionGroup
-                label="Genre & tags"
-                options={genres}
-                selected={f.genre}
-                render={(v) => v}
-                onToggle={(v) => set({ ...f, genre: toggle(f.genre, v) })}
-              />
-              <OptionGroup
-                label="Co-op & multiplayer"
-                options={LABELS.options.COOP}
-                selected={f.coop}
-                render={(v) => LABELS.coop[v]}
-                excluded={f.not.coop ?? []}
-          onToggle={(v) => set(cycleTri(f, 'coop', v))}
-              />
-              <OptionGroup
-                label="Length (time to beat)"
-                options={LABELS.options.LENGTH}
-                selected={f.length}
-                render={(v) => LABELS.length[v]}
-                excluded={f.not.length ?? []}
-          onToggle={(v) => set(cycleTri(f, 'length', v))}
-              />
-              <OptionGroup
-                label="Steam Deck"
-                options={LABELS.options.DECK}
-                selected={f.deck}
-                render={(v) => LABELS.deck[v]}
-                excluded={f.not.deck ?? []}
-          onToggle={(v) => set(cycleTri(f, 'deck', v))}
-              />
-              <OptionGroup
-                label="Release state"
-                options={LABELS.options.ACCESS}
-                selected={f.access}
-                render={(v) => LABELS.access[v]}
-                onToggle={(v) => set({ ...f, access: toggle(f.access, v) })}
-              />
-              <OptionGroup
-                label="Deals"
+                label="Price & deals"
+                hint="The cheapest of Steam-key stores and key shops, in your region's currency"
                 options={LABELS.options.DEAL}
                 selected={f.deal}
                 render={(v) => LABELS.deal[v]}
-                excluded={f.not.deal ?? []}
-          onToggle={(v) => set(cycleTri(f, 'deal', v))}
-              />
-              <label className="space-y-1.5">
-                <span className="block text-xs font-medium text-muted">Max price</span>
+                onToggle={tog('deal')}
+                count={count('deal')}
+              >
                 <select
+                  aria-label="Max price"
                   value={f.maxPrice ?? ''}
                   onChange={(e) => set({ ...f, maxPrice: e.target.value ? Number(e.target.value) : null })}
-                  className={selectClass}
+                  className={clsx(selectClass, 'ml-2')}
                 >
-                  <option value="">Any</option>
+                  <option value="">Any price</option>
                   {[5, 10, 20, 30, 50].map((n) => (
                     <option key={n} value={n}>
                       Under {n}
                     </option>
                   ))}
                 </select>
-              </label>
-              <p className="text-[11px] text-faint">
-                Prices are the cheapest of Steam-key stores and key shops, in your region’s currency.
-              </p>
+              </OptionGroup>
             </>
-          ) : (
-            <p className="text-xs text-muted">Books filters arrive with books search.</p>
           )}
         </Section>
       )}
-      <Section title={f.type ? 'Everything' : 'Filters'}>
-        <OptionGroup
-          label="Status"
-          options={statusFilterOptions(f.type)}
-          selected={f.status}
-          render={(v) => statusLabel(v, f.type)}
-          excluded={f.not.status ?? []}
-          onToggle={(v) => set(cycleTri(f, 'status', v))}
-        />
-        <OptionGroup
-          label="Priority"
-          options={LABELS.options.PRIORITY}
-          selected={f.priority}
-          render={(v) => LABELS.priority[v]}
-          excluded={f.not.priority ?? []}
-          onToggle={(v) => set(cycleTri(f, 'priority', v))}
-        />
-        <OptionGroup
-          label="Rating"
-          options={LABELS.options.RATING}
-          selected={f.rating}
-          render={(v) => LABELS.rating[v]}
-          excluded={f.not.rating ?? []}
-          onToggle={(v) => set(cycleTri(f, 'rating', v))}
-        />
-        <OptionGroup
-          label="Availability"
-          options={LABELS.options.AVAILABILITY}
-          selected={f.availability}
-          render={(v) => LABELS.availability[v]}
-          onToggle={(v) => set({ ...f, availability: toggle(f.availability, v) })}
-        />
-        <p className="text-[11px] text-faint">
-          Availability: movies and TV on your Plex or your streaming services (Settings); games and books In Your
-          Library. Score is on one 0–100 scale: IMDb × 10 for movies and TV, Steam % for games, Hardcover × 20 for books.
-        </p>
-      </Section>
-      <details className="group" open={moreActive(f)}>
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-fg [&::-webkit-details-marker]:hidden">
-          <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" />
-          More filters
-          <span className="text-xs font-normal text-faint">release, score, year, date added, archived</span>
-        </summary>
-        <div className="mt-3 space-y-4">
-        <OptionGroup
-          label="Release"
-          options={LABELS.options.RELEASE}
-          selected={f.release}
-          render={(v) => LABELS.release[v]}
-          onToggle={(v) => set({ ...f, release: toggle(f.release, v) })}
-        />
-        <div className="flex flex-wrap gap-x-6 gap-y-4">
-          <label className="space-y-1.5">
-            <span className="block text-xs font-medium text-muted">Minimum score</span>
-            <select
-              value={f.minScore ?? ''}
-              onChange={(e) => set({ ...f, minScore: e.target.value ? Number(e.target.value) : null })}
-              className={selectClass}
-            >
-              <option value="">Any</option>
-              {[90, 80, 70, 60, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}+ / 100
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="space-y-1.5">
-            <span className="block text-xs font-medium text-muted">Year</span>
-            <div className="flex items-center gap-1.5 text-xs text-muted">
-              <select
-                aria-label="From year"
-                value={f.yearFrom ?? ''}
-                onChange={(e) => set({ ...f, yearFrom: e.target.value ? Number(e.target.value) : null })}
-                className={selectClass}
-              >
-                <option value="">Any</option>
-                {yearOptions.map((y) => (
-                  <option key={y}>{y}</option>
-                ))}
-              </select>
-              to
-              <select
-                aria-label="To year"
-                value={f.yearTo ?? ''}
-                onChange={(e) => set({ ...f, yearTo: e.target.value ? Number(e.target.value) : null })}
-                className={selectClass}
-              >
-                <option value="">Any</option>
-                {yearOptions.map((y) => (
-                  <option key={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <label className="space-y-1.5">
-            <span className="block text-xs font-medium text-muted">Archived</span>
-            <select
-              value={f.archived}
-              onChange={(e) => set({ ...f, archived: e.target.value as Filters['archived'] })}
-              className={selectClass}
-            >
-              <option value="hide">Hidden (default)</option>
-              <option value="include">Include</option>
-              <option value="only">Only archived</option>
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="block text-xs font-medium text-muted">Date added</span>
-            <select
-              value={f.added ?? ''}
-              onChange={(e) => set({ ...f, added: (e.target.value || null) as Filters['added'] })}
-              className={selectClass}
-            >
-              <option value="">Any time</option>
-              {LABELS.options.ADDED.map((a) => (
-                <option key={a} value={a}>
-                  {LABELS.added[a]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        </div>
-      </details>
-      {!f.type && (
-        <p className="text-xs text-faint">Pick a type (movies, TV shows, games, books) for its own filters.</p>
-      )}
+      {!f.type && <p className="text-xs text-faint">Pick movies, TV shows or games for their own filters.</p>}
     </div>
   )
 }

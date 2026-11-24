@@ -14,13 +14,10 @@ import {
   groupItems,
   sortItems,
   type Filters,
-  type TriKey,
-  TRI_KEYS,
   DEFAULT_SORT,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
 import { statusLabel } from '../lib/statusLabels'
-import type { Progress } from '../types'
 import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
 
@@ -31,45 +28,36 @@ const grid =
 function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void }) {
   const pills: { key: string; label: string; remove: () => void }[] = []
   const without = <T,>(list: T[], v: T) => list.filter((x) => x !== v)
-  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: statusLabel(v, f.type), remove: () => set({ ...f, status: without(f.status, v) }) }))
+  // "Is not" groups read as "Not: …".
+  const not = (key: 'status' | 'rating' | 'genre' | 'coop', label: string) => (f.neg[key] ? `Not: ${label}` : label)
+  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: not('status', statusLabel(v, f.type)), remove: () => set({ ...f, status: without(f.status, v) }) }))
   f.priority.forEach((v) => pills.push({ key: `p-${v}`, label: `Priority: ${LABELS.priority[v]}`, remove: () => set({ ...f, priority: without(f.priority, v) }) }))
-  f.rating.forEach((v) => pills.push({ key: `r-${v}`, label: LABELS.rating[v], remove: () => set({ ...f, rating: without(f.rating, v) }) }))
-  f.availability.forEach((v) => pills.push({ key: `av-${v}`, label: LABELS.availability[v], remove: () => set({ ...f, availability: without(f.availability, v) }) }))
-  if (f.minScore != null) pills.push({ key: 'score', label: `Score ${f.minScore}+`, remove: () => set({ ...f, minScore: null }) })
+  f.rating.forEach((v) => pills.push({ key: `r-${v}`, label: not('rating', LABELS.rating[v]), remove: () => set({ ...f, rating: without(f.rating, v) }) }))
+  f.availability.forEach((v) =>
+    pills.push({ key: `av-${v}`, label: v === 'available' ? 'Available to me' : LABELS.availability[v], remove: () => set({ ...f, availability: without(f.availability, v) }) }),
+  )
   f.release.forEach((v) => pills.push({ key: `rel-${v}`, label: LABELS.release[v], remove: () => set({ ...f, release: without(f.release, v) }) }))
+  f.genre.forEach((v) => pills.push({ key: `g-${v}`, label: not('genre', v), remove: () => set({ ...f, genre: without(f.genre, v) }) }))
+  f.tvStatus.forEach((v) => pills.push({ key: `ts-${v}`, label: LABELS.tvStatus[v], remove: () => set({ ...f, tvStatus: without(f.tvStatus, v) }) }))
+  f.coop.forEach((v) => pills.push({ key: `co-${v}`, label: not('coop', LABELS.coop[v]), remove: () => set({ ...f, coop: without(f.coop, v) }) }))
+  f.deck.forEach((v) => pills.push({ key: `dk-${v}`, label: LABELS.deck[v], remove: () => set({ ...f, deck: without(f.deck, v) }) }))
+  f.access.forEach((v) => pills.push({ key: `ac-${v}`, label: LABELS.access[v], remove: () => set({ ...f, access: without(f.access, v) }) }))
+  f.length.forEach((v) => pills.push({ key: `ln-${v}`, label: LABELS.length[v], remove: () => set({ ...f, length: without(f.length, v) }) }))
+  f.deal.forEach((v) => pills.push({ key: `dl-${v}`, label: LABELS.deal[v], remove: () => set({ ...f, deal: without(f.deal, v) }) }))
+  if (f.maxPrice != null) pills.push({ key: 'maxprice', label: `Under ${f.maxPrice}`, remove: () => set({ ...f, maxPrice: null }) })
+  // Filters that left the panel, still honoured when an older link or saved collection uses them: shown here so
+  // they're visible and can be removed.
+  if (f.minScore != null) pills.push({ key: 'score', label: `Score ${f.minScore}+`, remove: () => set({ ...f, minScore: null }) })
   if (f.yearFrom != null || f.yearTo != null)
     pills.push({
       key: 'year',
       label: `Year ${f.yearFrom ?? '…'}–${f.yearTo ?? '…'}`,
       remove: () => set({ ...f, yearFrom: null, yearTo: null }),
     })
-  if (f.archived !== 'hide')
-    pills.push({ key: 'archived', label: `Archived: ${LABELS.archived[f.archived]}`, remove: () => set({ ...f, archived: 'hide' }) })
   if (f.added) pills.push({ key: 'added', label: `Added: ${LABELS.added[f.added]}`, remove: () => set({ ...f, added: null }) })
-  f.genre.forEach((v) => pills.push({ key: `g-${v}`, label: v, remove: () => set({ ...f, genre: without(f.genre, v) }) }))
-  f.tvStatus.forEach((v) => pills.push({ key: `ts-${v}`, label: LABELS.tvStatus[v], remove: () => set({ ...f, tvStatus: without(f.tvStatus, v) }) }))
-  f.coop.forEach((v) => pills.push({ key: `co-${v}`, label: LABELS.coop[v], remove: () => set({ ...f, coop: without(f.coop, v) }) }))
-  f.deck.forEach((v) => pills.push({ key: `dk-${v}`, label: LABELS.deck[v], remove: () => set({ ...f, deck: without(f.deck, v) }) }))
-  f.access.forEach((v) => pills.push({ key: `ac-${v}`, label: LABELS.access[v], remove: () => set({ ...f, access: without(f.access, v) }) }))
-  f.length.forEach((v) => pills.push({ key: `ln-${v}`, label: LABELS.length[v], remove: () => set({ ...f, length: without(f.length, v) }) }))
-  f.deal.forEach((v) => pills.push({ key: `dl-${v}`, label: LABELS.deal[v], remove: () => set({ ...f, deal: without(f.deal, v) }) }))
-  if (f.maxPrice != null) pills.push({ key: 'maxprice', label: `Under ${f.maxPrice}`, remove: () => set({ ...f, maxPrice: null }) })
   f.tvProgress.forEach((v) => pills.push({ key: `tp-${v}`, label: LABELS.tvProgress[v], remove: () => set({ ...f, tvProgress: without(f.tvProgress, v) }) }))
-  // Exclusions ("not …") from 3-state groups.
-  const name = (k: TriKey, v: string): string => {
-    if (k === 'status') return statusLabel(v as Progress, f.type)
-    const table = (LABELS as unknown as Record<string, Record<string, string> | undefined>)[k]
-    return table?.[v] ?? v
-  }
-  for (const k of TRI_KEYS) {
-    for (const v of f.not[k] ?? []) {
-      pills.push({
-        key: `not-${k}-${v}`,
-        label: `Not: ${name(k, v)}`,
-        remove: () => set({ ...f, not: { ...f.not, [k]: (f.not[k] ?? []).filter((x) => x !== v) } }),
-      })
-    }
-  }
+  // The Archive page is archived=only; that's the page itself, not a filter to remove.
+  if (f.archived === 'include') pills.push({ key: 'archived', label: 'Including archived', remove: () => set({ ...f, archived: 'hide' }) })
   if (pills.length === 0) return null
 
   return (

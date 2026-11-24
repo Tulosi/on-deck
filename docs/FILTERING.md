@@ -20,38 +20,42 @@ Layer 3  Type-specific filters     only when one type is selected        Steam r
 - Because only one type is selected at a time, Layer 3 is simply "the selected type's filters". There's no
   mixed-type ambiguity.
 
-### Layer 2 — Cross-category filters (always available)
-| Filter | Values | Notes |
-|---|---|---|
-| Status | Wanted · In Progress · Done · Dropped | "Done" = Watched / Played / Read |
-| Priority | High · Medium · Low · None | |
-| Rating | Liked · Didn't like · ★ Favourite · Unrated | |
-| Score | 0–100 range | Normalised (§3) |
-| Release | Released · Upcoming / pre-release · year range | |
-| Availability | Available · Not available | Movies/TV: on Plex or one of my streaming services. Games/Books: **In Your Library** |
-| Date added | range / "last 30 days" | |
-| Collection | any of my collections | once collections exist |
+### The panel (slimmed 2026-11-24)
+The filter panel was cut from up to 16 groups (with a hidden "More filters" section and tap-twice-to-exclude
+chips) to one panel with no hidden part. Games show 11 groups, TV 7, Movies 6, All 5. Every option shows how
+many titles it would leave with the other filters as they are; options that would leave none are dimmed.
 
-Not cross-category, by decision: **genre** and **length** live in each type's section.
+| Section | Filter | Values | Notes |
+|---|---|---|---|
+| Your list | Status | the type's statuses | **is / is not** |
+| | Priority | High · Medium · Low · None | Home's "Ready to start" link uses it |
+| | Your rating | Liked · Didn't like · ★ Favourite · Unrated | **is / is not** |
+| Out and available | Release | Released · Upcoming | Waitlist and Ready to start depend on it |
+| | Available to me | on / off | Movies/TV: on Plex or my streaming services. Games/Books: owned |
+| Movies, TV, Games | Genre (Games: Genre & tags) | from the library | **is / is not** |
+| TV | Show status | Airing · Returning · Ended | Ended includes cancelled |
+| Games | Co-op & multiplayer | Online co-op · Local co-op · Split-screen · PvP | **is / is not** |
+| | Length | Short · Medium · Long · Epic | time to beat |
+| | Steam Deck | Verified · Playable · Unsupported | |
+| | Early access | Early Access · Full release | the Early Access collection uses it |
+| | Price & deals | On sale · Historical low · Free-To-Play, plus Max price | the Deals collection uses it |
 
-### Layer 3 — Type-specific filters (shown when that type is selected)
-**Movies:** genre (TMDB) · runtime · on Plex (available / requested / missing) · streaming service ·
-theatrical vs digital release · original language · certification
-
-**TV:** genre (TMDB) · show status (Airing · Returning · Ended · Cancelled) · watch progress (Not started ·
-Mid-way · Caught up) · total length (episodes × runtime) · number of seasons · on Plex · streaming service · network
-
-**Games:** genre (IGDB: RPG, ARPG, FPS, Roguelike …) · Steam review % · Metacritic · price range · on sale /
-historical low · co-op (online · local · split-screen) · PvP · max players · Steam Deck (Verified · Playable ·
-Unsupported) · HowLongToBeat length · themes · perspective · Early Access · In Your Library
-
-**Books:** genre (Hardcover) · Hardcover rating · page count · author · series (in a series / standalone)
+**Left the panel:** Minimum score and Date added (Sort covers them), Year range, TV Watch progress (Status
+covers it), "Not available", and Archived. They're still read from older links and saved smart collections, so
+those keep matching exactly as before, and each shows as a removable chip above the results. Archived titles stay
+hidden by default; the notice above the results ("N archived titles are hidden by default · Show") brings them
+in, and the Archive page lists only them.
 
 ## 2. Logic
 - **Within one filter:** options are OR'd. Genre = RPG or FPS means either.
 - **Across filters:** AND'd. Co-op AND Steam Deck Verified.
-- **Include only.** There's no "NOT" / exclude.
-- Switching type pills drops the old type's Layer-3 filters and keeps Layer-2 filters.
+- **Is / is not** (Status, Your rating, Genre, Co-op): a small switch by the group's label. On "is not" the
+  picked values exclude ("not Dropped, not Beat it"). Exclusion is per group, not per chip: the old
+  tap-once-include, tap-again-exclude chips were hard to discover and needed instructions in the panel, and mixing
+  include and exclude in one group added little. URL: excluded values carry a leading "-" (`status=-dropped`); a
+  lone `-` keeps a group on "is not" before anything is picked. Older links that mixed the two read as the
+  included values; an excluded value in a group without the switch reads as every other option.
+- Switching type drops the old type's own filters and keeps the rest.
 
 ## 3. Normalisation
 - **Score (0–100):** movies/TV use **IMDb × 10** (matching the poster label). Games use Steam review %.

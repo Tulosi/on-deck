@@ -4,7 +4,8 @@
 //
 // Layer 1: type (single-select; absent = all). Layer 2: cross-category filters (any type).
 // Layer 3: type-specific filters — only read when that type is selected.
-// Within one filter values are OR'd; different filters are AND'd. Include only (no exclude).
+// Within one filter values are OR'd; different filters are AND'd. A few groups (status, rating, genre, co-op) can
+// be flipped to "is not": then their values are exclusions, written to the URL with a leading "-".
 import { cheapest } from './prices'
 import { releaseInfo, tvSchedule } from './release'
 import { statusLabel } from './statusLabels'
@@ -16,7 +17,8 @@ export type RatingFilter = 'liked' | 'disliked' | 'favourite' | 'unrated'
 export type AvailabilityFilter = 'available' | 'unavailable'
 export type ReleaseFilter = 'released' | 'upcoming'
 export type AddedFilter = '7d' | '30d' | '90d' | '365d'
-export type TvStatusFilter = 'airing' | 'returning' | 'ended' | 'cancelled'
+/** Ended includes cancelled shows (old links with "cancelled" read as ended). */
+export type TvStatusFilter = 'airing' | 'returning' | 'ended'
 export type TvProgressFilter = 'not_started' | 'midway' | 'caught_up'
 export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'played' | 'price' | 'discount' | 'length'
 export type CoopFilter = 'online' | 'local' | 'split' | 'pvp'
@@ -25,26 +27,9 @@ export type AccessFilter = 'early_access' | 'full_release'
 export type DealFilter = 'on_sale' | 'historical_low' | 'free'
 /** Game length, by IGDB's "normal" time to beat. */
 export type LengthFilter = 'short' | 'medium' | 'long' | 'epic'
-/**
- * Filter groups with three states per chip: include (match any) → exclude (match none) → off. The others
- * (genre, and two-option groups like Availability) are include-only.
- */
-export const TRI_KEYS = ['status', 'priority', 'rating', 'tvStatus', 'tvProgress', 'coop', 'deck', 'deal', 'length'] as const
-export type TriKey = (typeof TRI_KEYS)[number]
-/** URL parameter for each 3-state group; excluded values are written with a leading "-". */
-const TRI_PARAM: Record<TriKey, string> = {
-  status: 'status',
-  priority: 'priority',
-  rating: 'rating',
-  tvStatus: 'tvstatus',
-  tvProgress: 'tvprogress',
-  coop: 'coop',
-  deck: 'deck',
-  deal: 'deal',
-  length: 'length',
-}
-const TV_TRI: TriKey[] = ['tvStatus', 'tvProgress']
-const GAME_TRI: TriKey[] = ['coop', 'deck', 'deal', 'length']
+/** Groups that can be flipped from "is" to "is not" (then their values exclude instead of include). */
+export const NEG_KEYS = ['status', 'rating', 'genre', 'coop'] as const
+export type NegKey = (typeof NEG_KEYS)[number]
 
 /** hide = the default (archived titles left out). */
 export type ArchivedFilter = 'hide' | 'include' | 'only'
@@ -56,7 +41,8 @@ export interface Filters {
   status: Progress[]
   priority: (Priority | 'none')[]
   rating: RatingFilter[]
-  /** Minimum normalised score 0–100, or null for any. */
+  /** Minimum normalised score 0–100, or null for any. No longer in the panel: read from older links and saved
+   *  collections, shown as a removable chip. Same for yearFrom/yearTo, added and tvProgress. */
   minScore: number | null
   /** Movies/TV: on Plex or my streaming services. Games/books: In your library. */
   availability: AvailabilityFilter[]
@@ -66,8 +52,8 @@ export interface Filters {
   added: AddedFilter | null
   /** Archived titles: hidden (default), included, or only them. */
   archived: ArchivedFilter
-  /** Excluded values per 3-state group ("not Dropped"). */
-  not: Partial<Record<TriKey, string[]>>
+  /** Groups flipped to "is not": their values are exclusions ("not Dropped"). */
+  neg: Partial<Record<NegKey, boolean>>
   // Layer 3 (Movies / TV for now)
   genre: string[]
   tvStatus: TvStatusFilter[]
@@ -98,7 +84,7 @@ const RATING: RatingFilter[] = ['liked', 'disliked', 'favourite', 'unrated']
 const RELEASE: ReleaseFilter[] = ['released', 'upcoming']
 const AVAILABILITY: AvailabilityFilter[] = ['available', 'unavailable']
 const ADDED: AddedFilter[] = ['7d', '30d', '90d', '365d']
-const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended', 'cancelled']
+const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended']
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
 /** Sort when none is chosen: date added, newest first. */
 export const DEFAULT_SORT: SortKey = 'added'
@@ -110,38 +96,57 @@ const ACCESS: AccessFilter[] = ['early_access', 'full_release']
 const DEAL: DealFilter[] = ['on_sale', 'historical_low', 'free']
 const GROUPS: GroupKey[] = ['none', 'status', 'type', 'priority', 'year']
 
+const split = (v: string | null) =>
+  (v ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+
+/**
+ * A group that can be "is not": plain values include; values with a leading "-" exclude. Older links could mix
+ * the two in one group; then the included values win (for a one-value field like status, excluding as well
+ * changes nothing).
+ */
+function negList<T extends string>(v: string | null, allowed: readonly T[] | null): { values: T[]; neg: boolean } {
+  const ok = (xs: string[]) => (allowed ? xs.filter((x): x is T => (allowed as readonly string[]).includes(x)) : (xs as T[]))
+  const all = split(v)
+  const inc = ok(all.filter((x) => !x.startsWith('-')))
+  if (inc.length) return { values: inc, neg: false }
+  const ex = ok(all.filter((x) => x.startsWith('-')).map((x) => x.slice(1)))
+  // A lone "-" keeps a group on "is not" before anything is picked.
+  return { values: ex, neg: ex.length > 0 || all.includes('-') }
+}
+
+/** An include-only group. Older links could exclude values ("-high"); those read as every other option. */
+function incList<T extends string>(v: string | null, allowed: readonly T[]): T[] {
+  const all = split(v)
+  const inc = list(all.filter((x) => !x.startsWith('-')).join(','), allowed)
+  if (inc.length) return inc
+  const ex = all.filter((x) => x.startsWith('-')).map((x) => x.slice(1))
+  return ex.length ? allowed.filter((a) => !ex.includes(a)) : []
+}
+
 export function parseFilters(p: URLSearchParams): Filters {
   const type = (TYPES as string[]).includes(p.get('type') ?? '') ? (p.get('type') as MediaType) : null
   const hasGenres = type === 'movie' || type === 'tv' || type === 'game'
   const isGame = type === 'game'
-  const ALLOWED: Record<TriKey, readonly string[]> = {
-    status: STATUS,
-    priority: PRIORITY,
-    rating: RATING,
-    tvStatus: TV_STATUS,
-    tvProgress: TV_PROGRESS,
-    coop: COOP,
-    deck: DECK,
-    deal: DEAL,
-    length: LENGTH,
-  }
-  const not: Partial<Record<TriKey, string[]>> = {}
-  for (const k of TRI_KEYS) {
-    if (TV_TRI.includes(k) && type !== 'tv') continue
-    if (GAME_TRI.includes(k) && !isGame) continue
-    const ex = (p.get(TRI_PARAM[k]) ?? '')
-      .split(',')
-      .filter((v) => v.startsWith('-'))
-      .map((v) => v.slice(1))
-      .filter((v) => ALLOWED[k].includes(v))
-    if (ex.length) not[k] = ex
-  }
+  const status = negList(p.get('status'), STATUS)
+  const rating = negList(p.get('rating'), RATING)
+  const genre = hasGenres ? negList(p.get('genre'), null) : { values: [], neg: false }
+  const coop = isGame ? negList(p.get('coop'), COOP) : { values: [], neg: false }
+  const neg: Filters['neg'] = {}
+  if (status.neg) neg.status = true
+  if (rating.neg) neg.rating = true
+  if (genre.neg) neg.genre = true
+  if (coop.neg) neg.coop = true
+  // "cancelled" was its own option; it now counts as ended.
+  const tvStatus = type === 'tv' ? [...new Set(incList((p.get('tvstatus') ?? '').replace(/cancelled/g, 'ended'), TV_STATUS))] : []
   return {
     type,
-    not,
-    status: list(p.get('status'), STATUS),
-    priority: list(p.get('priority'), PRIORITY),
-    rating: list(p.get('rating'), RATING),
+    neg,
+    status: status.values,
+    priority: incList(p.get('priority'), PRIORITY),
+    rating: rating.values,
     minScore: int(p.get('score')),
     availability: list(p.get('avail'), AVAILABILITY),
     release: list(p.get('release'), RELEASE),
@@ -150,14 +155,14 @@ export function parseFilters(p: URLSearchParams): Filters {
     added: (ADDED as string[]).includes(p.get('added') ?? '') ? (p.get('added') as AddedFilter) : null,
     archived: p.get('archived') === 'include' || p.get('archived') === 'only' ? (p.get('archived') as ArchivedFilter) : 'hide',
     // Layer 3 is ignored unless its type is selected.
-    genre: hasGenres ? (p.get('genre') ?? '').split(',').filter(Boolean) : [],
-    tvStatus: type === 'tv' ? list(p.get('tvstatus'), TV_STATUS) : [],
-    tvProgress: type === 'tv' ? list(p.get('tvprogress'), TV_PROGRESS) : [],
-    coop: isGame ? list(p.get('coop'), COOP) : [],
-    deck: isGame ? list(p.get('deck'), DECK) : [],
+    genre: genre.values,
+    tvStatus,
+    tvProgress: type === 'tv' ? incList(p.get('tvprogress'), TV_PROGRESS) : [],
+    coop: coop.values,
+    deck: isGame ? incList(p.get('deck'), DECK) : [],
     access: isGame ? list(p.get('access'), ACCESS) : [],
-    deal: isGame ? list(p.get('deal'), DEAL) : [],
-    length: isGame ? list(p.get('length'), LENGTH) : [],
+    deal: isGame ? incList(p.get('deal'), DEAL) : [],
+    length: isGame ? incList(p.get('length'), LENGTH) : [],
     maxPrice: isGame ? int(p.get('maxprice')) : null,
     sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : DEFAULT_SORT,
     group: (GROUPS as string[]).includes(p.get('group') ?? '') ? (p.get('group') as GroupKey) : 'none',
@@ -170,11 +175,12 @@ export function filtersToParams(f: Filters): URLSearchParams {
   const set = (k: string, v: string | number | null | undefined) => {
     if (v !== null && v !== undefined && v !== '') p.set(k, String(v))
   }
-  /** Included values, then excluded ones with a leading "-". */
-  const tri = (key: TriKey, inc: readonly string[]) => [...inc, ...(f.not[key] ?? []).map((v) => `-${v}`)].join(',')
+  /** A group's values; in an "is not" group each one gets a leading "-". */
+  const tri = (key: NegKey, vs: readonly string[]) =>
+    f.neg[key] && vs.length === 0 ? '-' : vs.map((v) => (f.neg[key] ? `-${v}` : v)).join(',')
   set('type', f.type)
   set('status', tri('status', f.status))
-  set('priority', tri('priority', f.priority))
+  set('priority', f.priority.join(','))
   set('rating', tri('rating', f.rating))
   set('score', f.minScore)
   set('avail', f.availability.join(','))
@@ -183,18 +189,18 @@ export function filtersToParams(f: Filters): URLSearchParams {
   set('to', f.yearTo)
   set('added', f.added)
   if (f.archived !== 'hide') set('archived', f.archived)
-  if (f.type === 'movie' || f.type === 'tv' || f.type === 'game') set('genre', f.genre.join(','))
+  if (f.type === 'movie' || f.type === 'tv' || f.type === 'game') set('genre', tri('genre', f.genre))
   if (f.type === 'game') {
     set('coop', tri('coop', f.coop))
-    set('deck', tri('deck', f.deck))
+    set('deck', f.deck.join(','))
     set('access', f.access.join(','))
-    set('deal', tri('deal', f.deal))
-    set('length', tri('length', f.length))
+    set('deal', f.deal.join(','))
+    set('length', f.length.join(','))
     set('maxprice', f.maxPrice)
   }
   if (f.type === 'tv') {
-    set('tvstatus', tri('tvStatus', f.tvStatus))
-    set('tvprogress', tri('tvProgress', f.tvProgress))
+    set('tvstatus', f.tvStatus.join(','))
+    set('tvprogress', f.tvProgress.join(','))
   }
   if (f.sort !== DEFAULT_SORT) set('sort', f.sort)
   if (f.group !== 'none') set('group', f.group)
@@ -203,15 +209,16 @@ export function filtersToParams(f: Filters): URLSearchParams {
 
 /** Switching type keeps Layer 2 but drops the old type's Layer 3 filters. */
 export function withType(f: Filters, type: MediaType | null): Filters {
-  const not = { ...f.not }
-  for (const k of [...TV_TRI, ...GAME_TRI]) delete not[k]
-  return { ...f, type, not, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
+  const neg = { ...f.neg }
+  delete neg.genre
+  delete neg.coop
+  return { ...f, type, neg, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
 }
 
 export function clearFilters(f: Filters): Filters {
   return {
     ...f,
-    not: {},
+    neg: {},
     status: [],
     priority: [],
     rating: [],
@@ -221,7 +228,8 @@ export function clearFilters(f: Filters): Filters {
     yearFrom: null,
     yearTo: null,
     added: null,
-    archived: 'hide',
+    // The Archive page is archived=only: clearing its filters keeps you on it.
+    archived: f.archived === 'only' ? 'only' : 'hide',
     genre: [],
     tvStatus: [],
     tvProgress: [],
@@ -254,7 +262,7 @@ function tvStatusOf(item: UserItem): TvStatusFilter | null {
   if (tvSchedule(item.title)?.kind === 'airing') return 'airing'
   const s = item.title.details?.status
   if (s === 'Ended') return 'ended'
-  if (s === 'Canceled') return 'cancelled'
+  if (s === 'Canceled') return 'ended'
   if (s === 'Returning Series' || s === 'In Production') return 'returning'
   return null
 }
@@ -281,7 +289,9 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
     if (f.archived === 'hide' && i.archivedAt) return false
     if (f.archived === 'only' && !i.archivedAt) return false
     if (f.type && i.title.mediaType !== f.type) return false
-    if (f.status.length && !f.status.includes(i.progress)) return false
+    // "Is not" groups drop what matches; the others keep only what matches.
+    const keep = (key: NegKey, match: boolean) => (f.neg[key] ? !match : match)
+    if (f.status.length && !keep('status', f.status.includes(i.progress))) return false
     if (f.priority.length && !f.priority.includes(i.priority ?? 'none')) return false
     if (f.rating.length) {
       const r = new Set<RatingFilter>()
@@ -289,7 +299,7 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
       if (i.verdict === 'disliked') r.add('disliked')
       if (i.favourite) r.add('favourite')
       if (!i.verdict && !i.favourite) r.add('unrated')
-      if (!f.rating.some((x) => r.has(x))) return false
+      if (!keep('rating', f.rating.some((x) => r.has(x)))) return false
     }
     if (f.minScore != null) {
       const sc = normalisedScore(i)
@@ -314,7 +324,7 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
       const t = i.addedAt ? Date.parse(i.addedAt) : NaN
       if (!Number.isFinite(t) || now - t > ADDED_DAYS[f.added] * 86_400_000) return false
     }
-    if (f.genre.length && !f.genre.some((g) => i.title.genres.includes(g))) return false
+    if (f.genre.length && !keep('genre', f.genre.some((g) => i.title.genres.includes(g)))) return false
     if (f.tvStatus.length) {
       const s = tvStatusOf(i)
       if (!s || !f.tvStatus.includes(s)) return false
@@ -328,7 +338,7 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
         split: !!mp.split_screen,
         pvp: !!mp.pvp,
       }
-      if (!f.coop.some((c) => has[c])) return false
+      if (!keep('coop', f.coop.some((c) => has[c]))) return false
     }
     if (f.deck.length && !f.deck.includes(i.title.details?.steam_deck as DeckFilter)) return false
     if (f.access.length) {
@@ -354,67 +364,15 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
       const price = p?.isFree ? 0 : p ? cheapest(p)?.price : undefined
       if (price == null || price > f.maxPrice) return false
     }
-    // Exclusions ("not …"): drop anything matching an excluded value.
-    for (const k of TRI_KEYS) {
-      const ex = f.not[k]
-      if (ex?.length && triValues(k, i).some((v) => ex.includes(v))) return false
-    }
     return true
   })
 }
 
-/** The values an item has in a 3-state group (for exclusions). */
-export function triValues(k: TriKey, i: UserItem): string[] {
-  switch (k) {
-    case 'status':
-      return [i.progress]
-    case 'priority':
-      return [i.priority ?? 'none']
-    case 'rating': {
-      const r: string[] = []
-      if (i.verdict === 'liked') r.push('liked')
-      if (i.verdict === 'disliked') r.push('disliked')
-      if (i.favourite) r.push('favourite')
-      if (!i.verdict && !i.favourite) r.push('unrated')
-      return r
-    }
-    case 'tvStatus': {
-      const s = tvStatusOf(i)
-      return s ? [s] : []
-    }
-    case 'tvProgress':
-      return [tvProgressOf(i)]
-    case 'coop': {
-      const mp = (i.title.details?.multiplayer ?? {}) as Record<string, unknown>
-      return [mp.online_coop && 'online', mp.local_coop && 'local', mp.split_screen && 'split', mp.pvp && 'pvp'].filter(Boolean) as string[]
-    }
-    case 'deck':
-      return typeof i.title.details?.steam_deck === 'string' ? [i.title.details.steam_deck as string] : []
-    case 'deal': {
-      const p = i.gamePrice
-      const best = p ? cheapest(p) : null
-      return [best && (best.discountPct ?? 0) > 0 && 'on_sale', best?.atLow && 'historical_low', p?.isFree && 'free'].filter(Boolean) as string[]
-    }
-    case 'length': {
-      const b = lengthBucket(i)
-      return b ? [b] : []
-    }
-  }
-}
-
-/** Off → include → exclude → off, for one chip of a 3-state group. */
-export function cycleTri<K extends TriKey>(f: Filters, k: K, v: string): Filters {
-  const inc = f[k] as string[]
-  const ex: string[] = f.not[k] ?? []
-  if (inc.includes(v)) {
-    // include → exclude
-    return { ...f, [k]: inc.filter((x) => x !== v), not: { ...f.not, [k]: [...ex, v] } }
-  }
-  if (ex.includes(v)) {
-    // exclude → off
-    return { ...f, not: { ...f.not, [k]: ex.filter((x) => x !== v) } }
-  }
-  return { ...f, [k]: [...inc, v] } // off → include
+/** Selects or clears one value of a group. */
+export function toggleValue<K extends keyof Filters>(f: Filters, key: K, v: string): Filters {
+  const cur = f[key] as unknown as string[]
+  const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+  return { ...f, [key]: next }
 }
 
 /** Hours to beat a game at a normal pace (IGDB players), falling back to the rushed time. */
@@ -530,7 +488,7 @@ export const LABELS = {
   availability: { available: 'Available', unavailable: 'Not available' } as Record<AvailabilityFilter, string>,
   archived: { hide: 'Hide', include: 'Include', only: 'Only archived' } as Record<ArchivedFilter, string>,
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
-  tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended', cancelled: 'Cancelled' } as Record<TvStatusFilter, string>,
+  tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
   sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length' } as Record<SortKey, string>,
   coop: { online: 'Online co-op', local: 'Local co-op', split: 'Split-screen', pvp: 'PvP' } as Record<CoopFilter, string>,
@@ -553,8 +511,7 @@ export function activeCount(f: Filters): number {
     f.release.length +
     (f.yearFrom != null || f.yearTo != null ? 1 : 0) +
     (f.added ? 1 : 0) +
-    (f.archived !== 'hide' ? 1 : 0) +
-    Object.values(f.not).reduce((n, v) => n + (v?.length ?? 0), 0) +
+    (f.archived === 'include' ? 1 : 0) +
     f.genre.length +
     f.tvStatus.length +
     f.tvProgress.length +
@@ -566,9 +523,3 @@ export function activeCount(f: Filters): number {
     (f.maxPrice != null ? 1 : 0)
   )
 }
-
-/** Whether any of the rarer filters (the panel's "More filters") is set, so that section opens itself. */
-export function moreActive(f: Filters): boolean {
-  return f.release.length > 0 || f.minScore != null || f.yearFrom != null || f.yearTo != null || f.added != null || f.archived !== 'hide'
-}
-

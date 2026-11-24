@@ -1,6 +1,6 @@
 // Home rows — "what's next, and what's changed" (docs/HOME.md). Step 1: Continue, This week, Ready to start,
 // computed from data the app already has. "New for you", stored availability and Deals come later.
-import { isAvailable } from './filters'
+import { hoursToBeat, isAvailable } from './filters'
 import { cheapest } from './prices'
 import { releaseInfo, tvSchedule } from './release'
 import { overrideOf, seasonsOf, watchedIn } from './seasons'
@@ -47,8 +47,33 @@ function airState(item: UserItem, ep: { season: number; episode: number }): { ou
   return { out: false, date: isNext ? next.air_date : undefined }
 }
 
-/** Continue-row subline: the next concrete step. */
+/**
+ * The episode a one-tap "Watched" on Continue would mark: the next one, if it's out. Not offered while Plex
+ * sync drives this show's progress (it would just be overwritten), i.e. only when sync is off for it or the
+ * show isn't on Plex.
+ */
+export function nextWatchable(item: UserItem): { season: number; episode: number } | null {
+  if (item.title.mediaType !== 'tv' || seasonsOf(item).length === 0) return null
+  if (item.plexSync !== false && item.plex === 'available') return null
+  const ep = nextEpisode(item)
+  return ep && airState(item, ep).out ? ep : null
+}
+
+const hours = (h: number) => (h < 1 ? `${Math.round(h * 60)}m` : `${Math.round(h)}h`)
+
+/** Games on Continue: how much you've played and roughly how long it takes, so you can pick by time. */
+function gameLine(item: UserItem): string | undefined {
+  const played = item.steamPlaytimeMinutes ? hours(item.steamPlaytimeMinutes / 60) : null
+  const beat = hoursToBeat(item)
+  if (played && beat) return `${played} of ~${hours(beat)}`
+  if (beat) return `~${hours(beat)} to beat`
+  if (played) return `${played} played`
+  return undefined
+}
+
+/** Continue-row subline: the next concrete step (TV), or time played / to beat (games). */
 export function continueLine(item: UserItem): string | undefined {
+  if (item.title.mediaType === 'game') return gameLine(item)
   if (item.title.mediaType !== 'tv') return undefined
   // No season data (e.g. sample titles) → keep the card's usual "S2 · E4" line rather than guess.
   if (seasonsOf(item).length === 0) return undefined

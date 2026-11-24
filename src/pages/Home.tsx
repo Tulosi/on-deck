@@ -1,10 +1,13 @@
+import type { UserItem } from '../types'
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { RateFinished } from '../components/RateFinished'
 import { ImportPrompts } from '../components/ImportPrompts'
-import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, continueLine, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
-import { useItems } from '../lib/library'
+import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, continueLine, nextWatchable, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
+import { useItems, useUpdateItem } from '../lib/library'
+import { useAuth } from '../lib/auth'
+import { toast } from '../lib/toast'
 import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
@@ -76,6 +79,7 @@ export function Home() {
         hint="Pick up where you left off"
         items={cont}
         subline={continueLine}
+        footer={(item) => <WatchedNext item={item} />}
         href={`/library?status=in_progress${typeParam}`}
       />
       <PosterRow
@@ -120,5 +124,24 @@ export function Home() {
         href="/library?type=game&deal=on_sale&sort=price"
       />
     </div>
+  )
+}
+
+/** One tap to mark the next aired episode watched, without opening the show (only when Plex isn't tracking it). */
+function WatchedNext({ item }: { item: UserItem }) {
+  const { user } = useAuth()
+  const update = useUpdateItem()
+  const ep = nextWatchable(item)
+  if (!ep || !user) return null // sample library: nothing to save to
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
+      }
+      className="mt-1.5 h-8 w-full rounded-md border border-line text-xs text-muted hover:border-accent hover:text-fg"
+    >
+      ✓ Watched S{ep.season} · E{ep.episode}
+    </button>
   )
 }

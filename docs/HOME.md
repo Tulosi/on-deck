@@ -21,7 +21,9 @@ Things you're in the middle of, with **the next concrete step**.
 - **TV:** In Progress shows. The subline is the next episode after Progress, and whether it's out:
   "S2 · E5 — out now" / "S2 · E5 — Wed".
 - **Movies:** In Progress (from Plex sync), with "45% through".
-- **Games / Books:** In Progress (manual for now).
+- **Games:** In Progress, with time played and roughly how long it takes to beat (IGDB):
+  "12h of ~26h" / "~26h to beat" / "12h played".
+- **Books:** In Progress (manual for now).
 - Order: most recently **interacted with** first, by `user_items.last_activity_at`:
   - Status, season or episode changed (by you, or by Plex sync moving it) → that moment.
   - Watched on Plex → Plex's own "last watched" time (saved by `plex-watch` on every check, forward only; Plex
@@ -29,8 +31,10 @@ Things you're in the middle of, with **the next concrete step**.
   - Played on Steam → Steam's "last played" time.
   - Notes, priority, alerts, the background Plex check etc. don't count (that's why it isn't `updated_at`).
   - Existing entries were backfilled from Steam last played / started / finished / added.
-- Each card links to the title. Later: a one-tap "Watched E5" that advances Progress (only when Plex sync is off
-  for that show).
+- Each card links to the title. TV cards also get a one-tap **"✓ Watched S2 · E5"** under the poster that
+  advances Progress to the next aired episode, without opening the show. It only shows when Plex isn't tracking
+  that show's progress (sync off for it, or not on Plex); otherwise sync would overwrite it.
+  (`nextWatchable` in `src/lib/home.ts`.)
 
 ### 2. New for you ✅ built
 Changes since your **previous visit** (`profiles.last_seen_home_at`: read once per app session, then moved to

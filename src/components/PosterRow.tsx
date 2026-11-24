@@ -12,6 +12,7 @@ export function PosterRow({
   href,
   subline,
   action,
+  footer,
 }: {
   title: string
   items: UserItem[]
@@ -22,6 +23,8 @@ export function PosterRow({
   subline?: (item: UserItem) => string | undefined
   /** Extra control in the header, e.g. "Clear". */
   action?: ReactNode
+  /** Optional control under a card (e.g. Continue's one-tap "Watched E5"). */
+  footer?: (item: UserItem) => ReactNode
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   if (items.length === 0) return null
@@ -57,13 +60,10 @@ export function PosterRow({
       </div>
       <div ref={scroller} className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-1 md:-mx-6 md:scroll-px-6 md:px-6">
         {items.map((item) => (
-          <PosterCard
-            key={item.id}
-            item={item}
-            subline={subline?.(item)}
-            morphKey={title}
-            className="w-32 shrink-0 snap-start sm:w-36 lg:w-40"
-          />
+          <div key={item.id} className="w-32 shrink-0 snap-start sm:w-36 lg:w-40">
+            <PosterCard item={item} subline={subline?.(item)} morphKey={title} />
+            {footer?.(item)}
+          </div>
         ))}
       </div>
     </section>

@@ -78,9 +78,10 @@ export function Home() {
 
       <SyncLine />
       <UpNext items={up} />
-      {/* Wide screens: the rest of what you're in the middle of on the left, what's coming on the right. */}
+      {/* Wide screens: the rest of what you're in the middle of on the left, what's coming right beside it (each list at most
+          36rem, so the two stay together instead of splitting to the page edges). */}
       {(rest.length > 0 || week.length > 0) && (
-        <div className="grid items-start gap-10 xl:grid-cols-2">
+        <div className="grid items-start gap-10 xl:grid-cols-[repeat(2,minmax(0,36rem))]">
           <ContinueList items={rest} total={cont.length} href={`/library?status=in_progress${typeParam}`} />
           <WeekList upcoming={week} href="/calendar?view=month" />
         </div>

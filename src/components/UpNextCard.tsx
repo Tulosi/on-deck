@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { steamLaunch, steamStore } from '../lib/steam'
@@ -260,7 +260,8 @@ function Actions({ item, open, launch }: { item: UserItem; open?: { label: strin
         <>
           {openLink(primary)}
           {launch && (
-            <a href={launch.href} title="Start the game in the Steam app" className={secondary}>
+            <a href={launch.href} title="Start the game in the Steam app" className="flex h-11 items-center justify-center gap-1.5 rounded-md border border-line px-4 text-sm text-fg hover:bg-raised">
+              <Play className="size-3.5 fill-current" aria-hidden="true" />
               {launch.label}
             </a>
           )}

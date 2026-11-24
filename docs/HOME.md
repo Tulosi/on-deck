@@ -17,7 +17,13 @@ Recently Finished and plain priority lists Library views, not Home rows.
 ## Rows (top to bottom, each hidden when empty)
 
 ### 0. Up next (Ember redesign, 2026-11-23)
-The most recent Continue item, as one card above the rows: poster, title, the next step set large in mono
+Up to five cards above the rows (2026-11-24), picked by `upNextItems`: in-progress titles you can pick up
+today (a show needs its next episode out; one waiting for the next episode isn't a candidate), touched in the last
+60 days, most recent first. Fewer good candidates means fewer cards; with none, the most recent in-progress title
+still shows. One scrolling row at every width, sized by the row's own width: one card per view on phones (swipe,
+or tap the dots under it), two from 40rem, three from 60rem (each at most 28rem, so wide screens show three
+rather than stretching them), with previous/next arrows beside the heading when there are more than fit.
+Continue lists the rest. Each card: poster, title, the next step set large in mono
 (`S02E05`, or hours played for a game), a short note ("Out now", "Out Tue, Nov 25", "Caught up"), and a bar for
 this season's episodes or hours against time to beat. Its one accent button is **Mark S02E05 watched** when that
 one-tap save is offered (signed in, episode out, Plex not tracking the show); otherwise **Open in Plex** when the

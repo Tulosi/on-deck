@@ -69,6 +69,35 @@ export function continueItems(items: UserItem[]): UserItem[] {
     .sort((a, b) => Date.parse(b.lastActivityAt ?? b.updatedAt ?? '0') - Date.parse(a.lastActivityAt ?? a.updatedAt ?? '0'))
 }
 
+/** Most Up next cards Home shows. */
+export const UP_NEXT_MAX = 5
+const UP_NEXT_IDLE_MS = 60 * 86_400_000
+
+/** Can you pick this up right now? Shows need their next episode out; everything else always can. */
+function readyNow(item: UserItem): boolean {
+  if (item.title.mediaType !== 'tv') return true
+  // No season data (sample titles): trust the progress you've recorded.
+  if (seasonsOf(item).length === 0) return !!item.tvProgress
+  const ep = nextEpisode(item)
+  if (!ep) return false
+  const state = airState(item, ep)
+  // Unsure (TMDB lagging on release day): better to offer it than to hide it.
+  return state.out || !!state.unknown
+}
+
+/**
+ * Up next: the best few things to pick up now (up to UP_NEXT_MAX), most recently active first. A candidate has
+ * a next step you can take today (a show waiting for its next episode isn't one) and was touched in the last
+ * 60 days (older ones read as stalled, not next). With no candidate at all, the most recent item still shows,
+ * so the top of Home isn't empty while you have something in progress.
+ */
+export function upNextItems(items: UserItem[]): UserItem[] {
+  const cont = continueItems(items)
+  const now = Date.now()
+  const picks = cont.filter((i) => readyNow(i) && now - Date.parse(i.lastActivityAt ?? i.updatedAt ?? '0') < UP_NEXT_IDLE_MS)
+  return (picks.length ? picks : cont).slice(0, UP_NEXT_MAX)
+}
+
 export interface Upcoming {
   item: UserItem
   date: string

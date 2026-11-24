@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
-import { UpNextCard } from '../components/UpNextCard'
+import { UpNext } from '../components/UpNextCard'
 import { ContinueList, WeekList } from '../components/HomeLists'
 import { SyncLine } from '../components/SyncLine'
 import { RateFinished } from '../components/RateFinished'
 import { ImportPrompts } from '../components/ImportPrompts'
-import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, deals, readyToStart, thisWeek } from '../lib/home'
+import { DEFAULT_DEAL_PCT, continueItems, upNextItems, recentlyStalled, deals, readyToStart, thisWeek } from '../lib/home'
 import { useItems } from '../lib/library'
 import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
@@ -14,7 +14,7 @@ import { useFilters } from '../lib/useFilters'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
- * everything lives on the Library page. Top to bottom: sync line, Up next card, Continue and Next 7 days as lists,
+ * everything lives on the Library page. Top to bottom: sync line, Up next cards, Continue and Next 7 days as lists,
  * then poster rows: New for you, Recently finished (rate it), Pick it back up?, Ready to start, Deals.
  */
 export function Home() {
@@ -48,6 +48,10 @@ export function Home() {
   }
 
   const cont = continueItems(items)
+  // Up next takes the best few; Continue lists the rest of what's in progress.
+  const up = upNextItems(items)
+  const upIds = new Set(up.map((i) => i.id))
+  const rest = cont.filter((i) => !upIds.has(i.id))
   const week = thisWeek(items)
   const ready = readyToStart(items)
   const stalled = recentlyStalled(items)
@@ -73,13 +77,11 @@ export function Home() {
       )}
 
       <SyncLine />
-      {/* Wide screens: what you're in the middle of on the left, what's coming on the right. */}
-      {(cont.length > 0 || week.length > 0) && (
+      <UpNext items={up} />
+      {/* Wide screens: the rest of what you're in the middle of on the left, what's coming on the right. */}
+      {(rest.length > 0 || week.length > 0) && (
         <div className="grid items-start gap-10 xl:grid-cols-2">
-          <div className="space-y-10">
-            {cont[0] && <UpNextCard item={cont[0]} />}
-            <ContinueList items={cont.slice(1)} total={cont.length} href={`/library?status=in_progress${typeParam}`} />
-          </div>
+          <ContinueList items={rest} total={cont.length} href={`/library?status=in_progress${typeParam}`} />
           <WeekList upcoming={week} href="/calendar?view=month" />
         </div>
       )}

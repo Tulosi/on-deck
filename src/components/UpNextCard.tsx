@@ -1,4 +1,7 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import clsx from 'clsx'
 import { RollingText } from './RollingText'
 import type { UserItem } from '../types'
 import { episodeCode, upNext } from '../lib/home'
@@ -13,63 +16,161 @@ const NOUN: Record<MediaType, string> = { movie: 'movie', tv: 'show', game: 'gam
 const KIND: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
 
 /**
- * The top of Home: the one thing you're most likely to pick up next, with its next step set large and one
- * bold action. Everything else on Home stays quieter than this.
+ * The top of Home: the best few things to pick up now (see `upNextItems`), each with its next step set large and
+ * one bold action. One scrolling row at every width: one card per screen on phones (swipe, or tap the dots),
+ * two on mid-size screens and three from about 60rem, with arrow buttons when there are more than fit.
+ * Everything else on Home stays quieter than this.
  */
-export function UpNextCard({ item }: { item: UserItem }) {
+export function UpNext({ items }: { items: UserItem[] }) {
+  const row = useRef<HTMLUListElement>(null)
+  const [active, setActive] = useState(0)
+  const [edges, setEdges] = useState({ start: true, end: true })
+
+  // Which card is first in view, and whether there's more to either side (for the dots and arrows).
+  const measure = useCallback(() => {
+    const el = row.current
+    const cards = el ? ([...el.children] as HTMLElement[]) : []
+    if (!el || cards.length === 0) return
+    const stride = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : el.clientWidth
+    setActive(Math.max(0, Math.min(cards.length - 1, Math.round(el.scrollLeft / stride))))
+    setEdges({ start: el.scrollLeft < 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 })
+  }, [])
+
+  useEffect(() => {
+    const el = row.current
+    if (!el) return
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [measure, items.length])
+
+  if (items.length === 0) return null
+
+  const scrollToCard = (i: number) => {
+    const el = row.current
+    const card = el?.children[Math.max(0, Math.min(items.length - 1, i))] as HTMLElement | undefined
+    if (!el || !card) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ left: card.offsetLeft - (el.children[0] as HTMLElement).offsetLeft, behavior: reduce ? 'auto' : 'smooth' })
+  }
+  // Arrows move by a whole view (as many cards as fit), so nothing is skipped or shown twice.
+  const page = (dir: -1 | 1) => {
+    const el = row.current
+    const cards = el ? ([...el.children] as HTMLElement[]) : []
+    if (!el || cards.length < 2) return
+    const stride = cards[1].offsetLeft - cards[0].offsetLeft
+    const perView = Math.max(1, Math.round((el.clientWidth + (stride - cards[0].offsetWidth)) / stride))
+    scrollToCard(active + dir * perView)
+  }
+  const many = items.length > 1
+  const arrow = 'grid size-7 place-items-center rounded-full border border-line text-muted hover:border-accent hover:text-fg disabled:opacity-40 disabled:hover:border-line disabled:hover:text-muted'
+
+  return (
+    <section aria-labelledby="up-next" className="@container/up space-y-3">
+      <div className="flex items-end justify-between gap-4">
+        <h1 id="up-next" className="text-xl font-semibold tracking-tight text-fg">
+          Up next
+        </h1>
+        {many && !(edges.start && edges.end) && (
+          <div className="hidden gap-1 @[40rem]/up:flex">
+            <button type="button" onClick={() => page(-1)} disabled={edges.start} aria-label="Previous cards" className={arrow}>
+              <ChevronLeft className="size-4" />
+            </button>
+            <button type="button" onClick={() => page(1)} disabled={edges.end} aria-label="More cards" className={arrow}>
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        )}
+      </div>
+      {/* Card width: the whole row on phones; two per view from 40rem; three from 60rem, never wider than 28rem
+          (so very wide screens show three, left-aligned, rather than three stretched ones). */}
+      <ul
+        ref={row}
+        onScroll={measure}
+        className="no-scrollbar flex max-w-[calc(3*28rem+2*1rem)] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain @[40rem]/up:gap-4"
+      >
+        {items.map((item, i) => (
+          <li
+            key={item.id}
+            aria-label={`${i + 1} of ${items.length}`}
+            className="w-full flex-none snap-start @[40rem]/up:w-[calc((100%-1rem)/2)] @[60rem]/up:w-[calc((100%-2rem)/3)]"
+          >
+            <UpNextCard item={item} />
+          </li>
+        ))}
+      </ul>
+      {many && (
+        <div className="flex justify-center gap-1 @[40rem]/up:hidden">
+          {items.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => scrollToCard(i)}
+              aria-label={`Show ${item.title.title}`}
+              aria-current={i === active}
+              className="grid size-6 place-items-center"
+            >
+              <span className={clsx('block h-1.5 rounded-full transition-[width,background-color] duration-200', i === active ? 'w-4 bg-fg' : 'w-1.5 bg-line')} />
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** One card: cover, the next step set large, plain facts and the actions. */
+function UpNextCard({ item }: { item: UserItem }) {
   const { user } = useAuth()
   const { title } = item
   const next = upNext(item)
 
   return (
-    <section aria-labelledby="up-next" className="space-y-3">
-      <h1 id="up-next" className="text-xl font-semibold tracking-tight text-fg">
-        Up next
-      </h1>
-      <div className="max-w-xl overflow-hidden rounded-lg border border-line bg-surface">
-        {/* A new title taking the card arrives with a short lift; the same title updating doesn't. */}
-        <div key={item.id} className="arrive flex gap-4 p-4">
-          <Link to={`/title/${title.id}`} className="hit block w-20 flex-none sm:w-24" aria-label={title.title}>
-            <div className="aspect-[2/3] overflow-hidden rounded-md border border-line bg-raised">
-              {title.coverUrl && <img {...coverProps(title.coverUrl, '96px')} alt="" className="size-full object-cover" />}
-            </div>
-          </Link>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <Link to={`/title/${title.id}`} className="truncate text-base font-semibold text-fg hover:underline">
-              {title.title}
-            </Link>
-            {next.value ? (
-              <p className="font-mono text-3xl leading-tight font-medium tracking-tight text-fg">
-                <RollingText text={next.value} />
-              </p>
-            ) : (
-              <p className="text-sm text-muted">{KIND[title.mediaType]}</p>
-            )}
-            {next.note && <p className="text-sm text-muted">{next.note}</p>}
-            {next.bar && (
-              <div className="mt-auto pt-2">
-                <div className="h-1 rounded-full bg-raised" role="img" aria-label={next.bar.label}>
-                  <div
-                    className="bar-fill h-1 rounded-full bg-accent-ink"
-                    style={{ width: `${Math.round((next.bar.done / Math.max(1, next.bar.total)) * 100)}%` }}
-                  />
-                </div>
-                <p className="mt-1 font-mono text-xs text-muted" aria-hidden="true">
-                  {next.bar.text}
-                </p>
-              </div>
-            )}
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
+      {/* A new title taking the card arrives with a short lift; the same title updating doesn't. */}
+      <div key={item.id} className="arrive flex gap-4 p-4">
+        <Link to={`/title/${title.id}`} className="hit block w-20 flex-none sm:w-24" aria-label={title.title}>
+          <div className="aspect-[2/3] overflow-hidden rounded-md border border-line bg-raised">
+            {title.coverUrl && <img {...coverProps(title.coverUrl, '96px')} alt="" className="size-full object-cover" />}
           </div>
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <Link to={`/title/${title.id}`} className="truncate text-base font-semibold text-fg hover:underline">
+            {title.title}
+          </Link>
+          {next.value ? (
+            <p className="font-mono text-3xl leading-tight font-medium tracking-tight text-fg">
+              <RollingText text={next.value} />
+            </p>
+          ) : (
+            <p className="text-sm text-muted">{KIND[title.mediaType]}</p>
+          )}
+          {next.note && <p className="text-sm text-muted">{next.note}</p>}
+          {next.bar && (
+            <div className="mt-auto pt-2">
+              <div className="h-1 rounded-full bg-raised" role="img" aria-label={next.bar.label}>
+                <div
+                  className="bar-fill h-1 rounded-full bg-accent-ink"
+                  style={{ width: `${Math.round((next.bar.done / Math.max(1, next.bar.total)) * 100)}%` }}
+                />
+              </div>
+              <p className="mt-1 font-mono text-xs text-muted" aria-hidden="true">
+                {next.bar.text}
+              </p>
+            </div>
+          )}
         </div>
-        <Facts item={item} />
-        {user && (item.title.mediaType === 'tv' || item.title.mediaType === 'movie') && item.plex === 'available' ? (
-          <ActionsWithPlex item={item} />
-        ) : (
-          <Actions item={item} />
-        )}
       </div>
-    </section>
-  )
+      <div className="flex-1" />
+      <Facts item={item} />
+      {user && (item.title.mediaType === 'tv' || item.title.mediaType === 'movie') && item.plex === 'available' ? (
+        <ActionsWithPlex item={item} />
+      ) : (
+        <Actions item={item} />
+      )}
+  </div>
+)
 }
 
 const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })

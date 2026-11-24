@@ -3,14 +3,19 @@
 import {
   compareEvents,
   daysBetween,
-  eventLabel,
+  eventLabel as sharedEventLabel,
   upcomingEvents,
   type ReleaseEvent,
 } from '../../supabase/functions/_shared/releases.ts'
-import { todayIso } from './release'
+import { episodeCode, todayIso } from './release'
 import type { UserItem } from '../types'
 
-export { eventLabel }
+/** What's coming, in the app's wording: episode codes ("S02E06") and sentence case. */
+export function eventLabel(e: ReleaseEvent): string {
+  if (e.kind === 'episode' && e.season != null && e.episode != null) return episodeCode({ season: e.season, episode: e.episode })
+  if (e.kind === 'early_access') return 'Early access launch'
+  return sharedEventLabel(e)
+}
 
 export interface WaitlistEntry {
   item: UserItem

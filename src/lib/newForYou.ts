@@ -4,55 +4,66 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from './auth'
 import { useNotifications, type Notification } from './notifications'
-import { todayIso } from './release'
+import { episodeCode, todayIso } from './release'
 import { supabase } from './supabase'
 import type { UserItem } from '../types'
 
 export interface NewEntry {
   item: UserItem
-  /** Short reason shown under the poster: "S2 · E8 out", "Now on Plex", "Released" … */
+  /** Short reason shown under the poster: "S02E08 out", "Now on Plex", "Released" … */
   label: string
   /** Higher = stronger; one card per title, strongest reason wins. */
   rank: number
   at: string
 }
 
-// ── "Since" = the previous visit to Home. Read once per app session, then the stored value moves to now. ──
+// ── "Since" = 7 days ago, or when you last pressed Clear if that's later. Visiting Home doesn't reset it. ──
 
-let sessionSince: string | null = null
-let sessionLoaded = false
-const listeners = new Set<(s: string) => void>()
+const WEEK = 7 * 86_400_000
+let clearedAt: string | null = null
+let clearedLoaded = false
+const listeners = new Set<(s: string | null) => void>()
 
-/** The moment "New for you" counts from, plus `clear()` to empty the row for this session. */
+const weekAgo = () => new Date(Date.now() - WEEK).toISOString()
+const sinceFrom = (cleared: string | null) => {
+  const w = weekAgo()
+  return cleared && cleared > w ? cleared : w
+}
+
+/** The moment "New for you" counts from, plus `clear()` to empty the row (saved to the profile). */
 export function useNewSince(): { since: string | null; clear: () => void } {
   const { user } = useAuth()
-  const [since, setSince] = useState<string | null>(sessionSince)
+  const [cleared, setCleared] = useState<string | null>(clearedAt)
+  const [loaded, setLoaded] = useState(clearedLoaded)
 
   useEffect(() => {
-    listeners.add(setSince)
+    const l = (c: string | null) => {
+      setCleared(c)
+      setLoaded(true)
+    }
+    listeners.add(l)
     return () => {
-      listeners.delete(setSince)
+      listeners.delete(l)
     }
   }, [])
 
   useEffect(() => {
-    if (!user || !supabase || sessionLoaded) return
-    sessionLoaded = true
+    if (!user || !supabase || clearedLoaded) return
+    clearedLoaded = true
     void (async () => {
+      // last_seen_home_at now means "row cleared at".
       const { data } = await supabase!.from('profiles').select('last_seen_home_at').eq('user_id', user.id).maybeSingle()
-      // First visit ever: show the last 7 days.
-      const prev = (data?.last_seen_home_at as string | null) ?? new Date(Date.now() - 7 * 86_400_000).toISOString()
-      sessionSince = prev
-      listeners.forEach((l) => l(prev))
-      await supabase!.from('profiles').update({ last_seen_home_at: new Date().toISOString() }).eq('user_id', user.id)
+      clearedAt = (data?.last_seen_home_at as string | null) ?? null
+      listeners.forEach((l) => l(clearedAt))
     })()
   }, [user])
 
   const clear = () => {
-    sessionSince = new Date().toISOString()
-    listeners.forEach((l) => l(sessionSince!))
+    clearedAt = new Date().toISOString()
+    listeners.forEach((l) => l(clearedAt))
+    if (user && supabase) void supabase.from('profiles').update({ last_seen_home_at: clearedAt }).eq('user_id', user.id)
   }
-  return { since, clear }
+  return { since: loaded ? sinceFrom(cleared) : null, clear }
 }
 
 // ── Building the row ──
@@ -91,14 +102,24 @@ function fromNotification(n: Notification): { label: string; rank: number } | nu
   }
 }
 
+/** Has this show been marked watched up to (at least) this episode? */
+function reached(item: UserItem, season: number, episode: number): boolean {
+  const p = item.tvProgress
+  return !!p && (p.season > season || (p.season === season && p.episode >= episode))
+}
+
 /**
- * Entries for "New for you", strongest first. `since` = previous visit (ISO). Dropped titles are left out.
+ * Entries for "New for you", strongest first. `since` = 7 days ago or the last Clear (ISO). Dropped titles are left out.
  * New episodes: shows In Progress, or Wanted and caught up, whose last aired episode is after `since`.
+ * Shows: a card goes only once that episode is marked watched (a season premiere alert: that season's first
+ * episode). Other titles: once you've acted on them after the news (status change, Steam play: last activity).
  */
 export function newForYou(items: UserItem[], notifications: Notification[], since: string): NewEntry[] {
   const byTitle = new Map(items.filter((i) => i.progress !== 'dropped').map((i) => [i.title.id, i]))
   const best = new Map<string, NewEntry>()
   const offer = (e: NewEntry) => {
+    // Shows leave only when that episode is marked (checked where the entry is made); other titles on any activity.
+    if (e.item.title.mediaType !== 'tv' && e.item.lastActivityAt && e.item.lastActivityAt > e.at) return
     const cur = best.get(e.item.id)
     if (!cur || e.rank > cur.rank || (e.rank === cur.rank && e.at > cur.at)) best.set(e.item.id, e)
   }
@@ -107,7 +128,11 @@ export function newForYou(items: UserItem[], notifications: Notification[], sinc
     if (!n.titleId || n.createdAt <= since) continue
     const item = byTitle.get(n.titleId)
     const r = fromNotification(n)
-    if (item && r) offer({ item, ...r, at: n.createdAt })
+    if (!item || !r) continue
+    // A season premiere alert goes once that season's first episode is marked.
+    const season = Number(n.message.match(/^Season (\d+) premieres today/)?.[1])
+    if (season && reached(item, season, 1)) continue
+    offer({ item, ...r, at: n.createdAt })
   }
 
   // New episodes (episodes never create alerts).
@@ -122,14 +147,15 @@ export function newForYou(items: UserItem[], notifications: Notification[], sinc
     if (!aired || aired <= sinceDay || aired > today) continue
     // Wanted shows only count once you've started them (caught up, waiting for more).
     if (item.progress === 'wanted' && !item.tvProgress) continue
+    if (last?.season_number != null && last.episode_number != null && reached(item, last.season_number, last.episode_number)) continue
     const premiere = last?.episode_number === 1
     const label =
       last?.season_number != null && last.episode_number != null
         ? premiere
           ? `Season ${last.season_number} premiered`
-          : `S${last.season_number} · E${last.episode_number} out`
+          : `${episodeCode({ season: last.season_number, episode: last.episode_number })} out`
         : 'New episode'
-    offer({ item, label, rank: premiere ? RANK.premiere : RANK.episode, at: `${aired}T12:00:00Z` })
+    offer({ item, label, rank: premiere ? RANK.premiere : RANK.episode, at: `${aired}T00:00:00Z` })
   }
 
   return [...best.values()].sort((a, b) => b.rank - a.rank || b.at.localeCompare(a.at))

@@ -28,8 +28,14 @@ Known rough edges to pick up in the full UI/UX/user-flow pass. Add to it as thin
 ## Parked from Group G (to do, maybe)
 Parked on 2026-11-23 rather than built, since the broader UI/UX pass may change or replace these. Revisit
 then; drop any that no longer apply.
-- **Title page:** narrower and denser.
-- **Calendar:** narrower and denser.
-- **Poster labels toggle:** rethink it. Tap to cycle through the states, in a fixed position sized for the
-  longest label; propose a phone design during the pass.
-- **General:** review how space is used across pages.
+- ✅ **Title page:** narrower and denser (2026-11-23). Content capped at `max-w-5xl` with a 14rem side column,
+  a shorter backdrop, a smaller poster on phones, and the description beside the poster from `sm:` (clamped
+  to 4 lines with More/Less; under the header on phones, 3 lines). Phone page about 18% shorter.
+- ✅ **Calendar:** narrower and denser (2026-11-23). One compact list (`max-w-4xl`) instead of two columns of
+  cards: date, small cover, title, what's coming, countdown. On phones the date moves under the title. Episode
+  codes (`S02E06`), no lemon chip for "Tomorrow" (accent text instead), smaller month cells.
+- ✅ **Poster labels toggle:** replaced by a single Labels on/off button (tag icon), 2026-11-23.
+- ✅ **General:** space review across pages (2026-11-23). Cards are 8px-cornered with tighter phone padding
+  (Settings, Collections, Search, Import, Login); page meta ("6 upcoming") in the text face. Signed-out
+  Collections, Search and Settings were already compact. Settings sections and Import were checked in code
+  only, since they need a signed-in account.

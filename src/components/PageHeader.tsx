@@ -5,7 +5,7 @@ export function PageHeader({ title, meta, children }: { title: string; meta?: st
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div className="flex items-baseline gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
-        {meta && <span className="font-mono text-xs text-faint">{meta}</span>}
+        {meta && <span className="text-sm text-faint tabular-nums">{meta}</span>}
       </div>
       {children}
     </div>

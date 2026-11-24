@@ -84,7 +84,7 @@ function OptionGroup<T extends string>({
               type="button"
               aria-pressed={on ? 'true' : off ? 'mixed' : 'false'}
               aria-label={on ? `${name}: included` : off ? `${name}: excluded` : name}
-              title={excluded ? (on ? 'Included · tap to exclude' : off ? 'Excluded · tap to clear' : 'Tap to include') : undefined}
+              title={excluded ? (on ? 'Included. Tap to exclude' : off ? 'Excluded. Tap to clear' : 'Tap to include') : undefined}
               onClick={() => onToggle(o)}
               className={clsx(
                 'flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs transition-colors',

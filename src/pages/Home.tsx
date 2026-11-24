@@ -85,7 +85,7 @@ export function Home() {
       )}
       <PosterRow
         title="New for you"
-        hint="Since your last visit"
+        hint="Last 7 days"
         items={fresh.entries.map((e) => e.item)}
         subline={(item) => freshById.get(item.id)?.label}
         action={

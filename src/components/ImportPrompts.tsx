@@ -74,7 +74,7 @@ function PromptRow({
   children: React.ReactNode
 }) {
   return (
-    <section className="space-y-3 rounded-xl border border-line bg-surface p-4">
+    <section className="space-y-3 rounded-lg border border-line bg-surface p-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-lg font-semibold tracking-tight text-fg">{title}</h2>
         <span className="text-xs text-faint">{hint}</span>

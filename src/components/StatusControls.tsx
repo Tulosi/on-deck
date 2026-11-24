@@ -23,6 +23,7 @@ function Segmented<T extends string>({
   options,
   onChange,
   aside,
+  fit,
 }: {
   label: string
   value: T
@@ -30,6 +31,8 @@ function Segmented<T extends string>({
   onChange: (value: T) => void
   /** Extra control to the right of the options (e.g. Archive). */
   aside?: ReactNode
+  /** Size to the labels instead of stretching across the card (short options like Priority). */
+  fit?: boolean
 }) {
   // Laid out by the space the control actually has (a container query), not the window width: on desktop the
   // card sits in a narrower column. Narrow: 2 per row for 4 options, 3 + 2 for 5 (never a lone option on its
@@ -46,7 +49,7 @@ function Segmented<T extends string>({
       <div
         role="radiogroup"
         aria-label={label}
-        className={clsx('grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', row, cols)}
+        className={clsx('grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', fit ? 'w-fit grid-flow-col auto-cols-fr' : [row, cols])}
       >
         {options.map((o) => (
           <button
@@ -726,7 +729,7 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
       <textarea
         value={text}
         rows={3}
-        placeholder="Anything you want to remember — who recommended it, where you left off…"
+        placeholder="Anything to remember, like who recommended it or where you left off…"
         onChange={(e) => {
           const value = e.target.value
           setText(value)
@@ -841,7 +844,7 @@ export function StatusControls({ item }: { item: UserItem }) {
   }, [plexWatch.data, item.id, item.progress, item.plexSync])
 
   return (
-    <section className="space-y-5 rounded-xl border border-line bg-surface p-4 sm:p-5">
+    <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold tracking-tight text-fg">Tracking</h2>
@@ -928,7 +931,7 @@ export function TrackingDetails({ item }: { item: UserItem }) {
     { value: 'high', label: 'High' },
   ]
   return (
-    <section className="space-y-5 rounded-xl border border-line bg-surface p-4 sm:p-5">
+    <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex items-center gap-3">
         <h2 className="text-lg font-semibold tracking-tight text-fg">Your take</h2>
         <SaveState pending={pending} error={error} />
@@ -953,15 +956,16 @@ export function TrackingDetails({ item }: { item: UserItem }) {
         <Toggle
           on={item.favourite}
           onClick={() => save({ favourite: !item.favourite })}
-          activeClass="border-accent bg-accent text-accent-fg"
+          activeClass="border-accent/70 bg-accent/10 text-accent-ink"
         >
-          <Star className={clsx('size-4', item.favourite && 'fill-current')} /> All-Time Favourite
+          <Star className={clsx('size-4', item.favourite && 'fill-current')} /> All-time favourite
         </Toggle>
       </div>
       </div>
 
       <Segmented
         label="Priority"
+        fit
         value={item.priority ?? 'none'}
         options={priorityOptions}
         onChange={(p) => save({ priority: p === 'none' ? null : p })}

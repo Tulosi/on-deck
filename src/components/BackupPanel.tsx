@@ -102,8 +102,8 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
         {pending && !progress && (
           <div className="space-y-3 rounded-lg border border-line bg-bg p-3">
             <p className="text-sm text-fg">
-              {pending.items.length} title{pending.items.length === 1 ? '' : 's'} · {pending.collections.length} collection
-              {pending.collections.length === 1 ? '' : 's'} · exported {exportedOn}
+              {pending.items.length} title{pending.items.length === 1 ? '' : 's'} and {pending.collections.length} collection
+              {pending.collections.length === 1 ? '' : 's'}, exported {exportedOn}
             </p>
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
@@ -149,10 +149,10 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
           <div className="space-y-2 rounded-lg border border-good/40 bg-good/5 p-3 text-sm">
             <p className="text-fg">
               Added <b>{report.added}</b> title{report.added === 1 ? '' : 's'}
-              {report.alreadyHad ? ` · ${report.alreadyHad} already in your library (left as they were)` : ''}
-              {report.collectionsCreated ? ` · ${report.collectionsCreated} collection${report.collectionsCreated === 1 ? '' : 's'} created` : ''}
-              {report.collectionsUpdated ? ` · ${report.collectionsUpdated} topped up` : ''}
-              {report.settingsApplied ? ' · settings applied' : ''}.
+              {report.alreadyHad ? `. ${report.alreadyHad} already in your library (left as they were)` : ''}
+              {report.collectionsCreated ? `. ${report.collectionsCreated} collection${report.collectionsCreated === 1 ? '' : 's'} created` : ''}
+              {report.collectionsUpdated ? `. ${report.collectionsUpdated} topped up` : ''}
+              {report.settingsApplied ? '. Settings applied' : ''}.
             </p>
             {report.failed.length > 0 && (
               <details className="text-xs text-bad">

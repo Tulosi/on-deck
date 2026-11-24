@@ -146,7 +146,7 @@ export function ResetPassword() {
   }
 
   return (
-    <div className="mx-auto mt-6 max-w-sm space-y-6 rounded-xl border border-line bg-surface p-6 md:mt-12">
+    <div className="mx-auto mt-6 max-w-sm space-y-6 rounded-lg border border-line bg-surface p-6 md:mt-12">
       <Wordmark />
       <h1 className="text-lg font-semibold tracking-tight text-fg">Set a new password</h1>
       {body}

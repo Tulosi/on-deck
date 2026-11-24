@@ -49,7 +49,7 @@ const primaryButtonClass =
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <section className="space-y-3 rounded-xl border border-line bg-surface p-5">
+    <section className="space-y-3 rounded-lg border border-line bg-surface p-4 sm:p-5">
       <div>
         <h2 className="text-sm font-semibold text-fg">{title}</h2>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
@@ -781,9 +781,9 @@ export function Settings() {
     <div className="max-w-2xl space-y-6">
       <div>
         <PageHeader title="Settings" />
-        <p className="-mt-5 font-mono text-[11px] text-faint" title={`Build ${__APP_VERSION__.build} · ${__APP_VERSION__.sha}`}>
+        <p className="-mt-5 text-xs text-faint tabular-nums" title={`Build ${__APP_VERSION__.build}, ${__APP_VERSION__.sha}`}>
           v{__APP_VERSION__.build}
-          {__APP_VERSION__.date && ` · ${versionDate(__APP_VERSION__.date)}`}
+          {__APP_VERSION__.date && `, ${versionDate(__APP_VERSION__.date)}`}
         </p>
       </div>
       <AppearanceSection />
@@ -812,7 +812,7 @@ export function Settings() {
               <PhoneTabsSettings />
             </Section>
           </section>
-          <section id="calendar" className="rounded-xl border border-line bg-surface p-5">
+          <section id="calendar" className="rounded-lg border border-line bg-surface p-4 sm:p-5">
             <CalendarFeed />
           </section>
           <section id="status" className="scroll-mt-20">

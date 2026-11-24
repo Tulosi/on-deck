@@ -55,7 +55,7 @@ function CollectionForm({
     if (name.trim()) onSubmit({ name, description })
   }
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-4">
+    <form onSubmit={submit} className="space-y-3 rounded-lg border border-line bg-surface p-4">
       <input
         autoFocus
         value={name}
@@ -124,7 +124,7 @@ const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[], sh
           .map((id) => byId.get(id))
           .filter((i): i is UserItem => !!i && (showArchived || !i.archivedAt))
 
-/** "Games · 3 filters · sorted by Price" */
+/** "Games, 3 filters, sorted by Price" */
 function rulesSummary(rules: string): string {
   const f = parseFilters(new URLSearchParams(rules))
   const n = activeCount(f)
@@ -222,7 +222,7 @@ export function Collections() {
                   {c.builtin && <DefaultBadge />}
                 </p>
                 {c.description && <p className="line-clamp-2 text-xs text-muted">{c.description}</p>}
-                <p className="font-mono text-xs text-faint">
+                <p className="text-xs text-faint tabular-nums">
                   {list.length} title{list.length === 1 ? '' : 's'}
                 </p>
               </Link>
@@ -355,8 +355,8 @@ export function CollectionDetail() {
           {archivedHere > 0 && (
             <p className="-mt-3 mb-5 text-xs text-faint">
               {showArchived
-                ? `Showing ${archivedHere} archived title${archivedHere === 1 ? '' : 's'} · `
-                : `${archivedHere} archived title${archivedHere === 1 ? ' is' : 's are'} hidden by default · `}
+                ? `Showing ${archivedHere} archived title${archivedHere === 1 ? '' : 's'}. `
+                : `${archivedHere} archived title${archivedHere === 1 ? ' is' : 's are'} hidden by default. `}
               <button type="button" onClick={() => setShowArchived((v) => !v)} className="text-accent-ink hover:underline">
                 {showArchived ? 'Hide' : 'Show'}
               </button>
@@ -384,7 +384,7 @@ export function CollectionDetail() {
                       disabled={index === 0}
                       onClick={() => move.mutate({ collectionId: c.id, itemId: item.id, by: -1 })}
                       aria-label={`Move ${item.title.title} earlier`}
-                      className="grid size-7 place-items-center rounded-full bg-bg/90 text-fg shadow disabled:opacity-30"
+                      className="grid size-7 place-items-center rounded-md bg-bg/90 text-fg shadow disabled:opacity-30"
                     >
                       <ChevronLeft className="size-4" />
                     </button>
@@ -393,7 +393,7 @@ export function CollectionDetail() {
                       disabled={index === list.length - 1}
                       onClick={() => move.mutate({ collectionId: c.id, itemId: item.id, by: 1 })}
                       aria-label={`Move ${item.title.title} later`}
-                      className="grid size-7 place-items-center rounded-full bg-bg/90 text-fg shadow disabled:opacity-30"
+                      className="grid size-7 place-items-center rounded-md bg-bg/90 text-fg shadow disabled:opacity-30"
                     >
                       <ChevronRight className="size-4" />
                     </button>
@@ -402,7 +402,7 @@ export function CollectionDetail() {
                     type="button"
                     onClick={() => toggleItem.mutate({ collectionId: c.id, itemId: item.id, add: false })}
                     aria-label={`Remove ${item.title.title} from ${c.name}`}
-                    className="grid size-7 place-items-center rounded-full bg-bg/90 text-fg shadow hover:text-bad"
+                    className="grid size-7 place-items-center rounded-md bg-bg/90 text-fg shadow hover:text-bad"
                   >
                     <X className="size-4" />
                   </button>

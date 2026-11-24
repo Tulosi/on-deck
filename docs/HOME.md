@@ -49,10 +49,14 @@ Things you're in the middle of, with **the next concrete step**.
   (`nextWatchable` in `src/lib/home.ts`.)
 
 ### 2. New for you ✅ built
-Changes since your **previous visit** (`profiles.last_seen_home_at`: read once per app session, then moved to
-now; a first-ever visit shows the last 7 days). Built from the daily job's alerts plus new episodes, worked out
-from each show's last aired episode (`metadata.last_episode_to_air`). **Clear** empties the row for this
-session. Implementation: `src/lib/newForYou.ts`. Every card carries a reason label:
+Changes from the **last 7 days** (decided 2026-11-23). Visiting Home doesn't reset the row: a card stays for the
+week unless you deal with it. **Shows** leave only when that specific episode is marked watched (a season premiere
+alert: that season's first episode); other episode marks, status changes and Plex watches don't remove it.
+**Movies, games and books** leave once you act on them after the news (status change, Steam play: anything that
+stamps `last_activity_at`). Built from the daily
+job's alerts plus new episodes, worked out from each show's last aired episode (`metadata.last_episode_to_air`).
+**Clear** empties the row and is saved (`profiles.last_seen_home_at` now means "cleared at"); news after that
+shows again. Implementation: `src/lib/newForYou.ts`. Every card carries a reason label:
 - **New episodes:** an episode aired for a show you're following (In Progress, or Wanted + caught up).
   Includes renewals that flipped Watched back to In Progress.
 - **Season premiere:** a new season started.
@@ -105,7 +109,7 @@ Saved views (from the Library) can be pinned to Home as extra rows, below the bu
 | Next episode / air dates | ✅ (TMDB `next_episode_to_air`, refreshed after it airs) | — |
 | Movie % watched | ✅ live from Plex on the title page | Store it per item when synced, so Home doesn't call Plex per card |
 | Availability (Plex + streaming) | ❌ live per title page only | **Store per title + refresh in the background.** Shared with the Library's Availability filter (FILTERING.md step 3) |
-| "Since last visit" | ❌ | `profiles.last_seen_home_at`, plus change timestamps: episode air dates, `availability_changed_at`, release date |
+| "Last 7 days" | ✅ | `profiles.last_seen_home_at`, plus change timestamps: episode air dates, `availability_changed_at`, release date |
 | Daily refresh without opening the app | ❌ (browser-driven today) | The planned daily server job (release tracking) refreshes titles and availability |
 | Game prices / deals | ❌ | Comes with games |
 
@@ -119,7 +123,6 @@ Saved views (from the Library) can be pinned to Home as extra rows, below the bu
 5. **Deals** with games. **Pinned views** with saved views.
 
 ## Open questions
-- ❓ "New for you" window: since your last visit (proposed), or a fixed "last 7 days"?
-- ❓ Should **Continue** include Wanted shows you're caught up on that just got a new episode, or is that only
-  "New for you"? (Proposed: New for you first, then Continue once you start the episode.)
-- ❓ Keep a "Coming Soon" row at all, or is "This week" plus Library → Upcoming enough? (Proposed: drop it.)
+- ✅ "New for you" window: a fixed 7 days; shows leave when that episode is watched, other titles when acted on (2026-11-23).
+- ✅ Caught-up Wanted shows with a new episode go to "New for you" only, then Continue once you mark an episode.
+- ✅ No "Coming soon" row: Next 7 days and the Calendar cover it.

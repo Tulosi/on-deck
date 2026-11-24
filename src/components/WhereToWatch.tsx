@@ -74,7 +74,7 @@ function PlexRow({ title }: { title: Title }) {
   const onPlex = status === 'available' || status === 'partial'
   const copy =
     status === 'processing' && seerr.data.downloading
-      ? { label: 'Requested — downloading', tone: 'text-info' }
+      ? { label: 'Requested, downloading', tone: 'text-info' }
       : plexCopy[status]
   // TV decides per season; movies by overall state.
   const canRequest = seasons ? !!seerr.data.canRequest : (status === 'missing' || status === 'partial') && !requested
@@ -322,22 +322,23 @@ export function WhereToWatch({ title }: { title: Title }) {
             </>
           )}
           <p className="text-xs text-faint">
-            Region: {data.country} ·{' '}
+            Region {data.country}.{' '}
             <Link to="/settings" className="hover:text-fg hover:underline">
-              your services
+              Your services
             </Link>
+            .{' '}
             {data.link && (
               <>
-                {' · '}
                 <a href={data.link} target="_blank" rel="noreferrer" className="hover:text-fg hover:underline">
-                  all options
+                  All options
                 </a>
+                .{' '}
               </>
-            )}{' '}
-            · Streaming data by{' '}
+            )}
+            Streaming data by{' '}
             <a href="https://www.justwatch.com" target="_blank" rel="noreferrer" className="hover:text-fg hover:underline">
               JustWatch
-            </a>
+            </a>.
           </p>
         </div>
       ) : null}

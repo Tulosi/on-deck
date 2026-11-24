@@ -76,7 +76,7 @@ export function SearchPage() {
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Search" meta={s.ready && !s.fetching ? `${s.total} result${s.total === 1 ? '' : 's'}` : undefined} />
 
-      <label className="flex h-12 items-center gap-3 rounded-xl border border-line bg-surface px-4 text-muted focus-within:border-accent">
+      <label className="flex h-12 items-center gap-3 rounded-md border border-line bg-surface px-4 text-muted focus-within:border-accent">
         {s.fetching ? <Loader2 className="size-5 shrink-0 animate-spin" /> : <SearchIcon className="size-5 shrink-0" />}
         <input
           // Focus straight away with a mouse/trackpad; on phones it would pop the keyboard over the page.
@@ -109,7 +109,7 @@ export function SearchPage() {
               onClick={() => setType(t.value)}
               className={clsx(
                 'flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors',
-                active ? 'border-accent bg-accent text-accent-fg' : 'border-line text-muted hover:text-fg',
+                active ? 'border-line bg-raised text-fg' : 'border-transparent text-muted hover:text-fg',
               )}
             >
               <Icon className="size-3.5" />
@@ -119,7 +119,7 @@ export function SearchPage() {
         })}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="mt-6 overflow-hidden rounded-lg border border-line bg-surface">
         {s.text.length < 2 ? (
           <p className="px-4 py-6 text-sm text-faint">
             Type a title. Typos are OK, since close spellings are suggested. Add a year (“dresden files 2026”) to see

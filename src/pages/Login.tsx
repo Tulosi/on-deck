@@ -60,7 +60,7 @@ export function Login() {
   }
 
   return (
-    <div className="mx-auto mt-6 max-w-sm space-y-6 rounded-xl border border-line bg-surface p-6 md:mt-12">
+    <div className="mx-auto mt-6 max-w-sm space-y-6 rounded-lg border border-line bg-surface p-6 md:mt-12">
       <Wordmark />
 
       {!supabase ? (

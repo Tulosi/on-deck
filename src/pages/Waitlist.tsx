@@ -77,57 +77,51 @@ function Thumb({ entry, className }: { entry: WaitlistEntry; className?: string 
   )
 }
 
-/** One row: cover, title, what's coming, date + countdown. */
+/** One row: date, cover, title, what's coming, countdown. */
 function EntryRow({ entry }: { entry: WaitlistEntry }) {
   const { item, event } = entry
-  const Icon = typeIcon[item.title.mediaType]
   const cd = countdown(entry)
   const soon = entry.daysUntil != null && entry.daysUntil <= 7
+  const label = eventLabel(event)
   return (
-    <Link
-      to={`/title/${item.title.id}`}
-      className="flex items-center gap-3 rounded-lg border border-line bg-surface p-2 pr-3 transition-colors hover:border-accent"
-    >
-      <Thumb entry={entry} className="h-[4.5rem] w-12" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-fg">{item.title.title}</p>
-        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
-          <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
-          <span className="truncate">{eventLabel(event)}</span>
-        </p>
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="font-mono text-xs text-fg">{whenLabel(entry)}</p>
-        {cd && (
-          <p
-            className={clsx(
-              'mt-1 inline-block rounded-md px-1.5 py-0.5 text-xs font-semibold',
-              soon ? 'bg-accent text-accent-fg' : 'bg-raised text-muted',
-            )}
-          >
-            {cd}
+    <li>
+      <Link to={`/title/${item.title.id}`} className="flex items-center gap-3 px-3 py-2 hover:bg-raised">
+        <span className="hidden w-24 flex-none whitespace-nowrap text-xs text-muted tabular-nums sm:block">{whenLabel(entry)}</span>
+        <Thumb entry={entry} className="h-[42px] w-7 border-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-fg">{item.title.title}</p>
+          <p className="mt-0.5 truncate text-xs text-muted">
+            <span className="tabular-nums sm:hidden">{whenLabel(entry)}, </span>
+            <span className={clsx(/^S\d+E\d+$/.test(label) && 'font-mono')}>{label}</span>
           </p>
-        )}
-      </div>
-    </Link>
+        </div>
+        {cd && <span className={clsx('flex-none text-xs', soon ? 'font-medium text-accent-ink' : 'text-muted')}>{cd}</span>}
+      </Link>
+    </li>
+  )
+}
+
+function EntryList({ entries }: { entries: WaitlistEntry[] }) {
+  return (
+    <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
+      {entries.map((e) => (
+        <EntryRow key={`${e.item.id}:${e.event.kind}`} entry={e} />
+      ))}
+    </ul>
   )
 }
 
 function ListView({ entries }: { entries: WaitlistEntry[] }) {
   const groups = groupEntries(entries)
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {groups.map((g) => (
         <section key={g.key} className="space-y-2">
           <h2 className="flex items-baseline gap-2 text-sm font-semibold tracking-tight text-fg">
             {g.label}
             <span className="font-mono text-xs font-normal text-faint">{g.entries.length}</span>
           </h2>
-          <div className="grid gap-2 lg:grid-cols-2">
-            {g.entries.map((e) => (
-              <EntryRow key={`${e.item.id}:${e.event.kind}`} entry={e} />
-            ))}
-          </div>
+          <EntryList entries={g.entries} />
         </section>
       ))}
     </div>
@@ -211,7 +205,7 @@ function CalendarView({
             type="button"
             aria-label="Previous month"
             onClick={() => setMonth(shiftMonth(month, -1))}
-            className="flex size-8 items-center justify-center rounded-full border border-line text-fg hover:border-accent"
+            className="flex size-8 items-center justify-center rounded-md border border-line text-fg hover:border-accent"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -219,7 +213,7 @@ function CalendarView({
             type="button"
             aria-label="Next month"
             onClick={() => setMonth(shiftMonth(month, 1))}
-            className="flex size-8 items-center justify-center rounded-full border border-line text-fg hover:border-accent"
+            className="flex size-8 items-center justify-center rounded-md border border-line text-fg hover:border-accent"
           >
             <ChevronRight className="size-4" />
           </button>
@@ -236,7 +230,7 @@ function CalendarView({
         </div>
         <div className="grid grid-cols-7 gap-px bg-line">
           {cells.map((iso, i) => {
-            if (!iso) return <div key={`x${i}`} className="min-h-14 bg-bg sm:min-h-28" />
+            if (!iso) return <div key={`x${i}`} className="min-h-12 bg-bg sm:min-h-20" />
             const list = byDay.get(iso) ?? []
             const isToday = iso === today
             const isSel = iso === day
@@ -248,7 +242,7 @@ function CalendarView({
                 aria-label={`${new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${list.length} release${list.length === 1 ? '' : 's'}`}
                 aria-pressed={isSel}
                 className={clsx(
-                  'flex min-h-14 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-28 sm:p-1.5',
+                  'flex min-h-12 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-20 sm:p-1.5',
                   isSel ? 'bg-raised ring-1 ring-accent ring-inset' : 'hover:bg-raised/60',
                   iso < today && 'opacity-50',
                 )}
@@ -270,17 +264,17 @@ function CalendarView({
                   </span>
                 )}
                 <span className="hidden flex-col gap-1 sm:flex">
-                  {list.slice(0, 3).map((e) => (
+                  {list.slice(0, 2).map((e) => (
                     <span
                       key={`${e.item.id}:${e.event.kind}`}
                       className="flex items-center gap-1 truncate rounded bg-raised px-1 py-0.5 text-[11px] text-fg"
-                      title={`${e.item.title.title} — ${eventLabel(e.event)}`}
+                      title={`${e.item.title.title}, ${eventLabel(e.event)}`}
                     >
                       <Thumb entry={e} className="h-5 w-3.5 rounded-sm border-0" />
                       <span className="truncate">{e.item.title.title}</span>
                     </span>
                   ))}
-                  {list.length > 3 && <span className="px-1 text-[11px] text-muted">+{list.length - 3} more</span>}
+                  {list.length > 2 && <span className="px-1 text-[11px] text-muted">+{list.length - 2} more</span>}
                 </span>
               </button>
             )
@@ -296,11 +290,7 @@ function CalendarView({
           {dayEntries.length === 0 ? (
             <p className="text-sm text-muted">Nothing out this day.</p>
           ) : (
-            <div className="grid gap-2 lg:grid-cols-2">
-              {dayEntries.map((e) => (
-                <EntryRow key={`${e.item.id}:${e.event.kind}`} entry={e} />
-              ))}
-            </div>
+            <EntryList entries={dayEntries} />
           )}
         </section>
       )}
@@ -343,7 +333,7 @@ export function Waitlist() {
   )
 
   return (
-    <div>
+    <div className="max-w-4xl">
       <PageHeader title="Calendar" meta={isLoading ? undefined : `${entries.length} upcoming`}>
         <button
           type="button"
@@ -360,7 +350,7 @@ export function Waitlist() {
       </PageHeader>
 
       {showFeed && (
-        <div className="mb-6 rounded-xl border border-line bg-surface p-4">
+        <div className="mb-6 rounded-lg border border-line bg-surface p-4">
           <CalendarFeed />
         </div>
       )}

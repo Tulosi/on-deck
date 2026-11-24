@@ -1,6 +1,7 @@
-import { ViewTransition } from 'react'
+import { useLayoutEffect, useRef, useState, ViewTransition } from 'react'
 import { backdropProps, coverProps } from '../lib/images'
 import { posterMorphName } from '../components/PosterCard'
+import clsx from 'clsx'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
 import { CollectionPicker } from '../components/CollectionPicker'
@@ -25,6 +26,41 @@ function Fact({ label, value }: { label: string; value?: string | number | null 
     <div>
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="mt-0.5 text-sm text-fg">{value}</dd>
+    </div>
+  )
+}
+
+/**
+ * The description, cut to a few lines with More / Less. Beside the poster on wider screens, under the
+ * poster-and-title row on phones (`className` picks which copy shows where).
+ */
+function Overview({ text, tagline, lines, className }: { text?: string; tagline?: string; lines: 3 | 4; className?: string }) {
+  const [open, setOpen] = useState(false)
+  const [clipped, setClipped] = useState(false)
+  const ref = useRef<HTMLParagraphElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (el && !open) setClipped(el.scrollHeight > el.clientHeight + 1)
+  }, [text, open])
+  if (!text && !tagline) return null
+  return (
+    <div className={clsx('max-w-prose space-y-1', className)}>
+      {tagline && <p className="text-sm text-muted italic">{tagline}</p>}
+      {text && (
+        <>
+          <p
+            ref={ref}
+            className={clsx('text-sm leading-relaxed text-fg/90', !open && (lines === 3 ? 'line-clamp-3' : 'line-clamp-4'))}
+          >
+            {text}
+          </p>
+          {(clipped || open) && (
+            <button type="button" onClick={() => setOpen((o) => !o)} className="hit text-xs text-accent-ink hover:underline">
+              {open ? 'Less' : 'More'}
+            </button>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -246,6 +282,7 @@ export function TitleDetail() {
   const { title } = item
   const Icon = typeIcon[title.mediaType]
   const d = (title.details ?? {}) as Record<string, unknown>
+  const tagline = typeof d.tagline === 'string' && d.tagline ? d.tagline : undefined
   const runtime = typeof d.runtime === 'number' && d.runtime > 0 ? `${d.runtime} min` : undefined
   const seasons = typeof d.number_of_seasons === 'number' ? `${d.number_of_seasons}` : undefined
   const networks = Array.isArray(d.networks) ? (d.networks as string[]).join(', ') : undefined
@@ -266,7 +303,8 @@ export function TitleDetail() {
   return (
     <div className="-mx-4 -mt-6 md:-mx-6">
       {/* Backdrop */}
-      <div className="relative h-48 overflow-hidden bg-surface sm:h-64 md:h-80">
+      {/* Shorter band, and just room for Back when there's no backdrop image. */}
+      <div className={clsx('relative overflow-hidden bg-surface', title.backdropUrl ? 'h-40 sm:h-52 md:h-60' : 'h-16')}>
         {title.backdropUrl && (
           <img {...backdropProps(title.backdropUrl)} alt="" fetchPriority="high" className="size-full object-cover opacity-60" />
         )}
@@ -280,12 +318,12 @@ export function TitleDetail() {
         </button>
       </div>
 
-      <div className="relative -mt-24 flex flex-col gap-6 px-4 sm:flex-row sm:items-end md:-mt-32 md:px-6">
+      <div className={clsx('relative flex max-w-5xl flex-row items-end gap-4 px-4 sm:gap-5 md:px-6', title.backdropUrl ? '-mt-16 md:-mt-24' : 'mt-2')}>
         <ViewTransition name={morph} share="poster-morph" default="none">
-        <div className="aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg border border-line bg-raised shadow-2xl sm:w-44 md:w-52">
+        <div className="aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-lg border border-line bg-raised shadow-2xl sm:w-36 md:w-40">
           {title.coverUrl ? (
             <img
-              {...coverProps(title.coverUrl, '(min-width: 768px) 208px, (min-width: 640px) 176px, 128px')}
+              {...coverProps(title.coverUrl, '(min-width: 768px) 160px, (min-width: 640px) 144px, 96px')}
               alt=""
               fetchPriority="high"
               className="size-full object-cover"
@@ -309,7 +347,7 @@ export function TitleDetail() {
               </span>
             )}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-fg md:text-4xl">{title.title}</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-fg sm:text-3xl md:text-4xl">{title.title}</h1>
           <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted">
             {title.year != null && <span className="font-mono">{title.year}</span>}
             {title.genres.length > 0 && <span>{title.genres.join(', ')}</span>}
@@ -334,15 +372,16 @@ export function TitleDetail() {
             </p>
           )}
           <ScoreChips title={title} />
+          <Overview text={title.overview} tagline={tagline} lines={4} className="mt-3 hidden sm:block" />
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8 px-4 md:px-6 lg:grid-cols-[1fr_16rem]">
-        <div className="space-y-6">
+      <Overview text={title.overview} tagline={tagline} lines={3} className="mt-4 px-4 sm:hidden" />
+
+      <div className="mt-6 grid max-w-5xl gap-6 px-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_14rem]">
+        <div className="min-w-0 space-y-5">
           {/* The main action first: status and progress sit right under the title, above the overview. */}
           {isSample ? <SignInToTrack /> : <StatusControls item={item} />}
-          {typeof d.tagline === 'string' && d.tagline && <p className="text-muted italic">{d.tagline}</p>}
-          {title.overview && <p className="max-w-prose leading-relaxed text-fg/90">{title.overview}</p>}
           <CastRow d={d} />
           {!isSample && <TrackingDetails item={item} />}
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
@@ -350,7 +389,7 @@ export function TitleDetail() {
           {!isSample && <CollectionPicker item={item} />}
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-5">
           <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
             <Fact
               label={

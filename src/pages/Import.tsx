@@ -187,7 +187,7 @@ export function ImportPage() {
     <div className="pb-24">
       <PageHeader title={`Import from ${SOURCE_NAME[source]}`} meta={cands.data ? `${list.length} found` : undefined} />
 
-      <div className="mb-5 flex items-start gap-3 rounded-xl border border-accent/50 bg-accent/5 px-4 py-3">
+      <div className="mb-5 flex items-start gap-3 rounded-lg border border-accent/50 bg-accent/5 px-4 py-3">
         <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-ink" />
         <p className="text-sm text-fg">
           Only pick what you think you’ll actually get to. On Deck is for cutting out the noise, not cataloguing everything
@@ -246,7 +246,7 @@ export function ImportPage() {
                   aria-checked={view === v}
                   aria-label={v === 'grid' ? 'Posters' : 'List'}
                   onClick={() => setView(v)}
-                  className={clsx('grid size-7 place-items-center rounded-full', view === v ? 'bg-raised text-fg' : 'text-muted')}
+                  className={clsx('grid size-7 place-items-center rounded-md', view === v ? 'bg-raised text-fg' : 'text-muted')}
                 >
                   {v === 'grid' ? <LayoutGrid className="size-3.5" /> : <List className="size-3.5" />}
                 </button>
@@ -270,7 +270,7 @@ export function ImportPage() {
                     className="no-press flex w-full items-baseline gap-2 py-2.5 text-left text-base font-semibold text-fg"
                   >
                     {group}
-                    <span className="font-mono text-xs font-normal text-faint">
+                    <span className="text-xs font-normal text-faint tabular-nums">
                       {picked} of {items.length} picked
                     </span>
                     <span className="ml-auto flex items-center gap-1 self-center text-xs font-normal text-muted">

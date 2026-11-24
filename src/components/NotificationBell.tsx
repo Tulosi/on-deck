@@ -32,7 +32,7 @@ function Row({ n, onOpen }: { n: Notification; onOpen: () => void }) {
       <Icon className={clsx('mt-0.5 size-4 shrink-0', n.readAt ? 'text-faint' : 'text-accent-ink')} />
       <span className="min-w-0 flex-1">
         <span className={clsx('block text-sm', n.readAt ? 'text-muted' : 'text-fg')}>{n.message}</span>
-        <span className="mt-0.5 block font-mono text-[11px] text-faint">{ago(n.createdAt)}</span>
+        <span className="mt-0.5 block text-xs text-faint">{ago(n.createdAt)}</span>
       </span>
       {!n.readAt && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-ink" aria-label="Unread" />}
     </>
@@ -82,7 +82,7 @@ export function NotificationBell() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-        className="relative grid size-9 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg"
+        className="relative grid size-9 place-items-center rounded-md text-muted hover:bg-raised hover:text-fg"
       >
         <Bell className="size-[18px]" />
         {unread > 0 && (

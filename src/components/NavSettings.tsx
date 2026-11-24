@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, GripVertical, Minus, Plus } from 'lucide-react'
 import { nudge, useNavLayout } from '../lib/navLayout'
 import { DEFAULT_TABS, MAX_TABS, NAV_KEYS, navItem, tabsFrom, type NavKey } from './nav'
 
-const iconBtn = 'grid size-8 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg disabled:opacity-30'
+const iconBtn = 'grid size-8 place-items-center rounded-md text-muted hover:bg-raised hover:text-fg disabled:opacity-30'
 
 /**
  * Settings → Navigation: which pages are phone tabs, and their order (the rest live under More).

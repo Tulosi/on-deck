@@ -7,6 +7,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../lib/auth'
 import { fetchCandidates, fetchSkips, importCandidates, type Candidate, type ImportResult, type ImportSource } from '../lib/importer'
 import { useItems } from '../lib/library'
+import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 
 const SOURCE_NAME: Record<ImportSource, string> = { steam: 'Steam', plex: 'Plex' }
 const btn = 'flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-50'
@@ -85,6 +86,7 @@ export function ImportPage() {
   const { allItems } = useItems()
   const queryClient = useQueryClient()
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  const viewGroup = useSlidingIndicator<HTMLDivElement>(view)
   const [filter, setFilter] = useState('')
   const [selected, setSelected] = useState<Set<string> | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -237,7 +239,8 @@ export function ImportPage() {
                 className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
               />
             </label>
-            <div className="ml-auto flex rounded-md border border-line p-0.5" role="radiogroup" aria-label="View">
+            <div ref={viewGroup} className="relative ml-auto flex rounded-md border border-line p-0.5" role="radiogroup" aria-label="View">
+              <span aria-hidden="true" className="slide-ind rounded-md bg-raised" />
               {(['grid', 'list'] as const).map((v) => (
                 <button
                   key={v}
@@ -246,7 +249,7 @@ export function ImportPage() {
                   aria-checked={view === v}
                   aria-label={v === 'grid' ? 'Posters' : 'List'}
                   onClick={() => setView(v)}
-                  className={clsx('grid size-7 place-items-center rounded-md', view === v ? 'bg-raised text-fg' : 'text-muted')}
+                  className={clsx('relative grid size-7 place-items-center rounded-md', view === v ? 'text-fg' : 'text-muted')}
                 >
                   {v === 'grid' ? <LayoutGrid className="size-3.5" /> : <List className="size-3.5" />}
                 </button>
@@ -316,7 +319,7 @@ export function ImportPage() {
                   Adding… {progress.done} / {progress.total}
                 </span>
                 <div className="h-1.5 min-w-[8rem] flex-1 overflow-hidden rounded-full bg-faint/40">
-                  <div className="h-full bg-accent-ink transition-[width]" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 100}%` }} />
+                  <div className="bar-fill h-full bg-accent-ink" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 100}%` }} />
                 </div>
               </>
             ) : result ? (

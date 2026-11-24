@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { RollingText } from './RollingText'
+import { useLeaving } from '../lib/useLeaving'
+import clsx from 'clsx'
 import { Check } from 'lucide-react'
 import type { MediaType, UserItem } from '../types'
 import { continueStat, episodeCode, nextWatchable, weekDay, type Upcoming } from '../lib/home'
@@ -30,27 +33,28 @@ const MAX_ROWS = 5
 
 /** Continue, after the Up next card: compact rows with the next step's number on the right. */
 export function ContinueList({ items, total, href }: { items: UserItem[]; total: number; href: string }) {
-  if (items.length === 0) return null
+  const shown = useLeaving(items.slice(0, MAX_ROWS), (i) => i.id)
+  if (shown.length === 0) return null
   return (
     <section aria-labelledby="continue" className="max-w-xl space-y-3">
       <ListHeader id="continue" title="Continue" href={href} more={`All ${total}`} />
       <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
-        {items.slice(0, MAX_ROWS).map((item) => (
-          <ContinueRow key={item.id} item={item} />
+        {shown.map(({ item, key, leaving }) => (
+          <ContinueRow key={key} item={item} leaving={leaving} />
         ))}
       </ul>
     </section>
   )
 }
 
-function ContinueRow({ item }: { item: UserItem }) {
+function ContinueRow({ item, leaving }: { item: UserItem; leaving: boolean }) {
   const { user } = useAuth()
   const update = useUpdateItem()
   const { title } = item
   const stat = continueStat(item)
   const ep = user ? nextWatchable(item) : null
   return (
-    <li className="flex items-center">
+    <li className={clsx('flex items-center', leaving && 'leave-y')} inert={leaving}>
       <Link to={`/title/${title.id}`} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 hover:bg-raised">
         <div className="h-[42px] w-7 flex-none overflow-hidden rounded bg-raised">
           {title.coverUrl && <img {...coverProps(title.coverUrl, '28px')} alt="" loading="lazy" className="size-full object-cover" />}
@@ -61,7 +65,7 @@ function ContinueRow({ item }: { item: UserItem }) {
         </div>
         {(stat.num || stat.sub) && (
           <div className="flex-none text-right">
-            {stat.num && <p className="font-mono text-sm text-fg">{stat.num}</p>}
+            {stat.num && <p className="font-mono text-sm text-fg"><RollingText text={stat.num} /></p>}
             {stat.sub && <p className="mt-0.5 text-xs text-muted">{stat.sub}</p>}
           </div>
         )}

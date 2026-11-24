@@ -48,9 +48,14 @@ function Overview({ text, tagline, lines, className }: { text?: string; tagline?
       {tagline && <p className="text-sm text-muted italic">{tagline}</p>}
       {text && (
         <>
+          {/* Height animates between N lines and auto (interpolate-size); the last shown line fades when clipped. */}
           <p
             ref={ref}
-            className={clsx('text-sm leading-relaxed text-fg/90', !open && (lines === 3 ? 'line-clamp-3' : 'line-clamp-4'))}
+            style={{ height: open ? 'auto' : `${lines}lh` }}
+            className={clsx(
+              'overflow-clip text-sm leading-relaxed text-fg/90 transition-[height] duration-300 ease-out motion-reduce:transition-none',
+              !open && clipped && '[mask-image:linear-gradient(to_bottom,#000_calc(100%-1lh),transparent)]',
+            )}
           >
             {text}
           </p>

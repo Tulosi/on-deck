@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDialog } from '../lib/useDialog'
 import clsx from 'clsx'
+import { RollingText } from './RollingText'
+import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Archive, ArchiveRestore, Check, ChevronRight, Library, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
@@ -42,15 +44,18 @@ function Segmented<T extends string>({
   const row = five
     ? 'basis-full @[36rem]/status:basis-auto @[36rem]/status:flex-1'
     : 'basis-full @[30rem]/status:basis-auto @[30rem]/status:flex-1'
+  const group = useSlidingIndicator<HTMLDivElement>(value)
   return (
     <div className="space-y-1.5">
       <p className={labelClass}>{label}</p>
       <div className="@container/status flex flex-wrap items-stretch gap-2">
       <div
+        ref={group}
         role="radiogroup"
         aria-label={label}
-        className={clsx('grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', fit ? 'w-fit grid-flow-col auto-cols-fr' : [row, cols])}
+        className={clsx('relative grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', fit ? 'w-fit grid-flow-col auto-cols-fr' : [row, cols])}
       >
+        <span aria-hidden="true" className="slide-ind rounded-md bg-raised shadow-[inset_0_0_0_1px_var(--color-line)]" />
         {options.map((o) => (
           <button
             key={o.value}
@@ -60,8 +65,8 @@ function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={clsx(
               // Labels wrap inside their button (never overrun it) when space is tight.
-              'rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors',
-              value === o.value ? 'bg-raised font-medium text-fg shadow-[inset_0_0_0_1px_var(--color-line)]' : 'text-muted hover:text-fg',
+              'relative rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors',
+              value === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
             )}
           >
             {o.label}
@@ -288,7 +293,7 @@ function SeasonBars({ item, seasons }: { item: UserItem; seasons: SeasonMeta[] }
             <span className="w-20 shrink-0 text-sm text-fg">Season {s.season_number}</span>
             <div role="img" aria-label={label} className="h-1 flex-1 overflow-hidden rounded-full bg-raised">
               <div
-                className={clsx('h-full', ignored ? 'bg-warn/70' : done ? 'bg-good' : 'bg-accent-ink')}
+                className={clsx('bar-fill h-full', ignored ? 'bg-warn/70' : done ? 'bg-good' : 'bg-accent-ink')}
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -334,10 +339,10 @@ function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: 
             className="flex h-1.5 w-28 overflow-hidden rounded-full bg-faint/55"
           >
             <div
-              className={clsx('h-full transition-[width]', done ? 'bg-good' : 'bg-accent-ink')}
+              className={clsx('bar-fill h-full', done ? 'bg-good' : 'bg-accent-ink')}
               style={{ width: `${watchedPct}%` }}
             />
-            <div className="h-full bg-warn/80 transition-[width]" style={{ width: `${ignoredPct}%` }} />
+            <div className="bar-fill h-full bg-warn/80" style={{ width: `${ignoredPct}%` }} />
           </div>
           {/* Ignored episodes are tallied in the count (they're "accounted for"), and also shown on their own. */}
           <span className="font-mono text-xs text-muted">
@@ -564,7 +569,9 @@ function NextUp({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Pr
         <p className={labelClass}>Next up</p>
         {next.note && <p className="text-xs text-muted">{next.note}</p>}
       </div>
-      <p className="mt-1 font-mono text-3xl leading-tight font-medium tracking-tight text-fg">{next.value}</p>
+      <p className="mt-1 font-mono text-3xl leading-tight font-medium tracking-tight text-fg">
+        <RollingText text={next.value} />
+      </p>
       {ep && (
         <button
           type="button"
@@ -628,7 +635,7 @@ function MovieProgressSection({
             className="flex h-1.5 w-28 overflow-hidden rounded-full bg-faint/55"
           >
             <div
-              className={clsx('h-full transition-[width]', percent >= 100 ? 'bg-good' : 'bg-accent-ink')}
+              className={clsx('bar-fill h-full', percent >= 100 ? 'bg-good' : 'bg-accent-ink')}
               style={{ width: `${percent}%` }}
             />
           </div>

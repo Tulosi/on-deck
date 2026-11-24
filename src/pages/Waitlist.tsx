@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { addTransitionType, startTransition, useMemo, useState, ViewTransition } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
@@ -21,6 +21,7 @@ import { countdown, eventLabel, groupEntries, waitlistEntries, whenLabel, type W
 import type { MediaType } from '../types'
 import { TYPES } from '../lib/filters'
 import { TypeFilter } from '../components/TypeFilter'
+import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 
 const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 
@@ -35,8 +36,10 @@ function Segmented<T extends string | null>({
   onChange: (v: T) => void
   label: string
 }) {
+  const group = useSlidingIndicator<HTMLDivElement>(value)
   return (
-    <div role="radiogroup" aria-label={label} className="flex rounded-md border border-line bg-surface p-0.5">
+    <div ref={group} role="radiogroup" aria-label={label} className="relative flex rounded-md border border-line bg-surface p-0.5">
+      <span aria-hidden="true" className="slide-ind rounded-md bg-raised" />
       {options.map((o) => {
         const Icon = o.icon
         const active = o.value === value
@@ -48,8 +51,8 @@ function Segmented<T extends string | null>({
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={clsx(
-              'hit flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors',
-              active ? 'bg-raised text-fg' : 'text-muted hover:text-fg',
+              'hit relative flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors',
+              active ? 'text-fg' : 'text-muted hover:text-fg',
             )}
           >
             {Icon && <Icon className="size-3.5" />}
@@ -130,6 +133,9 @@ function ListView({ entries }: { entries: WaitlistEntry[] }) {
 
 // ─── Calendar ──────────────────────────────────────────────────────────────
 
+const MONTH_IN = { 'month-next': 'month-in-next', 'month-prev': 'month-in-prev', default: 'none' }
+const MONTH_OUT = { 'month-next': 'month-out-next', 'month-prev': 'month-out-prev', default: 'none' }
+
 const pad = (n: number) => String(n).padStart(2, '0')
 const isoOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`
 
@@ -148,6 +154,14 @@ function CalendarView({
   month: string
   setMonth: (ym: string) => void
 }) {
+  // Month arrows slide the grid in the direction you went.
+  const go = (ym: string) => {
+    if (ym === month) return
+    startTransition(() => {
+      addTransitionType(ym > month ? 'month-next' : 'month-prev')
+      setMonth(ym)
+    })
+  }
   const today = todayIso()
   const [selected, setSelected] = useState<string | null>(null)
   const [y, m] = month.split('-').map(Number)
@@ -195,7 +209,7 @@ function CalendarView({
           {!inMonth(today) && (
             <button
               type="button"
-              onClick={() => setMonth(today.slice(0, 7))}
+              onClick={() => go(today.slice(0, 7))}
               className="mr-1 h-8 rounded-md border border-line px-3 text-xs text-fg hover:border-accent"
             >
               Today
@@ -204,7 +218,7 @@ function CalendarView({
           <button
             type="button"
             aria-label="Previous month"
-            onClick={() => setMonth(shiftMonth(month, -1))}
+            onClick={() => go(shiftMonth(month, -1))}
             className="flex size-8 items-center justify-center rounded-md border border-line text-fg hover:border-accent"
           >
             <ChevronLeft className="size-4" />
@@ -212,7 +226,7 @@ function CalendarView({
           <button
             type="button"
             aria-label="Next month"
-            onClick={() => setMonth(shiftMonth(month, 1))}
+            onClick={() => go(shiftMonth(month, 1))}
             className="flex size-8 items-center justify-center rounded-md border border-line text-fg hover:border-accent"
           >
             <ChevronRight className="size-4" />
@@ -220,6 +234,7 @@ function CalendarView({
         </div>
       </div>
 
+      <ViewTransition key={month} enter={MONTH_IN} exit={MONTH_OUT} default="none">
       <div className="overflow-hidden rounded-lg border border-line">
         <div className="grid grid-cols-7 border-b border-line bg-surface">
           {weekdays.map((w) => (
@@ -281,6 +296,7 @@ function CalendarView({
           })}
         </div>
       </div>
+      </ViewTransition>
 
       {day && (
         <section className="space-y-2">

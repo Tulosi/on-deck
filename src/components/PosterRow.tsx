@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { UserItem } from '../types'
 import { PosterCard } from './PosterCard'
+import { useLeaving } from '../lib/useLeaving'
+import clsx from 'clsx'
 
 /** Plex-style horizontal row of posters with a heading and scroll buttons. */
 export function PosterRow({
@@ -27,13 +29,15 @@ export function PosterRow({
   footer?: (item: UserItem) => ReactNode
 }) {
   const scroller = useRef<HTMLDivElement>(null)
-  if (items.length === 0) return null
+  const shown = useLeaving(items, (i) => i.id)
+  if (shown.length === 0) return null
+  const emptying = items.length === 0
 
   const scroll = (dir: 1 | -1) =>
     scroller.current?.scrollBy({ left: dir * scroller.current.clientWidth * 0.8, behavior: 'smooth' })
 
   return (
-    <section className="space-y-3">
+    <section className={clsx('space-y-3', emptying && 'leave-y')}>
       <div className="flex items-end justify-between gap-4">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg font-semibold tracking-tight text-fg">
@@ -59,8 +63,8 @@ export function PosterRow({
         </div>
       </div>
       <div ref={scroller} className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-1 md:-mx-6 md:scroll-px-6 md:px-6">
-        {items.map((item) => (
-          <div key={item.id} className="w-32 shrink-0 snap-start sm:w-36 lg:w-40">
+        {shown.map(({ item, key, leaving }) => (
+          <div key={key} className={clsx('w-32 shrink-0 snap-start sm:w-36 lg:w-40', leaving && 'leave-x')} inert={leaving}>
             <PosterCard item={item} subline={subline?.(item)} morphKey={title} />
             {footer?.(item)}
           </div>

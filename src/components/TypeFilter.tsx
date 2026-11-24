@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { LABELS, TYPES } from '../lib/filters'
 import type { MediaType } from '../types'
+import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 
 const selectClass = 'h-9 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 
@@ -26,7 +27,16 @@ export function TypeFilter({
     ...TYPES.map((t) => ({ value: t, label: LABELS.type[t] })),
   ]
   // When the pills overflow and scroll sideways, keep the selected one in view.
-  const pills = useRef<HTMLDivElement>(null)
+  const pills = useRef<HTMLDivElement | null>(null)
+  const slide = useSlidingIndicator<HTMLDivElement>(value)
+  // Stable, so React doesn't detach and re-attach it (and re-measure) on every render.
+  const setPills = useCallback(
+    (n: HTMLDivElement | null) => {
+      pills.current = n
+      slide(n)
+    },
+    [slide],
+  )
   useEffect(() => {
     const el = pills.current?.querySelector<HTMLElement>('[aria-checked="true"]')
     if (el && pills.current) pills.current.scrollLeft = el.offsetLeft - pills.current.offsetLeft - 8
@@ -46,7 +56,10 @@ export function TypeFilter({
         ))}
       </select>
       {!navOwned && (
-        <div ref={pills} role="radiogroup" aria-label="Media type" className="no-scrollbar hidden gap-1 overflow-x-auto sm:flex">
+        <div
+          ref={setPills}
+          role="radiogroup" aria-label="Media type" className="no-scrollbar relative hidden gap-1 overflow-x-auto sm:flex">
+          <span aria-hidden="true" className="slide-ind rounded-full bg-accent" />
           {options.map((o) => (
             <button
               key={o.label}
@@ -55,8 +68,8 @@ export function TypeFilter({
               aria-checked={value === o.value}
               onClick={() => onChange(o.value)}
               className={clsx(
-                'h-7 shrink-0 rounded-full px-3 text-xs whitespace-nowrap transition-colors',
-                value === o.value ? 'bg-accent font-medium text-accent-fg' : 'text-muted hover:bg-raised hover:text-fg',
+                'relative h-7 shrink-0 rounded-full px-3 text-xs whitespace-nowrap transition-colors',
+                value === o.value ? 'font-medium text-accent-fg' : 'text-muted hover:bg-raised hover:text-fg',
               )}
             >
               {o.label}

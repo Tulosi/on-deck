@@ -23,6 +23,7 @@ import { BackupPanel } from '../components/BackupPanel'
 import { BUILTIN_COLLECTIONS } from '../lib/collections'
 import { useNavLayout } from '../lib/navLayout'
 import { useTheme, type Theme } from '../lib/theme'
+import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 import { usePush } from '../lib/push'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
@@ -744,9 +745,11 @@ function AppearanceSection() {
     { value: 'dark', label: 'Dark' },
     { value: 'light', label: 'Light' },
   ]
+  const group = useSlidingIndicator<HTMLDivElement>(theme)
   return (
     <Section title="Appearance" description="Saved on this device.">
-      <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-lg border border-line bg-bg p-1">
+      <div ref={group} role="radiogroup" aria-label="Theme" className="relative inline-flex rounded-lg border border-line bg-bg p-1">
+        <span aria-hidden="true" className="slide-ind rounded-md bg-raised" />
         {options.map((o) => (
           <button
             key={o.value}
@@ -755,8 +758,8 @@ function AppearanceSection() {
             aria-checked={theme === o.value}
             onClick={() => setTheme(o.value)}
             className={clsx(
-              'hit h-9 rounded-md px-4 text-sm',
-              theme === o.value ? 'bg-raised font-medium text-fg' : 'text-muted hover:text-fg',
+              'hit relative h-9 rounded-md px-4 text-sm',
+              theme === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
             )}
           >
             {o.label}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { RollingText } from './RollingText'
 import type { UserItem } from '../types'
 import { episodeCode, upNext } from '../lib/home'
 import { coverProps } from '../lib/images'
@@ -26,7 +27,8 @@ export function UpNextCard({ item }: { item: UserItem }) {
         Up next
       </h1>
       <div className="max-w-xl overflow-hidden rounded-lg border border-line bg-surface">
-        <div className="flex gap-4 p-4">
+        {/* A new title taking the card arrives with a short lift; the same title updating doesn't. */}
+        <div key={item.id} className="arrive flex gap-4 p-4">
           <Link to={`/title/${title.id}`} className="hit block w-20 flex-none sm:w-24" aria-label={title.title}>
             <div className="aspect-[2/3] overflow-hidden rounded-md border border-line bg-raised">
               {title.coverUrl && <img {...coverProps(title.coverUrl, '96px')} alt="" className="size-full object-cover" />}
@@ -37,7 +39,9 @@ export function UpNextCard({ item }: { item: UserItem }) {
               {title.title}
             </Link>
             {next.value ? (
-              <p className="font-mono text-3xl leading-tight font-medium tracking-tight text-fg">{next.value}</p>
+              <p className="font-mono text-3xl leading-tight font-medium tracking-tight text-fg">
+                <RollingText text={next.value} />
+              </p>
             ) : (
               <p className="text-sm text-muted">{KIND[title.mediaType]}</p>
             )}
@@ -46,7 +50,7 @@ export function UpNextCard({ item }: { item: UserItem }) {
               <div className="mt-auto pt-2">
                 <div className="h-1 rounded-full bg-raised" role="img" aria-label={next.bar.label}>
                   <div
-                    className="h-1 rounded-full bg-accent-ink"
+                    className="bar-fill h-1 rounded-full bg-accent-ink"
                     style={{ width: `${Math.round((next.bar.done / Math.max(1, next.bar.total)) * 100)}%` }}
                   />
                 </div>

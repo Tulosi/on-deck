@@ -153,6 +153,110 @@ h1[tabindex='-1']:focus {
   }
 }
 
+/* Odometer digits (RollingText): each digit is a 0–9 column that slides to the new value. */
+.roll-digit {
+  display: inline-block;
+  height: 1lh;
+  overflow: clip;
+}
+.roll-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 420ms var(--ease-out);
+}
+
+/* Sliding selection (useSlidingIndicator): placed over the checked option, slides on later changes. */
+.slide-ind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--ind-w, 0);
+  height: var(--ind-h, 0);
+  opacity: var(--ind-o, 0);
+  transform: translate(var(--ind-x, 0), var(--ind-y, 0));
+  pointer-events: none;
+}
+[data-ind-ready] > .slide-ind {
+  transition:
+    transform 240ms var(--ease-out),
+    width 240ms var(--ease-out),
+    height 240ms var(--ease-out),
+    opacity 120ms var(--ease-out);
+}
+
+/* Entries leaving a list (useLeaving): shrink away while the rest close the gap. */
+.leave-x {
+  animation: leave-x 240ms var(--ease-out) forwards;
+  pointer-events: none;
+}
+@keyframes leave-x {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+    width: 0;
+    margin-inline-end: -1rem;
+  }
+}
+.leave-y {
+  animation: leave-y 240ms var(--ease-out) forwards;
+  overflow: clip;
+  pointer-events: none;
+}
+@keyframes leave-y {
+  to {
+    opacity: 0;
+    height: 0;
+    padding-block: 0;
+    border-width: 0;
+  }
+}
+/* Something new taking a place (the Up next card's next title): a short fade with a small lift. */
+.arrive {
+  animation: arrive 260ms var(--ease-out) both;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Progress bars grow to their new length. */
+.bar-fill {
+  transition:
+    width 500ms var(--ease-out),
+    background-color 300ms var(--ease-out);
+}
+
+/* Expanders (details, More/Less) open and close smoothly where the browser can animate to auto height. */
+:root {
+  interpolate-size: allow-keywords;
+}
+details::details-content {
+  height: 0;
+  overflow: clip;
+  transition:
+    height 220ms var(--ease-out),
+    content-visibility 220ms allow-discrete;
+}
+details[open]::details-content {
+  height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-strip,
+  [data-ind-ready] > .slide-ind,
+  .bar-fill,
+  details::details-content {
+    transition: none;
+  }
+  .leave-x,
+  .leave-y,
+  .arrive {
+    animation-duration: 1ms;
+  }
+}
+
 /* Toasts rise in from just below; no exit animation (they're replaced or dismissed). */
 .toast-enter {
   transition:
@@ -247,6 +351,36 @@ h1[tabindex='-1']:focus {
   to {
     opacity: 0;
     transform: scale(0.97);
+  }
+}
+
+/* Calendar month arrows: the grid slides a short way in the direction you went. */
+::view-transition-new(.month-in-next) {
+  animation: vt-month-in 220ms var(--ease-out) both;
+  --month-dx: 24px;
+}
+::view-transition-new(.month-in-prev) {
+  animation: vt-month-in 220ms var(--ease-out) both;
+  --month-dx: -24px;
+}
+::view-transition-old(.month-out-next) {
+  animation: vt-month-out 160ms var(--ease-out) both;
+  --month-dx: -24px;
+}
+::view-transition-old(.month-out-prev) {
+  animation: vt-month-out 160ms var(--ease-out) both;
+  --month-dx: 24px;
+}
+@keyframes vt-month-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--month-dx));
+  }
+}
+@keyframes vt-month-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--month-dx));
   }
 }
 

@@ -51,7 +51,14 @@ list (beside Up next on wide screens), and the sync line at the top of Home. **S
 description beside the poster; Calendar as one compact dated list; Settings, Collections, Search, Import, Login and
 their panels moved to 8px cards and 6px buttons, separator dots removed (backup summary, Where to watch footer,
 archived-titles note, version line), relative times and counts in the text face, and the Search type buttons use the
-quiet raised selection instead of a lemon fill.
+quiet raised selection instead of a lemon fill. **Stage 9, motion (no new library):** episode codes and
+counts roll like an odometer when they change (`RollingText`: only changed digits move); rows and cards that leave
+Home's lists shrink away while the rest close the gap (`useLeaving`, `.leave-x` / `.leave-y`), and a new title
+taking the Up next card lifts in; progress and season bars grow to their new length (`.bar-fill`); the selected
+option in Status, Priority, List/Month, Dark/Light, the type pills and Import's view slides between options
+(`useSlidingIndicator`); Calendar's month arrows slide the grid in the direction you went (a view transition with
+`month-next` / `month-prev` types); the description's More/Less and `<details>` sections open and close smoothly
+(`interpolate-size`, so browsers without it simply jump). Reduced motion turns all of it off.
 
 ## The brief, as I read it
 - **Subject:** a household's queue of films, shows, games and books. "On deck" is baseball's name for the batter

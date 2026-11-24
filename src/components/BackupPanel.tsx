@@ -4,6 +4,7 @@ import { Download, Loader2, Upload } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { buildExport, downloadJson, importExport, readExport, type ExportFile, type ImportReport } from '../lib/backup'
 import { useItems } from '../lib/library'
+import { plainError } from '../lib/errors'
 
 const btn = 'flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm text-fg hover:border-accent disabled:opacity-60'
 const primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60'
@@ -43,7 +44,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
       setPending(data)
       setReplaceSettings(allItems.length === 0) // empty account: take the file's settings too
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t read that file.')
+      setError(plainError(e, 'Couldn’t read that file.'))
     } finally {
       if (fileInput.current) fileInput.current.value = ''
     }
@@ -63,7 +64,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
         queryClient.invalidateQueries({ queryKey: ['profile'] }),
       ])
     } catch (e) {
-      setError(`Import stopped: ${e instanceof Error ? e.message : 'something went wrong'}. Titles added so far are kept.`)
+      setError(`Import stopped: ${plainError(e, 'something went wrong').replace(/\.$/, '')}. Titles added so far are kept.`)
     } finally {
       setProgress(null)
     }

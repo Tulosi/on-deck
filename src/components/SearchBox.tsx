@@ -15,7 +15,7 @@ export const fullSearchHref = (q: string, type: SearchType) =>
 /**
  * Top-bar search with a type picker (Movies · TV · Games · Books · All). Only the chosen type's source is
  * searched: TMDB for movies / TV, IGDB for PC games, Hardcover for books. The type follows the Library page
- * you're on, else your last choice. "Open full results" (or Enter) goes to the full search page.
+ * page you're on (?type=), else your last choice. "Open full results" (or Enter) goes to the full search page.
  */
 export function SearchBox() {
   const { user } = useAuth()
@@ -28,9 +28,9 @@ export function SearchBox() {
   const input = useRef<HTMLInputElement>(null)
   const { addStates, add, onDeck, libraryIdOf } = useAdder()
 
-  // Type: the Library's type when you're browsing one, otherwise your last pick.
+  // Type: the page's type when it has one (Home, Library and Calendar all use ?type=), otherwise your last pick.
   const { pathname, search } = useLocation()
-  const pageType = pathname === '/library' ? new URLSearchParams(search).get('type') : null
+  const pageType = new URLSearchParams(search).get('type')
   const [type, setTypeState] = useState<SearchType>(savedType)
   useEffect(() => {
     if (isSearchType(pageType)) setTypeState(pageType)
@@ -161,8 +161,9 @@ export function SearchBox() {
                     aria-checked={active}
                     onClick={() => setType(t.value)}
                     className={clsx(
-                      'flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors sm:px-3',
-                      active ? 'border-accent bg-accent text-accent-fg' : 'border-line text-muted hover:text-fg',
+                      // The quiet raised selection, as on the full search page and the type pills.
+                      'flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors sm:px-3',
+                      active ? 'border-line bg-raised font-medium text-fg' : 'border-transparent text-muted hover:text-fg',
                     )}
                   >
                     <Icon className="size-3.5 max-sm:hidden" />

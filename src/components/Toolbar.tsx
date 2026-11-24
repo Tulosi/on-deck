@@ -67,12 +67,23 @@ const selectClass = 'h-10 sm:h-7 rounded-md border border-line bg-surface px-2 t
 // selected type's own filters. Tapping an option always selects it. A few groups have an "is / is not" switch
 // instead of the old tap-twice-to-exclude chips. Each option shows how many titles it would leave.
 
+/** Explains the two statuses people ask about, for the ones this view has. */
+function statusHint(type: MediaType | null): string | undefined {
+  const opts = statusFilterOptions(type)
+  const parts = [
+    opts.includes('stalled') && 'Stalled: started, then set aside.',
+    opts.includes('caught_up') && 'Caught up: seen everything out so far.',
+  ].filter(Boolean)
+  return parts.length ? parts.join(' ') : undefined
+}
+
 /** Small "is / is not" switch beside a group's label. */
 function NegSwitch({ label, neg, onChange }: { label: string; neg: boolean; onChange: (neg: boolean) => void }) {
   const opt = (on: boolean, text: string, value: boolean) => (
     <button
       type="button"
       aria-pressed={on}
+      title={value ? `Everything except the ${label.toLowerCase()} picked below` : `Only the ${label.toLowerCase()} picked below`}
       onClick={() => onChange(value)}
       className={clsx('rounded px-1.5 py-0.5 transition-colors', on ? 'bg-raised text-fg' : 'text-faint hover:text-fg')}
     >
@@ -99,7 +110,7 @@ function OptionGroup<T extends string>({
   children,
 }: {
   label: string
-  /** Shown as a tooltip on the label. */
+  /** One short line under the label (visible, so it works on touch screens too). */
   hint?: string
   options: readonly T[]
   selected: readonly T[]
@@ -117,11 +128,10 @@ function OptionGroup<T extends string>({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <p className="text-xs font-medium text-muted" title={hint}>
-          {label}
-        </p>
+        <p className="text-xs font-medium text-muted">{label}</p>
         {neg && <NegSwitch label={label} neg={neg.value} onChange={neg.set} />}
       </div>
+      {hint && <p className="-mt-1 text-[11px] text-faint">{hint}</p>}
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {
           const on = selected.includes(o)
@@ -180,6 +190,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
           options={statusFilterOptions(f.type)}
           selected={f.status}
           render={(v) => statusLabel(v, f.type)}
+          hint={statusHint(f.type)}
           onToggle={tog('status')}
           count={count('status')}
           neg={negOf('status')}
@@ -237,7 +248,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
               <OptionGroup label="Early access" options={LABELS.options.ACCESS} selected={f.access} render={(v) => LABELS.access[v]} onToggle={tog('access')} count={count('access')} />
               <OptionGroup
                 label="Price & deals"
-                hint="The cheapest of Steam-key stores and key shops, in your region's currency"
+                hint="Cheapest of the Steam-key stores and key shops, in your currency"
                 options={LABELS.options.DEAL}
                 selected={f.deal}
                 render={(v) => LABELS.deal[v]}

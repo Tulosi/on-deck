@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { ArrowLeft, BookOpen, Check, ChevronRight, Film, Gamepad2, Layers, Loader2, Plus, Sparkles, Star, Tv, type LucideIcon } from 'lucide-react'
 import { resultKey, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
 import type { SearchSection, SearchType, useSearch } from '../lib/search'
+import { plainError } from '../lib/errors'
 
 export type AddState = 'adding' | 'added' | { error: string }
 
@@ -222,7 +223,7 @@ export function useAdder() {
       await addFromTmdb(r)
       setAddStates((s) => ({ ...s, [key]: 'added' }))
     } catch (err) {
-      setAddStates((s) => ({ ...s, [key]: { error: err instanceof Error ? err.message : 'Could not add' } }))
+      setAddStates((s) => ({ ...s, [key]: { error: plainError(err, 'Couldn’t add that. Try again.') } }))
     }
   }
   return { addStates, add, onDeck, libraryIdOf }
@@ -234,7 +235,7 @@ function ResultSection({ section, empty, render }: { section: SearchSection; emp
     <section className="border-b border-line last:border-b-0">
       <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted">{section.title}</p>
       {section.error ? (
-        <p className="px-4 pb-3 text-sm text-bad">Search failed: {(section.error as Error).message}</p>
+        <p className="px-4 pb-3 text-sm text-bad">{plainError(section.error, 'Search isn’t working right now. Try again in a moment.')}</p>
       ) : section.isLoading ? (
         <p className="px-4 pb-3 text-sm text-muted">Searching…</p>
       ) : section.results.length === 0 ? (

@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Wordmark } from '../components/Logo'
 import { useAuth } from '../lib/auth'
 import { recoveryTokens, supabase } from '../lib/supabase'
+import { plainError } from '../lib/errors'
 
 const inputClass =
   'h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint focus:border-accent'
@@ -52,7 +53,7 @@ export function ResetPassword() {
       supabase.auth
         .verifyOtp({ token_hash: tokenHash, type: 'recovery' })
         .then(({ error }) => {
-          if (error) setLinkProblem(error.message)
+          if (error) setLinkProblem(plainError(error))
         })
         .finally(() => setVerifying(false))
     }
@@ -74,7 +75,7 @@ export function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password })
     setBusy(false)
     if (error) {
-      setError(error.message)
+      setError(plainError(error))
       return
     }
     setDone(true)

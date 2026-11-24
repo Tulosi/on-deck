@@ -2,7 +2,7 @@ import { memo, ViewTransition } from 'react'
 import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, CalendarClock, Check, CheckCheck, Pause, Film, Radio, Gamepad2, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarClock, Film, Radio, Gamepad2, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
 import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
@@ -50,17 +50,17 @@ function episodeLine(item: UserItem): string | undefined {
   return item.tvProgress ? episodeCode(item.tvProgress) : undefined
 }
 
-/** The one status badge on a poster, if any. */
-function statusBadge(item: UserItem): { icon: LucideIcon; label: string } | null {
+/**
+ * Status in words under the poster (not as an icon on it): only the states worth a glance. Want-to and Dropped
+ * stay quiet, since most of a library is waiting to be started.
+ */
+function statusWord(item: UserItem): string | null {
   switch (item.progress) {
     case 'in_progress':
-      return { icon: Play, label: statusLabel('in_progress', item.title.mediaType) }
     case 'caught_up':
-      return { icon: CheckCheck, label: 'Caught up, waiting for new episodes' }
-    case 'completed':
-      return { icon: Check, label: statusLabel('completed', item.title.mediaType) }
     case 'stalled':
-      return { icon: Pause, label: 'Stalled' }
+    case 'completed':
+      return statusLabel(item.progress, item.title.mediaType)
     default:
       return null
   }
@@ -104,7 +104,9 @@ export const PosterCard = memo(function PosterCard({
   const episode = subline ? undefined : episodeLine(item)
   const secondary = subline ?? (episode ? undefined : title.byline)
   const owned = item.owned && (title.mediaType === 'game' || title.mediaType === 'book')
-  const status = statusBadge(item)
+  // Home rows pass their own subline, which already says why the title is there.
+  // An episode code already says "in progress", so the word only adds length there.
+  const status = subline || (episode && item.progress === 'in_progress') ? null : statusWord(item)
   const opinion = item.favourite
     ? { icon: Star, label: 'All-time favourite', className: '!bg-accent !text-accent-fg' }
     : item.verdict === 'liked'
@@ -138,14 +140,13 @@ export const PosterCard = memo(function PosterCard({
           <CoverPlaceholder item={item} />
         )}
 
-        {/* At most two badges: your status (Playing, Caught up, Finished, Stalled) and your opinion (favourite
-            beats liked / didn't like). "Owned" is in words under the title instead of one more icon. */}
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-          {status && <Badge icon={status.icon} label={status.label} className={vis('status')} />}
-          {opinion && (
+        {/* One mark at most: your opinion (favourite beats liked / didn't like). Status and "Owned" are in words
+            under the title. */}
+        {opinion && (
+          <div className="absolute top-1.5 left-1.5">
             <Badge icon={opinion.icon} label={opinion.label} className={clsx(opinion.className, vis('rating'))} />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Headline review score */}
         {title.score && (
@@ -155,7 +156,17 @@ export const PosterCard = memo(function PosterCard({
               vis('score'),
             )}
           >
-            <span className="hidden font-sans text-white/55 sm:inline">{title.score.label} </span>
+            {/* The source stays on phones too; on narrow posters Hardcover's long name becomes a star. */}
+            <span className="font-sans text-white/55">
+              {title.score.label === 'Hardcover' ? (
+                <>
+                  <span className="@[8.5rem]/poster:hidden">★</span>
+                  <span className="hidden @[8.5rem]/poster:inline">Hardcover</span>
+                </>
+              ) : (
+                title.score.label
+              )}{' '}
+            </span>
             {title.score.value}
           </span>
         )}
@@ -275,9 +286,11 @@ export const PosterCard = memo(function PosterCard({
           ) : (
             title.year != null && <span className="font-mono">{title.year}</span>
           )}
+          {status && <span className="shrink-0">{status}</span>}
           {/* The author / studio needs more room than a 3-across phone grid has. */}
           {secondary && <span className={clsx('truncate', !subline && 'hidden sm:inline')}>{secondary}</span>}
-          {owned && <span>Owned</span>}
+          {/* Narrow phone grids: the status word wins the room. */}
+          {owned && <span className={clsx(status && 'hidden sm:inline')}>Owned</span>}
         </p>
       </div>
     </Link>

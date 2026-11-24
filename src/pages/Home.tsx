@@ -11,6 +11,7 @@ import { useItems } from '../lib/library'
 import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
+import { plainError } from '../lib/errors'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
@@ -34,7 +35,7 @@ export function Home() {
       </div>
     )
   }
-  if (error) return <p className="py-16 text-center text-sm text-bad">Couldn’t load your list: {error.message}</p>
+  if (error) return <p className="py-16 text-center text-sm text-bad">{plainError(error, 'Couldn’t load your list. Try reloading the page.')}</p>
 
   if (!isSample && allItems.length === 0) {
     return (

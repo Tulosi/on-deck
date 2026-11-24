@@ -131,7 +131,7 @@ export function Library() {
     const results = sortItems(applyFilters(allItems, f), f.sort)
     const hiddenArchived =
       f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
-    return { inType, results, hiddenArchived, groups: groupItems(results, f.group) }
+    return { inType, results, hiddenArchived, groups: groupItems(results, f.group, f.type) }
   }, [items, allItems, f])
 
   if (isLoading) return <PageSkeleton />

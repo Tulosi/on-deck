@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { BookOpen, Film, Gamepad2, Heart, Loader2, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
 import { Wordmark } from '../components/Logo'
 import { supabase } from '../lib/supabase'
+import { statusLabel } from '../lib/statusLabels'
 import type { MediaType, Progress } from '../types'
 
 interface SharedRow {
@@ -30,13 +31,8 @@ interface ShareInfo {
 
 const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 const TYPE_NAME: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows', game: 'Games', book: 'Books' }
-const SECTIONS: { progress: Progress; label: string }[] = [
-  { progress: 'in_progress', label: 'In progress' },
-  { progress: 'caught_up', label: 'Caught up' },
-  { progress: 'stalled', label: 'Stalled' },
-  { progress: 'wanted', label: 'Want to' },
-  { progress: 'completed', label: 'Done' },
-]
+// Section order. Headings use the app's status words: the type's own when one type is showing.
+const SECTIONS: Progress[] = ['in_progress', 'caught_up', 'stalled', 'wanted', 'completed']
 const grid =
   'grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-x-4 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]'
 
@@ -154,8 +150,10 @@ export function SharedList() {
                     onClick={() => setType(t)}
                     aria-pressed={type === t}
                     className={clsx(
-                      'h-8 rounded-md px-3 text-xs',
-                      type === t ? 'bg-accent font-medium text-accent-fg' : 'text-muted hover:bg-raised hover:text-fg',
+                      'h-8 rounded-full px-3 text-xs',
+                      type === t
+                        ? 'bg-raised font-medium text-fg shadow-[inset_0_0_0_1px_var(--color-line)]'
+                        : 'text-muted hover:text-fg',
                     )}
                   >
                     {t ? TYPE_NAME[t] : 'All'}
@@ -174,13 +172,13 @@ export function SharedList() {
               </div>
             ) : (
               <div className="space-y-10">
-                {SECTIONS.map((s) => {
-                  const list = visible.filter((r) => r.progress === s.progress)
+                {SECTIONS.map((progress) => {
+                  const list = visible.filter((r) => r.progress === progress)
                   if (!list.length) return null
                   return (
-                    <section key={s.progress} className="space-y-3">
+                    <section key={progress} className="space-y-3">
                       <h2 className="flex items-baseline gap-2 text-lg font-semibold tracking-tight text-fg">
-                        {s.label}
+                        {statusLabel(progress, type ?? (types.length === 1 ? types[0] : null))}
                         <span className="font-mono text-xs font-normal text-faint">{list.length}</span>
                       </h2>
                       <div className={grid}>

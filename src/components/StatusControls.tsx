@@ -18,6 +18,7 @@ import { useKeys } from '../lib/shortcuts'
 import { toast } from '../lib/toast'
 import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
 import { type Progress, type SeasonOverride, type UserItem } from '../types'
+import { plainError } from '../lib/errors'
 
 const labelClass = 'text-xs font-medium text-muted'
 
@@ -780,7 +781,7 @@ function useSaver(item: UserItem) {
       await update(item, patch)
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Couldn’t save that change.')
+      setError(plainError(err, 'Couldn’t save that change.'))
       return false
     } finally {
       setPending((n) => n - 1)

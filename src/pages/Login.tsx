@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { Wordmark } from '../components/Logo'
 import { authRedirectUrl, resetRedirectUrl, useAuth } from '../lib/auth'
 import { requestPasswordReset, supabase } from '../lib/supabase'
+import { plainError } from '../lib/errors'
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot'
 
@@ -53,7 +54,7 @@ export function Login() {
         if (!data.session) setNotice(`Check ${email} for a confirmation link, then come back and sign in.`)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(plainError(err))
     } finally {
       setBusy(false)
     }

@@ -448,13 +448,16 @@ const STATUS_LABEL: Record<Progress, string> = Object.fromEntries(
 const TYPE_LABEL: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows', game: 'Games', book: 'Books' }
 const PRIORITY_LABEL: Record<string, string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority', none: 'No priority' }
 
-/** Groups already-sorted items, keeping each group's order. Group order is fixed per key. */
-export function groupItems(items: UserItem[], group: GroupKey): Group[] {
+/**
+ * Groups already-sorted items, keeping each group's order. Group order is fixed per key. With one type selected,
+ * status groups use that type's words ("Want to play", "Beat it"), matching the filter panel and title pages.
+ */
+export function groupItems(items: UserItem[], group: GroupKey, type: MediaType | null = null): Group[] {
   if (group === 'none') return [{ key: 'all', label: '', items }]
   const keyOf = (i: UserItem): [string, string] => {
     switch (group) {
       case 'status':
-        return [i.progress, STATUS_LABEL[i.progress]]
+        return [i.progress, type ? statusLabel(i.progress, type) : STATUS_LABEL[i.progress]]
       case 'type':
         return [i.title.mediaType, TYPE_LABEL[i.title.mediaType]]
       case 'priority':

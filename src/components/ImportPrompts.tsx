@@ -5,6 +5,7 @@ import { Gamepad2, Loader2, Plus, Tv, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { usePlexStatus, useProfile } from '../lib/integrations'
 import { fetchPlexRecent, fetchSteamNew, importCandidates, markSteamSeen, skipCandidate, type Candidate, type CandidateList } from '../lib/importer'
+import { plainError } from '../lib/errors'
 
 const PLEX_SHOWN = 5
 const small = 'flex h-7 flex-1 items-center justify-center gap-1 rounded-md text-xs disabled:opacity-50'
@@ -103,7 +104,7 @@ function usePromptActions(queryKey: unknown[], onAnswered?: (c: Candidate) => Pr
       drop(c)
       await queryClient.invalidateQueries({ queryKey: ['library'] })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t add that')
+      setError(plainError(e, 'Couldn’t add that. Try again.'))
     } finally {
       setBusy(null)
     }

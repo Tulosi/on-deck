@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2 } from 'lucide-react'
 import { Wordmark } from '../components/Logo'
@@ -14,7 +14,9 @@ const inputClass =
 
 export function Login() {
   const { user, loading } = useAuth()
-  const [mode, setMode] = useState<Mode>('sign-in')
+  // ?mode=sign-up opens on Create account (the sample library's welcome card links there).
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<Mode>(params.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)

@@ -12,6 +12,8 @@ import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
 import { plainError } from '../lib/errors'
+import { useSnoozed } from '../lib/snooze'
+import { SampleWelcome } from '../components/SampleWelcome'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
@@ -26,6 +28,8 @@ export function Home() {
   const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
   const typeParam = filters.type ? `&type=${filters.type}` : ''
   const fresh = useNewForYou(isSample ? [] : items)
+  // Pick it back up? Each title can be put away for a month (Not now).
+  const notNow = useSnoozed('stalled', 30)
   const freshById = new Map(fresh.entries.map((e) => [e.item.id, e]))
 
   if (isLoading) return <HomeSkeleton />
@@ -56,6 +60,7 @@ export function Home() {
 
   return (
     <div className="space-y-10">
+      {isSample && <SampleWelcome />}
       {nothingGoingOn && (
         <div className="rounded-xl border border-line bg-surface px-5 py-4">
           <p className="text-sm font-medium text-fg">You’re all caught up.</p>
@@ -97,8 +102,19 @@ export function Home() {
       <PosterRow
         title="Pick it back up?"
         hint="Stalled in the last 3 months"
-        items={stalled}
+        items={stalled.filter((i) => !notNow.hidden(i.id))}
         href={`/library?status=stalled${typeParam}`}
+        footer={(item) => (
+          <button
+            type="button"
+            onClick={() => notNow.snooze(item.id, item.title.title)}
+            aria-label={`Not now: hide ${item.title.title} from this row for a month`}
+            title="Hide from this row for a month"
+            className="hit mt-1.5 text-xs text-muted hover:text-fg"
+          >
+            Not now
+          </button>
+        )}
       />
       <PosterRow
         title="Ready to start"

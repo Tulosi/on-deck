@@ -45,8 +45,8 @@ The Home, Library and title page mockups are on the canvas in this palette. Ligh
 
 **Built, stage 1 (2026-11-23):** Ember dark tokens (faint `#9a8e7e`, 4.6:1 on raised; bad and info unchanged), Chivo and
 Chivo Mono replace Inter and JetBrains Mono, the icon and `theme-color` use `#1e1812`, the light/dark switch moved from
-the top bar to Settings → Appearance, and Home opens with the Up next card. Still to do: Continue as list rows, Next 7
-days, the sync line, the Library toolbar, the title page Tracking card, the Ember light theme, and the copy pass
+the top bar to Settings → Appearance, and Home opens with the Up next card. **Stage 2:** Continue as list rows, Next 7 days as a dated
+list (beside Up next on wide screens), and the sync line at the top of Home. Still to do: the Library toolbar, the title page Tracking card, the Ember light theme, and the copy pass
 (sentence case, mono only for numbers).
 
 ## The brief, as I read it

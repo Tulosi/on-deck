@@ -54,6 +54,8 @@ export interface Profile {
   alert_settings: { price_low?: boolean; deep_discount?: boolean; deep_discount_pct?: number }
   /** Sidebar order (see lib/navLayout.ts). */
   nav_layout: { main?: string[]; types?: string[]; collections?: string[]; tabs?: string[]; hidden?: string[] }
+  /** When the background refresh last ran for this user (Plex, Seerr, Steam, availability). */
+  daily_checked_at?: string | null
 }
 
 export function useProfile() {
@@ -64,7 +66,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase!
         .from('profiles')
-        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name, steam_sync, alert_settings, nav_layout')
+        .select('country_code, currency, seerr_url, streaming_services, card_chips, steam_id, steam_name, steam_sync, alert_settings, nav_layout, daily_checked_at')
         .eq('user_id', user!.id)
         .single()
       if (error) throw error

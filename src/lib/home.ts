@@ -6,7 +6,6 @@ import { releaseInfo, tvSchedule } from './release'
 import { overrideOf, seasonsOf, watchedIn } from './seasons'
 import type { UserItem } from '../types'
 
-const DAY = 86_400_000
 const todayIso = () => new Date().toISOString().slice(0, 10)
 const weekday = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
 const monthDay = (iso: string) =>
@@ -61,34 +60,6 @@ export function nextWatchable(item: UserItem): { season: number; episode: number
 
 const hours = (h: number) => (h < 1 ? `${Math.round(h * 60)}m` : `${Math.round(h)}h`)
 
-/** Games on Continue: how much you've played and roughly how long it takes, so you can pick by time. */
-function gameLine(item: UserItem): string | undefined {
-  const played = item.steamPlaytimeMinutes ? hours(item.steamPlaytimeMinutes / 60) : null
-  const beat = hoursToBeat(item)
-  if (played && beat) return `${played} of ~${hours(beat)}`
-  if (beat) return `~${hours(beat)} to beat`
-  if (played) return `${played} played`
-  return undefined
-}
-
-/** Continue-row subline: the next concrete step (TV), or time played / to beat (games). */
-export function continueLine(item: UserItem): string | undefined {
-  if (item.title.mediaType === 'game') return gameLine(item)
-  if (item.title.mediaType !== 'tv') return undefined
-  // No season data (e.g. sample titles) → keep the card's usual "S2 · E4" line rather than guess.
-  if (seasonsOf(item).length === 0) return undefined
-  const ep = nextEpisode(item)
-  if (!ep) return 'Caught up'
-  const label = `S${ep.season} · E${ep.episode}`
-  const state = airState(item, ep)
-  if (state.out) return `${label} — out now`
-  if (state.date) {
-    const days = Math.round((Date.parse(`${state.date}T00:00:00Z`) - Date.parse(`${todayIso()}T00:00:00Z`)) / DAY)
-    return `${label} — ${days < 7 ? weekday(state.date) : monthDay(state.date)}`
-  }
-  return `Caught up · ${label} not announced`
-}
-
 /** 1. Continue — in progress, most recently interacted with first (watched, played, status / episode changed). */
 export function continueItems(items: UserItem[]): UserItem[] {
   return items
@@ -119,17 +90,11 @@ export function thisWeek(items: UserItem[]): Upcoming[] {
         item,
         date: sched.date,
         daysUntil: sched.daysUntil,
-        label: sched.kind === 'airing' ? `S${sched.season} · E${sched.episode}` : `Season ${sched.season} premiere`,
+        label: sched.kind === 'airing' ? episodeCode({ season: sched.season, episode: sched.episode }) : `Season ${sched.season} premiere`,
       })
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date))
-}
-
-/** This-week subline: "Today · S2 · E8", "Wed · Release" … */
-export function thisWeekLine(u: Upcoming): string {
-  const when = u.daysUntil === 0 ? 'Today' : u.daysUntil === 1 ? 'Tomorrow' : weekday(u.date)
-  return `${when} · ${u.label}`
 }
 
 /**
@@ -224,4 +189,25 @@ export function upNext(item: UserItem): UpNext {
     bar: s ? { done, total: s.episode_count, text: `${done}/${s.episode_count} watched`, label: `Season ${ep.season}: ${done} of ${s.episode_count} watched` } : undefined,
     watchable: nextWatchable(item),
   }
+}
+
+/** Next 7 days list: the day column ("Today", "Tomorrow", "Wed 26"). */
+export function weekDay(u: Upcoming): string {
+  if (u.daysUntil === 0) return 'Today'
+  if (u.daysUntil === 1) return 'Tomorrow'
+  return `${weekday(u.date)} ${Number(u.date.slice(8, 10))}`
+}
+
+/** Continue list rows: a number on the right (episode, hours) and a short line under it. */
+export function continueStat(item: UserItem): { num?: string; sub?: string } {
+  if (item.title.mediaType === 'game') {
+    const played = item.steamPlaytimeMinutes ? hours(item.steamPlaytimeMinutes / 60) : undefined
+    const beat = hoursToBeat(item)
+    return { num: played, sub: beat ? `~${hours(beat)} to beat` : played ? 'played' : undefined }
+  }
+  if (item.title.mediaType === 'tv') {
+    const n = upNext(item)
+    return { num: n.value, sub: n.note }
+  }
+  return {}
 }

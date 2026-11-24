@@ -1,22 +1,21 @@
-import type { UserItem } from '../types'
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
 import { UpNextCard } from '../components/UpNextCard'
+import { ContinueList, WeekList } from '../components/HomeLists'
+import { SyncLine } from '../components/SyncLine'
 import { RateFinished } from '../components/RateFinished'
 import { ImportPrompts } from '../components/ImportPrompts'
-import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, continueLine, nextWatchable, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
-import { useItems, useUpdateItem } from '../lib/library'
-import { useAuth } from '../lib/auth'
-import { toast } from '../lib/toast'
+import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, deals, readyToStart, thisWeek } from '../lib/home'
+import { useItems } from '../lib/library'
 import { useProfile } from '../lib/integrations'
 import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
 
 /**
  * Home answers "what should I do next, and what's changed?" (docs/HOME.md). Browsing, filtering and sorting
- * everything lives on the Library page. Rows: Continue · New for you · Recently finished (rate it) · This week · Pick it back up? · Ready to start ·
- * Deals.
+ * everything lives on the Library page. Top to bottom: sync line, Up next card, Continue and Next 7 days as lists,
+ * then poster rows: New for you, Recently finished (rate it), Pick it back up?, Ready to start, Deals.
  */
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
@@ -51,7 +50,6 @@ export function Home() {
 
   const cont = continueItems(items)
   const week = thisWeek(items)
-  const weekById = new Map(week.map((u) => [u.item.id, u]))
   const ready = readyToStart(items)
   const stalled = recentlyStalled(items)
   const dealPct = profile.data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
@@ -75,15 +73,17 @@ export function Home() {
         </div>
       )}
 
-      {cont[0] && <UpNextCard item={cont[0]} />}
-      <PosterRow
-        title="Continue"
-        hint="Pick up where you left off"
-        items={cont.slice(1)}
-        subline={continueLine}
-        footer={(item) => <WatchedNext item={item} />}
-        href={`/library?status=in_progress${typeParam}`}
-      />
+      <SyncLine />
+      {/* Wide screens: what you're in the middle of on the left, what's coming on the right. */}
+      {(cont.length > 0 || week.length > 0) && (
+        <div className="grid items-start gap-10 xl:grid-cols-2">
+          <div className="space-y-10">
+            {cont[0] && <UpNextCard item={cont[0]} />}
+            <ContinueList items={cont.slice(1)} total={cont.length} href={`/library?status=in_progress${typeParam}`} />
+          </div>
+          <WeekList upcoming={week} href="/calendar?view=month" />
+        </div>
+      )}
       <PosterRow
         title="New for you"
         hint="Since your last visit"
@@ -97,16 +97,6 @@ export function Home() {
       />
       {!isSample && <RateFinished items={items} />}
       {!isSample && <ImportPrompts />}
-      <PosterRow
-        title="This week"
-        hint="Out in the next 7 days"
-        href="/calendar?view=month"
-        items={week.map((u) => u.item)}
-        subline={(item) => {
-          const u = weekById.get(item.id)
-          return u ? thisWeekLine(u) : undefined
-        }}
-      />
       <PosterRow
         title="Pick it back up?"
         hint="Stalled in the last 3 months"
@@ -126,24 +116,5 @@ export function Home() {
         href="/library?type=game&deal=on_sale&sort=price"
       />
     </div>
-  )
-}
-
-/** One tap to mark the next aired episode watched, without opening the show (only when Plex isn't tracking it). */
-function WatchedNext({ item }: { item: UserItem }) {
-  const { user } = useAuth()
-  const update = useUpdateItem()
-  const ep = nextWatchable(item)
-  if (!ep || !user) return null // sample library: nothing to save to
-  return (
-    <button
-      type="button"
-      onClick={() =>
-        update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
-      }
-      className="mt-1.5 h-8 w-full rounded-md border border-line text-xs text-muted hover:border-accent hover:text-fg"
-    >
-      ✓ Watched S{ep.season} · E{ep.episode}
-    </button>
   )
 }

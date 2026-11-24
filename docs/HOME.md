@@ -21,7 +21,10 @@ The most recent Continue item, as one card above the rows: poster, title, the ne
 (`S02E05`, or hours played for a game), a short note ("Out now", "Out Tue, Nov 25", "Caught up"), and a bar for
 this season's episodes or hours against time to beat. Its one accent button is **Mark S02E05 watched** when that
 one-tap save is offered (signed in, episode out, Plex not tracking the show); otherwise **Open show**. Continue
-below lists the rest.
+below lists the rest as compact rows (up to 5, with the next episode or hours on the right and a check button
+for the one-tap save), and **Next 7 days** is a dated list beside it on wide screens ("Tomorrow  Show  S02E06").
+Above the card, a quiet line names your linked services (Plex, Seerr, Steam) and when the background refresh last
+ran; it opens Settings → Status. The old Continue and This week poster rows are gone.
 
 ### 1. Continue
 Things you're in the middle of, with **the next concrete step**.

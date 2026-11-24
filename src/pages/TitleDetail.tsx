@@ -4,7 +4,8 @@ import { posterMorphName } from '../components/PosterCard'
 import { SteamButtons } from '../components/SteamButtons'
 import clsx from 'clsx'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
+import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Trash2, Tv } from 'lucide-react'
+import { TitleSkeleton } from '../components/LazyPage'
 import { CollectionPicker } from '../components/CollectionPicker'
 import { GamePrices } from '../components/GamePrices'
 import { StatusControls, TrackingDetails } from '../components/StatusControls'
@@ -274,13 +275,7 @@ export function TitleDetail() {
   const morph = (location.state as { morph?: string } | null)?.morph ?? posterMorphName(id ?? '')
   const removeItem = useRemoveItemWithUndo()
 
-  if (isLoading) {
-    return (
-      <div className="grid place-items-center py-24 text-muted">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    )
-  }
+  if (isLoading) return <TitleSkeleton />
 
   const item = items.find((i) => i.title.id === id)
   if (!item) return <p className="py-16 text-center text-sm text-muted">This title isn’t in your library.</p>

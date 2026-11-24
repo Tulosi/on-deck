@@ -257,7 +257,7 @@ function CalendarView({
                 aria-label={`${new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${list.length} release${list.length === 1 ? '' : 's'}`}
                 aria-pressed={isSel}
                 className={clsx(
-                  'flex min-h-12 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 lg:min-h-28',
+                  'no-press flex min-h-12 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 lg:min-h-28',
                   isSel ? 'bg-raised ring-1 ring-fg/50 ring-inset' : 'hover:bg-raised/60',
                   iso < today && 'opacity-50',
                 )}

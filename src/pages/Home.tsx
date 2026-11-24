@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { HomeSkeleton } from '../components/LazyPage'
 import { PosterRow } from '../components/PosterRow'
 import { UpNext } from '../components/UpNextCard'
 import { ContinueList, WeekList } from '../components/HomeLists'
@@ -28,13 +28,7 @@ export function Home() {
   const fresh = useNewForYou(isSample ? [] : items)
   const freshById = new Map(fresh.entries.map((e) => [e.item.id, e]))
 
-  if (isLoading) {
-    return (
-      <div className="grid place-items-center py-24 text-muted">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    )
-  }
+  if (isLoading) return <HomeSkeleton />
   if (error) return <p className="py-16 text-center text-sm text-bad">{plainError(error, 'Couldn’t load your list. Try reloading the page.')}</p>
 
   if (!isSample && allItems.length === 0) {

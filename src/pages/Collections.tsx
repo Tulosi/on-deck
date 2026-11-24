@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { ArrowLeft, ChevronLeft, ChevronRight, EyeOff, Layers, ListFilter, Loader2, Pencil, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ListSkeleton, PageSkeleton } from '../components/LazyPage'
 import { PageHeader } from '../components/PageHeader'
 import { PosterCard } from '../components/PosterCard'
 import { ShareCollection } from '../components/ShareLinks'
@@ -201,7 +202,7 @@ export function Collections() {
       )}
 
       {isLoading ? (
-        <Loader2 className="mx-auto mt-16 size-5 animate-spin text-muted" />
+        <ListSkeleton />
       ) : collections.length === 0 && !creating ? (
         <div className="mx-auto max-w-md py-16 text-center">
           <p className="text-sm text-muted">
@@ -251,7 +252,7 @@ export function CollectionDetail() {
   const [layout, saveLayout] = useNavLayout()
 
   if (!loading && !user) return <SignInNote />
-  if (isLoading) return <Loader2 className="mx-auto mt-16 size-5 animate-spin text-muted" />
+  if (isLoading) return <PageSkeleton />
   const c = collections.find((x) => x.id === id)
   if (!c) {
     return (

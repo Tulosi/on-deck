@@ -12,6 +12,7 @@ import { Toaster } from './Toaster'
 import { ShortcutsSheet } from './ShortcutsSheet'
 import { useScrollMemory } from '../lib/useScrollMemory'
 import { useRouteFocus } from '../lib/useRouteFocus'
+import { useLibraryCache } from '../lib/libraryCache'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
@@ -33,6 +34,7 @@ export function AppShell() {
   usePlexBackgroundSync()
   useScrollMemory()
   useRouteFocus()
+  useLibraryCache()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

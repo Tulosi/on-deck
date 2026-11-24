@@ -120,6 +120,26 @@ h1[tabindex='-1']:focus {
   outline: none;
 }
 
+/*
+ * Press feedback: a button gives a little while it's held, so a tap feels heard. `scale` (not transform) leaves
+ * any transform a button already has alone. In the base layer, so a button's own transition or `active:scale-*`
+ * classes still win (a button with `transition-colors` shrinks without easing, which is fine for a press).
+ * Not on segmented options (their sliding indicator stays put), disabled buttons, or `.no-press` (calendar days,
+ * which sit edge to edge in a grid).
+ */
+@layer base {
+  @media (prefers-reduced-motion: no-preference) {
+    :where(button, [role='button'], summary) {
+      transition-property: color, background-color, border-color, opacity, box-shadow, scale;
+      transition-duration: 160ms;
+      transition-timing-function: var(--ease-out, ease-out);
+    }
+    :where(button, [role='button'], summary):where(:active:not(:disabled, [role='radio'], [role='tab'], .no-press)) {
+      scale: 0.97;
+    }
+  }
+}
+
 @layer base {
   /* Numbers line up (counts, scores, prices, episode numbers), and taps don't wait for a double-tap zoom. */
   html {

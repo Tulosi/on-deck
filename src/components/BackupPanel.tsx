@@ -137,7 +137,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
             </p>
             <div className="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-faint/40">
               <div
-                className="h-full bg-accent transition-[width]"
+                className="h-full bg-accent-ink transition-[width]"
                 style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 100}%` }}
               />
             </div>

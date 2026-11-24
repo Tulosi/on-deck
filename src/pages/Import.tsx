@@ -316,7 +316,7 @@ export function ImportPage() {
                   Adding… {progress.done} / {progress.total}
                 </span>
                 <div className="h-1.5 min-w-[8rem] flex-1 overflow-hidden rounded-full bg-faint/40">
-                  <div className="h-full bg-accent transition-[width]" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 100}%` }} />
+                  <div className="h-full bg-accent-ink transition-[width]" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 100}%` }} />
                 </div>
               </>
             ) : result ? (

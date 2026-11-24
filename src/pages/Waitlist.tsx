@@ -265,7 +265,7 @@ function CalendarView({
                 {list.length > 0 && (
                   <span className="flex flex-wrap gap-0.5 px-0.5 sm:hidden">
                     {list.slice(0, 4).map((e) => (
-                      <span key={`${e.item.id}:${e.event.kind}`} className="size-1.5 rounded-full bg-accent" />
+                      <span key={`${e.item.id}:${e.event.kind}`} className="size-1.5 rounded-full bg-accent-ink" />
                     ))}
                   </span>
                 )}

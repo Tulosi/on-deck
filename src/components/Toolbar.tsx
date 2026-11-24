@@ -79,7 +79,7 @@ function LabelsToggle() {
           aria-hidden="true"
           className={clsx(
             'pointer-events-none absolute top-1/2 left-0.5 size-3.5 rounded-full shadow transition-[transform,background-color] duration-200 ease-out will-change-transform',
-            mode === 'hide' ? 'bg-faint' : 'bg-accent',
+            mode === 'hide' ? 'bg-faint' : 'bg-accent-ink',
           )}
           // Slides with transform (smooth) rather than `left`. Each step = (inner track 50px − knob 14px − 2 × 2px inset) / 2 = 1rem.
           style={{ transform: `translate(${index}rem, -50%)` }}

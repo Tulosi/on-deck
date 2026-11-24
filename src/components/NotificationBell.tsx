@@ -34,7 +34,7 @@ function Row({ n, onOpen }: { n: Notification; onOpen: () => void }) {
         <span className={clsx('block text-sm', n.readAt ? 'text-muted' : 'text-fg')}>{n.message}</span>
         <span className="mt-0.5 block font-mono text-[11px] text-faint">{ago(n.createdAt)}</span>
       </span>
-      {!n.readAt && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" aria-label="Unread" />}
+      {!n.readAt && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-ink" aria-label="Unread" />}
     </>
   )
   const cls = 'flex items-start gap-3 px-4 py-3 hover:bg-raised/60'

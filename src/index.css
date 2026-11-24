@@ -26,6 +26,7 @@
   --color-good: var(--od-good);
   --color-bad: var(--od-bad);
   --color-info: var(--od-info);
+  --color-warn: var(--od-warn);
 
   /* Motion: one shared set of curves. Strong ease-out for anything entering or
      responding to a tap; ease-in-out for things moving on screen; drawer for sheets. */
@@ -51,24 +52,26 @@
   --od-good: #9fd38a;
   --od-bad: #ef7a6a;
   --od-info: #7fb8e8;
+  --od-warn: #fdba74;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --od-bg: #f5f2ec;
-  --od-surface: #ffffff;
-  --od-raised: #ece8e0;
-  --od-line: #dcd6cc;
-  --od-fg: #1a1815;
-  --od-muted: #57524b;
-  --od-faint: #6e685f; /* ≥4.5:1 on bg, surface and raised */
+  /* Ember light: warm paper, the dark ground becomes the ink, lemon stays as a fill only. */
+  --od-bg: #efe8dd;
+  --od-surface: #fbf8f3;
+  --od-raised: #e5dccf;
+  --od-line: #d6cabb;
+  --od-fg: #1e1812;
+  --od-muted: #5e5245;
+  --od-faint: #6b5d4c; /* ≥4.5:1 on bg, surface and raised */
   --od-accent: #f4e04d;
-  --od-accent-fg: #1a1815;
-  --od-accent-ink: #7a6a00; /* lemon is unreadable as text on white */
-  --od-good: #2f8a3e;
-  --od-bad: #c2412f;
-  --od-info: #2c6ea8;
-  color-scheme: light;
+  --od-accent-fg: #1e1812;
+  --od-accent-ink: #5c4d00; /* lemon is unreadable as text, bars or dots on paper */
+  --od-good: #2a6e2e;
+  --od-bad: #a8341f;
+  --od-info: #255c94;
+  --od-warn: #8f4508;
 }
 
 html,

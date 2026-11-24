@@ -15,9 +15,10 @@ const POSTER_SIZES = '(max-width: 640px) 45vw, 200px'
 const typeIcon: Record<MediaType, LucideIcon> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 
 const plexMeta: Record<PlexStatus, { label: string; className: string }> = {
-  available: { label: 'On Plex', className: 'bg-good' },
-  requested: { label: 'Requested', className: 'bg-info' },
-  missing: { label: 'Not on Plex', className: 'bg-faint' },
+  // Fixed colours: the chip is always dark (on the poster), whichever theme is on.
+  available: { label: 'On Plex', className: 'bg-[#9fd38a]' },
+  requested: { label: 'Requested', className: 'bg-[#7fb8e8]' },
+  missing: { label: 'Not on Plex', className: 'bg-[#9a8e7e]' },
 }
 
 function Badge({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {

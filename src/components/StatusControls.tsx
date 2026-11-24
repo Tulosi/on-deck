@@ -290,15 +290,15 @@ function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: 
             className="flex h-1.5 w-28 overflow-hidden rounded-full bg-faint/55"
           >
             <div
-              className={clsx('h-full transition-[width]', done ? 'bg-good' : 'bg-accent')}
+              className={clsx('h-full transition-[width]', done ? 'bg-good' : 'bg-accent-ink')}
               style={{ width: `${watchedPct}%` }}
             />
-            <div className="h-full bg-orange-300/80 transition-[width]" style={{ width: `${ignoredPct}%` }} />
+            <div className="h-full bg-warn/80 transition-[width]" style={{ width: `${ignoredPct}%` }} />
           </div>
           {/* Ignored episodes are tallied in the count (they're "accounted for"), and also shown on their own. */}
           <span className="font-mono text-xs text-muted">
             {watched + ignored} / {aired}
-            {ignored > 0 && <span className="text-orange-300"> · {ignored} ignored</span>}
+            {ignored > 0 && <span className="text-warn"> · {ignored} ignored</span>}
           </span>
         </div>
       )}
@@ -582,7 +582,7 @@ function MovieProgressSection({
             className="flex h-1.5 w-28 overflow-hidden rounded-full bg-faint/55"
           >
             <div
-              className={clsx('h-full transition-[width]', percent >= 100 ? 'bg-good' : 'bg-accent')}
+              className={clsx('h-full transition-[width]', percent >= 100 ? 'bg-good' : 'bg-accent-ink')}
               style={{ width: `${percent}%` }}
             />
           </div>

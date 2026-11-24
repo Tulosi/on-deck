@@ -50,7 +50,7 @@ function SideLink({
         indent && 'pl-6',
       )}
     >
-      {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent" />}
+      {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent-ink" />}
       <Icon className={clsx('size-[18px] shrink-0', active && 'text-accent-ink')} strokeWidth={1.75} />
       <span className="truncate">{label}</span>
     </Link>
@@ -128,7 +128,7 @@ function Reorderable({
           }}
           className={clsx('relative', dragging === key && 'opacity-40')}
         >
-          {drop?.before === key && dragging !== key && <span className="absolute inset-x-2 -top-px h-0.5 rounded bg-accent" />}
+          {drop?.before === key && dragging !== key && <span className="absolute inset-x-2 -top-px h-0.5 rounded bg-accent-ink" />}
           {render(
             key,
             keyNav(key),
@@ -139,7 +139,7 @@ function Reorderable({
           )}
         </div>
       ))}
-      {drop && drop.before === null && <span className="mx-2 block h-0.5 rounded bg-accent" />}
+      {drop && drop.before === null && <span className="mx-2 block h-0.5 rounded bg-accent-ink" />}
     </div>
   )
 }

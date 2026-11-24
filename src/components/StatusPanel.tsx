@@ -23,7 +23,7 @@ interface JobRun {
 
 const STATE_UI: Record<State, { icon: typeof Check; className: string; word: string }> = {
   ok: { icon: Check, className: 'text-good', word: 'OK' },
-  limited: { icon: AlertTriangle, className: 'text-orange-300', word: 'Rate limited' },
+  limited: { icon: AlertTriangle, className: 'text-warn', word: 'Rate limited' },
   refused: { icon: X, className: 'text-bad', word: 'Refused' },
   error: { icon: X, className: 'text-bad', word: 'Error' },
   off: { icon: CircleDashed, className: 'text-faint', word: 'Not set up' },
@@ -146,7 +146,7 @@ export function StatusPanel() {
                 ) : run.ok ? (
                   <Check className="mt-0.5 size-4 shrink-0 text-good" />
                 ) : limited ? (
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-orange-300" />
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
                 ) : (
                   <X className="mt-0.5 size-4 shrink-0 text-bad" />
                 )}

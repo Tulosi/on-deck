@@ -47,7 +47,7 @@ export function UpNextCard({ item }: { item: UserItem }) {
               <div className="mt-auto pt-2">
                 <div className="h-1 rounded-full bg-raised" role="img" aria-label={next.bar.label}>
                   <div
-                    className="h-1 rounded-full bg-accent"
+                    className="h-1 rounded-full bg-accent-ink"
                     style={{ width: `${Math.round((next.bar.done / Math.max(1, next.bar.total)) * 100)}%` }}
                   />
                 </div>

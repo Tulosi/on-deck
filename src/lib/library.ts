@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sampleItems } from '../data/sample'
-import { undoable } from './toast'
+import { toast, undoable } from './toast'
 import type { MediaType, Priority, Progress, SeasonOverride, UserItem, Verdict } from '../types'
 import { cheapest, formatPrice, gamePriceFromRow, type PriceRow } from './prices'
 import { useAuth } from './auth'
@@ -644,3 +644,55 @@ export function useRemoveItemWithUndo() {
     })
 }
 
+
+/**
+ * Actions on several titles at once (Library → Select). Status changes go through useUpdateItem one by one so
+ * each keeps its own started / finished dates. Archive and Remove hide the titles now and save after a few
+ * seconds, with Undo.
+ */
+export function useBulkItems() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const key = libraryKey(user?.id)
+  const update = useUpdateItem()
+  const plural = (n: number) => `${n} title${n === 1 ? '' : 's'}`
+
+  const setStatus = async (items: UserItem[], progress: Progress) => {
+    const results = await Promise.allSettled(items.filter((i) => i.progress !== progress).map((i) => update(i, { progress })))
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed) toast({ message: `Couldn’t update ${plural(failed)}. Try again.`, tone: 'error' })
+  }
+
+  const archive = (items: UserItem[], archived: boolean) => {
+    const ids = items.map((i) => i.id)
+    const stamp = archived ? new Date().toISOString() : undefined
+    undoable({
+      message: `${archived ? 'Archived' : 'Unarchived'} ${plural(ids.length)}`,
+      hide: () =>
+        queryClient.setQueryData<UserItem[]>(key, (l) => (l ?? []).map((i) => (ids.includes(i.id) ? { ...i, archivedAt: stamp } : i))),
+      commit: async () => {
+        const { error } = await supabase!.from('user_items').update({ archived_at: stamp ?? null }).in('id', ids)
+        if (error) throw error
+        await queryClient.invalidateQueries({ queryKey: key })
+      },
+      restore: () => void queryClient.invalidateQueries({ queryKey: key }),
+    })
+  }
+
+  const remove = (items: UserItem[]) => {
+    const ids = items.map((i) => i.id)
+    undoable({
+      message: `Removed ${plural(ids.length)}`,
+      hide: () => queryClient.setQueryData<UserItem[]>(key, (l) => (l ?? []).filter((i) => !ids.includes(i.id))),
+      commit: async () => {
+        const { error } = await supabase!.from('user_items').delete().in('id', ids)
+        if (error) throw error
+        await queryClient.invalidateQueries({ queryKey: key })
+      },
+      restore: () => void queryClient.invalidateQueries({ queryKey: key }),
+      failMessage: 'Couldn’t remove those titles. They’re back in your library.',
+    })
+  }
+
+  return { setStatus, archive, remove }
+}

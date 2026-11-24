@@ -79,7 +79,8 @@ export function SearchPage() {
       <label className="flex h-12 items-center gap-3 rounded-xl border border-line bg-surface px-4 text-muted focus-within:border-accent">
         {s.fetching ? <Loader2 className="size-5 shrink-0 animate-spin" /> : <SearchIcon className="size-5 shrink-0" />}
         <input
-          autoFocus
+          // Focus straight away with a mouse/trackpad; on phones it would pop the keyboard over the page.
+          autoFocus={typeof matchMedia !== 'undefined' && matchMedia('(pointer: fine)').matches}
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}

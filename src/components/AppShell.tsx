@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { BottomNav } from './BottomNav'
 import { PageSkeleton } from './LazyPage'
 import { Toaster } from './Toaster'
+import { useScrollMemory } from '../lib/useScrollMemory'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { TopBar } from './TopBar'
@@ -30,6 +31,7 @@ export function AppShell() {
   useTimezoneSync()
   useSmartCollectionSync()
   usePlexBackgroundSync()
+  useScrollMemory()
   const { pathname } = useLocation()
   return (
     <div className="flex min-h-dvh">

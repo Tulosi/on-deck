@@ -159,7 +159,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
                 <summary className="cursor-pointer">{report.failed.length} couldn’t be added</summary>
                 <ul className="mt-1 list-disc pl-5">
                   {report.failed.slice(0, 50).map((f, i) => (
-                    <li key={i}>
+                    <li key={`${i}-${f.title}`}>
                       {f.title}: {f.reason}
                     </li>
                   ))}

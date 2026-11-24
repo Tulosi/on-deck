@@ -1,6 +1,8 @@
-import { useMemo, useState, ViewTransition } from 'react'
+import clsx from 'clsx'
+import { useCallback, useMemo, useState, ViewTransition } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Layers, Loader2, Sparkles, X } from 'lucide-react'
+import { CheckSquare, Layers, Loader2, Sparkles, X } from 'lucide-react'
+import { BulkBar, SelectableCard } from '../components/BulkBar'
 import { PageHeader } from '../components/PageHeader'
 import { PageSkeleton } from '../components/LazyPage'
 import { PosterCard } from '../components/PosterCard'
@@ -116,6 +118,20 @@ export function Library() {
   const { create, setRules } = useCollectionActions()
   const [saving, setSaving] = useState(false)
   const [saveName, setSaveName] = useState('')
+  // Select mode: tap cards to pick several, then act on them from the bar at the bottom.
+  const [selecting, setSelecting] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  const stopSelecting = useCallback(() => {
+    setSelecting(false)
+    setPicked(new Set())
+  }, [])
+  const togglePick = (id: string) =>
+    setPicked((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const smartId = params.get('smart')
   const editing = smartId ? collections.find((c) => c.id === smartId && c.rules != null) : undefined
 
@@ -131,6 +147,14 @@ export function Library() {
   }, [items, allItems, f])
 
   if (isLoading) return <PageSkeleton />
+  // Only what's on screen counts (a filter change can hide something you'd picked).
+  const selected = selecting ? results.filter((i) => picked.has(i.id)) : []
+  const card = (item: (typeof results)[number]) => (
+    <SelectableCard selecting={selecting} selected={picked.has(item.id)} onToggle={() => togglePick(item.id)} label={item.title.title}>
+      <PosterCard item={item} />
+    </SelectableCard>
+  )
+
   const title = f.archived === 'only' ? (f.type ? `Archived ${LABELS.type[f.type]}` : 'Archive') : f.type ? LABELS.type[f.type] : 'Library'
 
   return (
@@ -145,6 +169,19 @@ export function Library() {
             className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
           >
             <Sparkles className="size-3.5" /> Save as smart collection
+          </button>
+        )}
+        {!isSample && results.length > 0 && (
+          <button
+            type="button"
+            onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+            aria-pressed={selecting}
+            className={clsx(
+              'flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs hover:border-accent',
+              selecting ? 'border-accent bg-accent/10 text-fg' : 'border-line text-fg',
+            )}
+          >
+            <CheckSquare className="size-3.5" /> {selecting ? 'Done' : 'Select'}
           </button>
         )}
         {/* Phones: Collections isn't in the tab bar, so it's reached from here. */}
@@ -242,7 +279,7 @@ export function Library() {
         <div className={grid}>
           {results.map((item) => (
             <Reorderable key={item.id} on={results.length <= REORDER_MAX}>
-              <PosterCard item={item} />
+              {card(item)}
             </Reorderable>
           ))}
         </div>
@@ -257,7 +294,7 @@ export function Library() {
               <div className={grid}>
                 {g.items.map((item) => (
                   <Reorderable key={item.id} on={results.length <= REORDER_MAX}>
-                    <PosterCard item={item} />
+                    {card(item)}
                   </Reorderable>
                 ))}
               </div>
@@ -265,6 +302,17 @@ export function Library() {
           ))}
         </div>
       )}
+
+      {selecting && (
+        <BulkBar
+          selected={selected}
+          visible={results.length}
+          archivedView={f.archived === 'only'}
+          onSelectAll={() => setPicked(new Set(results.map((i) => i.id)))}
+          onDone={stopSelecting}
+        />
+      )}
+      {selecting && <div className="h-24" aria-hidden />}
 
       {isSample && (
         <p className="mt-10 text-center text-xs text-faint">

@@ -256,7 +256,7 @@ export function Sidebar() {
             aria-current={archiveActive ? 'page' : undefined}
             className={clsx(
               'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-              archiveActive ? 'bg-raised text-fg' : 'text-faint hover:bg-raised/60 hover:text-muted',
+              archiveActive ? 'bg-raised text-fg' : 'text-muted hover:bg-raised/60 hover:text-fg',
             )}
           >
             <Archive className="size-[18px] shrink-0" strokeWidth={1.75} />

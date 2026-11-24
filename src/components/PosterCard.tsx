@@ -2,7 +2,7 @@ import { memo, ViewTransition } from 'react'
 import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, CalendarClock, Check, CheckCheck, Pause, Film, Radio, Gamepad2, Library, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarClock, Check, CheckCheck, Pause, Film, Radio, Gamepad2, Play, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
 import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
@@ -22,6 +22,7 @@ const plexMeta: Record<PlexStatus, { label: string; className: string }> = {
 function Badge({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {
   return (
     <span
+      role="img"
       title={label}
       aria-label={label}
       className={clsx('grid size-6 place-items-center rounded-md bg-black/65 text-white backdrop-blur-sm', className)}
@@ -45,6 +46,22 @@ function CoverPlaceholder({ item }: { item: UserItem }) {
 function secondaryLine(item: UserItem): string | undefined {
   if (item.tvProgress) return `S${item.tvProgress.season} · E${item.tvProgress.episode}`
   return item.title.byline
+}
+
+/** The one status badge on a poster, if any. */
+function statusBadge(item: UserItem): { icon: LucideIcon; label: string } | null {
+  switch (item.progress) {
+    case 'in_progress':
+      return { icon: Play, label: statusLabel('in_progress', item.title.mediaType) }
+    case 'caught_up':
+      return { icon: CheckCheck, label: 'Caught up, waiting for new episodes' }
+    case 'completed':
+      return { icon: Check, label: statusLabel('completed', item.title.mediaType) }
+    case 'stalled':
+      return { icon: Pause, label: 'Stalled' }
+    default:
+      return null
+  }
 }
 
 /** View-transition name shared by a poster and the title page it opens. */
@@ -79,6 +96,15 @@ export const PosterCard = memo(function PosterCard({
   const release = releaseInfo(title)
   const schedule = release.preRelease ? null : tvSchedule(title)
   const secondary = subline ?? secondaryLine(item)
+  const owned = item.owned && (title.mediaType === 'game' || title.mediaType === 'book')
+  const status = statusBadge(item)
+  const opinion = item.favourite
+    ? { icon: Star, label: 'All-time favourite', className: '!bg-accent !text-accent-fg' }
+    : item.verdict === 'liked'
+      ? { icon: ThumbsUp, label: 'Liked', className: '!text-good' }
+      : item.verdict === 'disliked'
+        ? { icon: ThumbsDown, label: 'Didn’t like', className: '!text-bad' }
+        : null
   const anyBottom =
     (showPrice && !release.preRelease) ||
     release.preRelease ||
@@ -105,31 +131,12 @@ export const PosterCard = memo(function PosterCard({
           <CoverPlaceholder item={item} />
         )}
 
-        {/* Status + verdict badges */}
+        {/* At most two badges: your status (Playing, Caught up, Finished, Stalled) and your opinion (favourite
+            beats liked / didn't like). "Owned" is in words under the title instead of one more icon. */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-          {item.favourite && vis('rating') !== null && (
-            <Badge icon={Star} label="All-time favourite" className={clsx('!bg-accent !text-accent-fg', vis('rating'))} />
-          )}
-          {item.progress === 'in_progress' && vis('status') !== null && (
-            <Badge icon={Play} label={statusLabel('in_progress', title.mediaType)} className={vis('status')!} />
-          )}
-          {item.progress === 'caught_up' && vis('status') !== null && (
-            <Badge icon={CheckCheck} label="Caught up, waiting for new episodes" className={vis('status')!} />
-          )}
-          {item.progress === 'completed' && vis('status') !== null && (
-            <Badge icon={Check} label={statusLabel('completed', title.mediaType)} className={vis('status')!} />
-          )}
-          {item.progress === 'stalled' && vis('status') !== null && (
-            <Badge icon={Pause} label="Stalled" className={vis('status')!} />
-          )}
-          {item.owned && (title.mediaType === 'game' || title.mediaType === 'book') && vis('library') !== null && (
-            <Badge icon={Library} label="In your library" className={vis('library')!} />
-          )}
-          {item.verdict === 'liked' && vis('rating') !== null && (
-            <Badge icon={ThumbsUp} label="Liked" className={clsx('!text-good', vis('rating'))} />
-          )}
-          {item.verdict === 'disliked' && vis('rating') !== null && (
-            <Badge icon={ThumbsDown} label="Didn't like" className={clsx('!text-bad', vis('rating'))} />
+          {status && vis('status') !== null && <Badge icon={status.icon} label={status.label} className={vis('status')!} />}
+          {opinion && vis('rating') !== null && (
+            <Badge icon={opinion.icon} label={opinion.label} className={clsx(opinion.className, vis('rating'))} />
           )}
         </div>
 
@@ -168,10 +175,10 @@ export const PosterCard = memo(function PosterCard({
                     ) : (
                       <>
                         {item.price!.discountPct ? (
-                          <span className="bg-accent px-1.5 py-0.5 text-[#0c0b0a]">-{item.price!.discountPct}%</span>
+                          <span className="bg-accent px-1.5 py-0.5 text-accent-fg">-{item.price!.discountPct}%</span>
                         ) : null}
                         <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
-                        {item.price!.atLow && <span className="bg-good px-1 py-0.5 text-[#0c0b0a]">LOW</span>}
+                        {item.price!.atLow && <span className="bg-good px-1 py-0.5 text-accent-fg">LOW</span>}
                       </>
                     )}
                   </span>
@@ -249,6 +256,7 @@ export const PosterCard = memo(function PosterCard({
         <p className="truncate font-mono text-xs text-muted">
           {title.year ?? '—'}
           {secondary && <span className="text-faint"> · {secondary}</span>}
+          {owned && <span className="text-faint"> · Owned</span>}
         </p>
       </div>
     </Link>

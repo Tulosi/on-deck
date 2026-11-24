@@ -70,6 +70,22 @@ export function SearchBox() {
     setOpen(false)
     setPreview(null)
   }, [pathname])
+  // "/" or ⌘K / Ctrl+K from anywhere jumps to search (not while you're typing in another field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      const typing = !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
+      const cmdK = e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey
+      const slash = e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey
+      if (!cmdK && !slash) return
+      if (document.querySelector('[aria-modal="true"]')) return // a dialog is open
+      e.preventDefault()
+      input.current?.focus()
+      input.current?.select()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
   // A new search goes back to the results.
   useEffect(() => setPreview(null), [query, type])
 
@@ -111,8 +127,15 @@ export function SearchBox() {
           placeholder={current.placeholder}
           aria-label={current.placeholder.replace('…', '')}
           enterKeyHint="search"
+          aria-keyshortcuts="/ Meta+K Control+K"
           className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
         />
+        {/* Keyboard hint, only with a mouse/trackpad and while the box is empty and unfocused. */}
+        {!text && !open && (
+          <kbd className="hidden shrink-0 rounded border border-line px-1.5 font-mono text-[11px] text-faint pointer-fine:sm:block">
+            /
+          </kbd>
+        )}
       </label>
 
       {/* Phones: dim the page behind the panel; tapping it closes search. */}

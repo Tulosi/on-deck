@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDialog } from '../lib/useDialog'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
@@ -70,7 +70,7 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
           })}
         </div>
         <div className="border-t border-line p-2">
-          <Link to="/library?archived=only" onClick={onClose} className={clsx(row, 'text-faint')}>
+          <Link to="/library?archived=only" onClick={onClose} className={clsx(row, 'text-muted')}>
             <Archive className="size-[18px]" strokeWidth={1.75} /> Archive
           </Link>
         </div>
@@ -100,9 +100,14 @@ export function BottomNav() {
   // Close the sheet whenever the page changes.
   useEffect(() => setMore(false), [pathname, search])
 
-  // "More" lights up when you're on a page that isn't one of your tabs.
-  const onTab = tabs.some((k) => isActive(navItem(k)))
-  const moreActive = more || (!onTab && pathname !== '/login')
+  // On a title page, keep the tab you came from lit (it isn't a place of its own). Otherwise "More" lights up
+  // when you're on a page that isn't one of your tabs.
+  const current = tabs.find((k) => isActive(navItem(k))) ?? null
+  const origin = useRef<NavKey | null>(current)
+  const onTitle = pathname.startsWith('/title/')
+  if (!onTitle) origin.current = current
+  const litTab = onTitle ? origin.current : current
+  const moreActive = more || (!litTab && pathname !== '/login')
 
   return (
     <>
@@ -111,7 +116,7 @@ export function BottomNav() {
         {tabs.map((k) => {
           const item = navItem(k)
           const Icon = item.icon
-          const active = !more && isActive(item)
+          const active = !more && litTab === k
           return (
             <Link
               key={k}

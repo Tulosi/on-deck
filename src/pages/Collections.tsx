@@ -99,9 +99,9 @@ function Collage({ items }: { items: UserItem[] }) {
         Array.from({ length: 4 }, (_, i) => {
           const t = covers[i]?.title
           return t?.coverUrl ? (
-            <img key={i} src={t.coverUrl} alt="" loading="lazy" className="size-full object-cover" />
+            <img key={t.id} src={t.coverUrl} alt="" loading="lazy" className="size-full object-cover" />
           ) : (
-            <div key={i} className="grid size-full place-items-center bg-surface px-1 text-center text-[11px] text-faint">
+            <div key={t?.id ?? `empty-${i}`} className="grid size-full place-items-center bg-surface px-1 text-center text-[11px] text-faint">
               {t?.title ?? ''}
             </div>
           )

@@ -446,3 +446,25 @@ No P0s: nothing blocks a task.
 ### Re-run
 - **Detector:** `npx impeccable detect --json https://tulosi.github.io/on-deck/ --viewport 390x844` (and the other routes).
 - **Critique and audit:** re-run `/impeccable critique` and `/impeccable audit` after steps 1–3 to measure the change.
+
+### Follow-up pass (after the seven steps)
+- **Search keyboard:** only opens by itself with a mouse or trackpad (`pointer: fine`). The fields that appear after you tap "New" or "Save" still focus, as expected.
+- **Back keeps your place:** `useScrollMemory` remembers the scroll position for each history entry, and new pages start at the top.
+- **Phone tab bar:**
+  - A title page keeps the tab you came from lit.
+- **Archive** links use `muted`, not `faint`.
+- **Poster badges:** at most two:
+  - your status
+  - your opinion (favourite beats liked or didn't like)
+  
+  "Owned" is now in words under the title. The hard-coded `#0c0b0a` became `text-accent-fg`.
+- **Stable keys** in the collection collage and the backup report.
+- **`/` and ⌘K / Ctrl+K** focus search from anywhere. A `/` hint shows when there's a mouse or trackpad.
+- **Library → Select:**
+  - Pick several titles, then set their status, add them to a collection, archive or unarchive them, or remove them.
+  - Archive and remove have Undo.
+  - Escape or Done leaves select mode.
+  - Hidden for the sample library.
+- **Not done:**
+  - Calendar stays under More, by choice: the type tabs are kept.
+  - The type dropdown and labels toggle are still at the top, out of thumb reach.

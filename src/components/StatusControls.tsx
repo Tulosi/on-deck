@@ -9,10 +9,12 @@ import { useUpdateItem, type ItemPatch } from '../lib/library'
 import { statusesFor, statusLabel } from '../lib/statusLabels'
 import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
 import { plexStateOf } from '../lib/plexSync'
+import { episodeCode } from '../lib/release'
+import { upNext } from '../lib/home'
 import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
 import { type Priority, type Progress, type SeasonOverride, type UserItem } from '../types'
 
-const labelClass = 'font-mono text-[11px] tracking-wider text-faint uppercase'
+const labelClass = 'text-xs font-medium text-muted'
 
 /** Segmented control: one option active at a time. */
 function Segmented<T extends string>({
@@ -56,7 +58,7 @@ function Segmented<T extends string>({
             className={clsx(
               // Labels wrap inside their button (never overrun it) when space is tight.
               'rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors',
-              value === o.value ? 'bg-accent font-medium text-accent-fg' : 'text-muted hover:text-fg',
+              value === o.value ? 'bg-raised font-medium text-fg shadow-[inset_0_0_0_1px_var(--color-line)]' : 'text-muted hover:text-fg',
             )}
           >
             {o.label}
@@ -153,7 +155,7 @@ function Toggle({
       aria-pressed={on}
       onClick={onClick}
       className={clsx(
-        'flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm whitespace-nowrap transition-colors',
+        'flex h-9 items-center gap-2 rounded-md border px-3.5 text-sm whitespace-nowrap transition-colors',
         on ? activeClass : 'border-line text-muted hover:border-faint hover:text-fg',
       )}
     >
@@ -204,7 +206,7 @@ function SeasonOptions({
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs text-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-1.5">
           <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
-          More options — per-season tracking
+          Per-season tracking
         </span>
         {overridden > 0 && <span className="font-mono text-faint">{overridden} overridden</span>}
       </summary>
@@ -270,7 +272,7 @@ function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: 
         Progress
         {/* Inline, so it takes no extra space while Plex is being checked. */}
         {checking && (
-          <span className="flex items-center gap-1 normal-case tracking-normal" title="Checking your Plex watch history">
+          <span className="flex items-center gap-1" title="Checking your Plex watch history">
             <Loader2 className="size-3 animate-spin" /> Plex…
           </span>
         )}
@@ -361,7 +363,7 @@ function EpisodePicker({
 }
 
 const pillButton =
-  'flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-muted hover:border-accent hover:text-fg disabled:opacity-60'
+  'hit flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-xs text-muted hover:border-accent hover:text-fg disabled:opacity-60'
 
 /** Shown while a title is actively synced from Plex: a green status (tap to check Plex again). */
 function SyncedPill({ loading, onRefresh, server }: { loading: boolean; onRefresh: () => void; server?: string | null }) {
@@ -371,9 +373,9 @@ function SyncedPill({ loading, onRefresh, server }: { loading: boolean; onRefres
       onClick={onRefresh}
       disabled={loading}
       title={`Synced from Plex${server ? ` (${server})` : ''}. Tap to check again.`}
-      className="group flex items-center gap-1.5 rounded-full border border-good/60 bg-good/10 px-2.5 py-1 text-xs font-medium text-good disabled:opacity-80"
+      className="hit group flex h-8 items-center gap-1.5 rounded-md px-1 text-xs text-muted hover:text-fg disabled:opacity-80"
     >
-      {loading ? <RefreshCw className="size-3 animate-spin" /> : <Check className="size-3" />}
+      {loading ? <RefreshCw className="size-3 animate-spin" /> : <span className="size-1.5 rounded-full bg-good" aria-hidden="true" />}
       {loading ? 'Syncing…' : 'Synced from Plex'}
       {!loading && <RefreshCw className="size-3 opacity-50 group-hover:opacity-100" aria-hidden="true" />}
     </button>
@@ -421,7 +423,7 @@ function TvProgressSection({
         <WatchedHeading item={item} seasons={seasons} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex h-9 items-center rounded-lg border border-line bg-bg px-3 font-mono text-sm text-fg">
-            {plexLast ? `S${plexLast.season} · E${plexLast.episode}` : 'Nothing watched yet'}
+            {plexLast ? episodeCode(plexLast) : 'Nothing watched yet'}
           </span>
           <span className="text-xs text-muted">{server}</span>
           <div className="ml-auto flex flex-wrap gap-2">
@@ -450,7 +452,7 @@ function TvProgressSection({
         {plexLast && (
           <>
             {' '}
-            · Plex says <span className="font-mono text-fg">S{plexLast.season} · E{plexLast.episode}</span>
+            · Plex says <span className="font-mono text-fg">{episodeCode(plexLast)}</span>
           </>
         )}
         <button type="button" onClick={() => save({ plexSync: true })} className={pillButton}>
@@ -498,6 +500,35 @@ function TvProgressSection({
       )}
       {note && <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">{note}</div>}
       {showPicker && <SeasonOptions item={item} seasons={seasons} save={save} />}
+    </div>
+  )
+}
+
+/**
+ * TV: the next episode, set large, with the one bold action on the page when it's out and yours to mark
+ * (Plex isn't tracking the show). Hidden when there's nothing next (caught up, or no season data).
+ */
+function NextUp({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<void> }) {
+  const next = upNext(item)
+  if (!next.value || item.progress === 'dropped' || next.note === 'Last watched') return null
+  const ep = next.watchable
+  return (
+    <div className="rounded-lg border border-line bg-bg p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className={labelClass}>Next up</p>
+        {next.note && <p className="text-xs text-muted">{next.note}</p>}
+      </div>
+      <p className="mt-1 font-mono text-3xl leading-tight font-medium tracking-tight text-fg">{next.value}</p>
+      {ep && (
+        <button
+          type="button"
+          // save() reports its own errors beside the Tracking heading.
+          onClick={() => void save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) })}
+          className="mt-3 h-11 w-full rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98] sm:w-auto"
+        >
+          Mark {episodeCode(ep)} watched
+        </button>
+      )}
     </div>
   )
 }
@@ -591,7 +622,7 @@ function MovieProgressSection({
 /** Top-right of the card for movies/TV: can the user watch it through any of their sources? */
 function AvailabilityBadge({ item }: { item: UserItem }) {
   const availability = useAvailability(item.title)
-  const base = 'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs whitespace-nowrap'
+  const base = 'flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs whitespace-nowrap'
   switch (availability.state) {
     case 'loading':
       return (
@@ -825,6 +856,8 @@ export function StatusControls({ item }: { item: UserItem }) {
           save={save}
         />
       )}
+
+      {type === 'tv' && <NextUp item={item} save={save} />}
 
       {type === 'tv' && (
         <TvProgressSection

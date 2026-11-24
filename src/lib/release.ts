@@ -70,7 +70,7 @@ export function releaseLong(info: ReleaseInfo): string {
     year: 'numeric',
   })
   const rel = info.daysUntil === 0 ? 'today' : info.daysUntil === 1 ? 'tomorrow' : `in ${info.daysUntil} days`
-  return `${full} · ${rel}`
+  return `${full} (${rel})`
 }
 
 // ─── TV schedule: airing now / new season coming ───────────────────────────
@@ -122,6 +122,10 @@ export function tvScheduleChip(s: TvSchedule): string {
 }
 
 /** Title-page badge text (after the "Airing" / "New season" label). */
+/** Episode code as people write it in file names and on Plex: S02E05. */
+export const episodeCode = (ep: { season: number; episode: number }) =>
+  `S${String(ep.season).padStart(2, '0')}E${String(ep.episode).padStart(2, '0')}`
+
 export function tvScheduleLong(s: TvSchedule): string {
   const rel = s.daysUntil === 0 ? 'today' : s.daysUntil === 1 ? 'tomorrow' : `in ${s.daysUntil} days`
   if (s.kind === 'airing') {
@@ -129,12 +133,12 @@ export function tvScheduleLong(s: TvSchedule): string {
       s.daysUntil < 7
         ? `${weekday(s.date)}, ${monthDay(s.date)}`
         : new Date(`${s.date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-    return `Next episode S${s.season} · E${s.episode} — ${when} · ${rel}`
+    return `Next episode ${episodeCode(s)}, ${when} (${rel})`
   }
   const full = new Date(`${s.date}T00:00:00`).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
-  return `Season ${s.season} premieres ${full} · ${rel}`
+  return `Season ${s.season} premieres ${full} (${rel})`
 }

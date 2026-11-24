@@ -2,7 +2,7 @@
 // computed from data the app already has. "New for you", stored availability and Deals come later.
 import { hoursToBeat, isAvailable } from './filters'
 import { cheapest } from './prices'
-import { releaseInfo, tvSchedule } from './release'
+import { episodeCode, releaseInfo, tvSchedule } from './release'
 import { overrideOf, seasonsOf, watchedIn } from './seasons'
 import type { UserItem } from '../types'
 
@@ -144,9 +144,7 @@ export function recentlyStalled(items: UserItem[]): UserItem[] {
     .sort((a, b) => Date.parse(b.stalledAt!) - Date.parse(a.stalledAt!))
 }
 
-/** Episode code as people write it in file names and on Plex: S02E05. */
-export const episodeCode = (ep: { season: number; episode: number }) =>
-  `S${String(ep.season).padStart(2, '0')}E${String(ep.episode).padStart(2, '0')}`
+export { episodeCode } from './release'
 
 export interface UpNext {
   /** The big number: an episode code, or time played for a game. */

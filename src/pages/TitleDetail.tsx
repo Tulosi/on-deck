@@ -9,7 +9,7 @@ import { StatusControls, TrackingDetails } from '../components/StatusControls'
 import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
 import { useItems, useRemoveItemWithUndo } from '../lib/library'
-import { releaseInfo, releaseLong, tvSchedule, tvScheduleLong } from '../lib/release'
+import { episodeCode, releaseInfo, releaseLong, tvSchedule, tvScheduleLong } from '../lib/release'
 import { mediaLabels, type MediaType, type Title } from '../types'
 
 const typeIcon: Record<MediaType, typeof Film> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
@@ -23,7 +23,7 @@ function Fact({ label, value }: { label: string; value?: string | number | null 
   if (value == null || value === '') return null
   return (
     <div>
-      <dt className="font-mono text-[11px] tracking-wider text-faint uppercase">{label}</dt>
+      <dt className="text-xs text-muted">{label}</dt>
       <dd className="mt-0.5 text-sm text-fg">{value}</dd>
     </div>
   )
@@ -152,7 +152,7 @@ function GameLinks({ d }: { d: Record<string, unknown> }) {
           href={l.href}
           target="_blank"
           rel="noreferrer"
-          className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+          className="hit flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent"
         >
           {l.label} <ExternalLink className="size-3.5" />
         </a>
@@ -175,7 +175,7 @@ function CastRow({ d }: { d: Record<string, unknown> }) {
   if (cast.length === 0) return null
   return (
     <section aria-label="Starring" className="space-y-2">
-      <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Starring</p>
+      <h2 className="text-sm font-semibold text-fg">Starring</h2>
       <ul className="flex flex-wrap gap-x-6 gap-y-3">
         {cast.map((p) => {
           const href = p.imdb_id ? `https://www.imdb.com/name/${p.imdb_id}/` : `https://www.themoviedb.org/person/${p.tmdb_id}`
@@ -215,7 +215,7 @@ function SignInToTrack() {
       <p className="text-sm text-muted">Track your status, progress and ratings for this title.</p>
       <Link
         to="/login"
-        className="hit rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:bg-accent/90"
+        className="hit rounded-md bg-accent px-3 py-2 text-sm font-semibold text-accent-fg hover:brightness-105"
       >
         Sign in to track
       </Link>
@@ -274,7 +274,7 @@ export function TitleDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="hit absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-sm text-white backdrop-blur hover:bg-black/70 md:left-6"
+          className="hit absolute top-4 left-4 flex h-9 items-center gap-1.5 rounded-md border border-line bg-bg/90 px-3 text-sm text-fg hover:bg-raised md:left-6"
         >
           <ArrowLeft className="size-4" /> Back
         </button>
@@ -298,11 +298,11 @@ export function TitleDetail() {
         </div>
         </ViewTransition>
         <div className="min-w-0 pb-1">
-          <p className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-accent-ink uppercase">
+          <p className="flex items-center gap-1.5 text-sm text-muted">
             <Icon className="size-3.5" /> {mediaLabels[title.mediaType].singular}
             {item.archivedAt && (
               <span
-                className="ml-1 rounded border border-line px-1.5 py-0.5 text-[11px] tracking-wide text-muted normal-case"
+                className="ml-1 rounded-md border border-line px-1.5 py-0.5 text-xs text-muted"
                 title="Archived: hidden everywhere by default. Unarchive it from Tracking below."
               >
                 Archived {new Date(item.archivedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -310,25 +310,27 @@ export function TitleDetail() {
             )}
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-fg md:text-4xl">{title.title}</h1>
-          <p className="mt-1 font-mono text-sm text-muted">
-            {[title.year, title.genres.join(', ')].filter(Boolean).join(' · ')}
+          <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted">
+            {title.year != null && <span className="font-mono">{title.year}</span>}
+            {title.genres.length > 0 && <span>{title.genres.join(', ')}</span>}
           </p>
           {release.preRelease && (
-            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/70 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-ink">
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-accent/70 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent-ink">
               <CalendarClock className="size-3.5" />
-              Pre-release · {releaseLong(release)}
+              {release.date && !release.fuzzyLabel ? 'Out ' : ''}
+              {releaseLong(release)}
             </p>
           )}
           {schedule && (
             <p
               className={
                 schedule.kind === 'airing'
-                  ? 'mt-3 inline-flex items-center gap-1.5 rounded-full border border-info/60 bg-info/10 px-3 py-1 text-xs font-medium text-info'
-                  : 'mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/70 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-ink'
+                  ? 'mt-3 inline-flex items-center gap-1.5 rounded-md border border-info/60 bg-info/10 px-2.5 py-1 text-xs font-medium text-info'
+                  : 'mt-3 inline-flex items-center gap-1.5 rounded-md border border-accent/70 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent-ink'
               }
             >
               {schedule.kind === 'airing' ? <Radio className="size-3.5" /> : <CalendarClock className="size-3.5" />}
-              {schedule.kind === 'airing' ? 'Airing' : 'New season'} · {tvScheduleLong(schedule)}
+              {tvScheduleLong(schedule)}
             </p>
           )}
           <ScoreChips title={title} />
@@ -365,7 +367,7 @@ export function TitleDetail() {
               label="Next episode"
               value={
                 next?.air_date
-                  ? `S${next.season_number} · E${next.episode_number} — ${formatDate(next.air_date)}`
+                  ? `${episodeCode({ season: next.season_number ?? 1, episode: next.episode_number ?? 1 })}, ${formatDate(next.air_date)}`
                   : undefined
               }
             />

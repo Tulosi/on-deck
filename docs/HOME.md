@@ -62,10 +62,11 @@ shows again. Implementation: `src/lib/newForYou.ts`. Every card carries a reason
 - **Season premiere:** a new season started.
 - **Now available:** a Wanted title that just became available on your Plex or one of your streaming services.
 - **Released:** a pre-release title came out (theatrical / digital per the release-tracking spec).
-- **Price drop:** a Wanted game hit its lowest price ever, or a deep discount ("51% off").
+- **Not here: price drops.** The Deals row below shows games on sale from current prices; price alerts in this
+  row repeated it and came back after Clear whenever a price moved by a few cents (removed 2026-11-24).
 - **Date news:** a new season or release date was announced, or a date moved (weakest reason).
 - One card per title, with the strongest reason winning. Strongest first: released / premiered → now
-  available → new episode → lowest price → deep discount → date news. Cards clear on the next visit.
+  available → new episode → date news.
 
 ### 2b. Recently finished ✅ built
 "How was it?": things you finished lately but haven't rated, newest first, up to 12

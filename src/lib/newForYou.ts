@@ -1,6 +1,8 @@
 // Home → "New for you": what changed since your previous visit (docs/HOME.md §2).
-// Sources: the alerts the daily job writes (released, premieres, now available, price drops; notify-switch
+// Sources: the alerts the daily job writes (released, premieres, now available, date news; notify-switch
 // independent, so it reads them all) plus new episodes, worked out here from each show's last aired episode.
+// Price alerts are left out: the Deals row right below shows current sales, and a game sitting at its low
+// would otherwise come back after every Clear.
 import { useEffect, useState } from 'react'
 import { useAuth } from './auth'
 import { useNotifications, type Notification } from './notifications'
@@ -68,7 +70,7 @@ export function useNewSince(): { since: string | null; clear: () => void } {
 
 // ── Building the row ──
 
-const RANK = { released: 60, premiere: 55, available: 50, episode: 40, price_low: 30, price_deal: 25, announced: 20 }
+const RANK = { released: 60, premiere: 55, available: 50, episode: 40, announced: 20 }
 
 function fromNotification(n: Notification): { label: string; rank: number } | null {
   const msg = n.message
@@ -84,12 +86,6 @@ function fromNotification(n: Notification): { label: string; rank: number } | nu
     case 'available': {
       const where = msg.match(/^Now available on (.+?):/)?.[1]
       return { label: where ? `Now on ${where}` : 'Now available', rank: RANK.available }
-    }
-    case 'price_low':
-      return { label: 'Lowest price ever', rank: RANK.price_low }
-    case 'price_deal': {
-      const pct = msg.match(/^(\d+)% off/)?.[1]
-      return { label: pct ? `${pct}% off` : 'On sale', rank: RANK.price_deal }
     }
     case 'announced':
     case 'date_changed': {

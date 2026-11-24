@@ -22,6 +22,10 @@ const KIND: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: '
  * two on mid-size screens and three from about 60rem, with arrow buttons when there are more than fit.
  * Everything else on Home stays quieter than this.
  */
+/** Horizontal mask: fades the row's left and/or right 3rem. */
+const fade = (left: boolean, right: boolean) =>
+  `linear-gradient(to right, ${left ? 'transparent, black 3rem' : 'black'}, ${right ? 'black calc(100% - 3rem), transparent' : 'black'})`
+
 export function UpNext({ items }: { items: UserItem[] }) {
   const row = useRef<HTMLUListElement>(null)
   const [active, setActive] = useState(0)
@@ -159,6 +163,8 @@ export function UpNext({ items }: { items: UserItem[] }) {
         }}
         // Links and covers would otherwise start the browser's own drag-and-drop.
         onDragStart={(e) => e.preventDefault()}
+        // The peeking card fades out at the edge(s) with more beyond.
+        style={scrollable ? { maskImage: fade(!edges.start, !edges.end), WebkitMaskImage: fade(!edges.start, !edges.end) } : undefined}
         className={clsx(
           'no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain select-none @[40rem]/up:gap-4',
           // A mouse can grab the row when there's more than fits.
@@ -169,7 +175,13 @@ export function UpNext({ items }: { items: UserItem[] }) {
           <li
             key={item.id}
             aria-label={`${i + 1} of ${items.length}`}
-            className="w-full flex-none snap-start snap-always @[40rem]/up:w-[calc((100%-1rem)/2)] @[60rem]/up:w-[calc((100%-2rem)/3)]"
+            // When more cards follow than fit, each view leaves ~3rem for a slice of the next one (faded below).
+            className={clsx(
+              'flex-none snap-start snap-always',
+              items.length > 1 ? 'w-[calc(100%-3.25rem)]' : 'w-full',
+              items.length > 2 ? '@[40rem]/up:w-[calc((100%-5rem)/2)]' : '@[40rem]/up:w-[calc((100%-1rem)/2)]',
+              items.length > 3 ? '@[60rem]/up:w-[calc((100%-5rem)/3)]' : '@[60rem]/up:w-[calc((100%-2rem)/3)]',
+            )}
           >
             <UpNextCard item={item} />
           </li>
@@ -335,7 +347,7 @@ function Actions({ item, open, launch }: { item: UserItem; open?: { label: strin
           {openLink(primary)}
           {launch && (
             <a href={launch.href} title="Start the game in the Steam app" className="flex h-11 items-center justify-center gap-1.5 rounded-md border border-line px-4 text-sm text-fg hover:bg-raised">
-              <Play className="size-3.5 fill-current" aria-hidden="true" />
+              <Play className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
               {launch.label}
             </a>
           )}

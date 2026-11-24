@@ -152,7 +152,7 @@ export function StatusPanel() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-fg">
-                    {j.label} <span className="text-xs text-faint">· {j.every}</span>
+                    {j.label} <span className="ml-1 text-xs text-faint">{j.every}</span>
                   </p>
                   <p className="text-xs text-muted">
                     {jobs.isLoading
@@ -171,9 +171,9 @@ export function StatusPanel() {
         </ul>
       </div>
 
-      {/* Your data */}
+      {/* Last updated */}
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted">Your data</p>
+        <p className="text-xs font-medium text-muted">Last updated</p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           <dt className="text-muted">Alerts & refresh</dt>
           <dd className="text-fg">{fresh.isLoading ? '…' : ago(fresh.data?.daily)}</dd>

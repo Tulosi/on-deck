@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { UserItem } from '../types'
@@ -30,7 +30,27 @@ export function PosterRow({
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   const shown = useLeaving(items, (i) => i.id)
-  if (shown.length === 0) return null
+  // Which ways the row can still scroll: an arrow shows only where there's more to see.
+  const [can, setCan] = useState({ left: false, right: false })
+  const hasRow = shown.length > 0
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const update = () => {
+      const left = el.scrollLeft > 4
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+      setCan((c) => (c.left === left && c.right === right ? c : { left, right }))
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [hasRow, shown.length])
+  if (!hasRow) return null
   const emptying = items.length === 0
 
   const scroll = (dir: 1 | -1) =>
@@ -53,15 +73,8 @@ export function PosterRow({
           {hint && <span className="hidden text-xs text-faint sm:inline">{hint}</span>}
           {action}
         </div>
-        <div className="hidden gap-1 md:flex">
-          <button type="button" onClick={() => scroll(-1)} aria-label={`Scroll ${title} left`} className="grid size-7 place-items-center rounded-full border border-line text-muted hover:border-accent hover:text-fg">
-            <ChevronLeft className="size-4" />
-          </button>
-          <button type="button" onClick={() => scroll(1)} aria-label={`Scroll ${title} right`} className="grid size-7 place-items-center rounded-full border border-line text-muted hover:border-accent hover:text-fg">
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
       </div>
+      <div className="group/row relative">
       <div ref={scroller} className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-1 md:-mx-6 md:scroll-px-6 md:px-6">
         {shown.map(({ item, key, leaving }) => (
           <div key={key} className={clsx('w-32 shrink-0 snap-start sm:w-36 lg:w-40', leaving && 'leave-x')} inert={leaving}>
@@ -69,6 +82,24 @@ export function PosterRow({
             {footer?.(item)}
           </div>
         ))}
+      </div>
+      {(['left', 'right'] as const).map((side) => (
+        <button
+          key={side}
+          type="button"
+          onClick={() => scroll(side === 'left' ? -1 : 1)}
+          aria-label={`Scroll ${title} ${side}`}
+          tabIndex={can[side] ? 0 : -1}
+          className={clsx(
+            // Over the row's edge, beside the posters it moves; only where there's more, and only with a mouse.
+            'absolute top-[calc(50%-1.5rem)] z-10 hidden size-9 place-items-center rounded-full border border-line bg-surface/90 text-fg shadow-md backdrop-blur transition-opacity pointer-fine:grid hover:border-accent',
+            side === 'left' ? '-left-2' : '-right-2',
+            can[side] ? 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100' : 'pointer-events-none opacity-0',
+          )}
+        >
+          {side === 'left' ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+        </button>
+      ))}
       </div>
     </section>
   )

@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, X } from 'lucide-react'
-import { PageHeader } from '../components/PageHeader'
+import { Check, ChevronDown, Loader2, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import {
   friendlyError,
@@ -15,7 +14,6 @@ import {
   useServiceList,
   useUpdateProfile,
 } from '../lib/integrations'
-import { CalendarFeed } from '../components/CalendarFeed'
 import { ShareLinksSettings } from '../components/ShareLinks'
 import { PhoneTabsSettings } from '../components/NavSettings'
 import { StatusPanel } from '../components/StatusPanel'
@@ -48,11 +46,33 @@ const buttonClass =
 const primaryButtonClass =
   'flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60'
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({
+  title,
+  description,
+  sub,
+  id,
+  children,
+}: {
+  title: string
+  description?: string
+  /** A part of a larger card (Connections): no card of its own, a rule above it instead. */
+  sub?: boolean
+  /** Anchor for the links at the top and for /settings#… links. */
+  id?: string
+  children: ReactNode
+}) {
+  const Heading = sub ? 'h3' : 'h2'
   return (
-    <section className="space-y-3 rounded-lg border border-line bg-surface p-4 sm:p-5">
+    <section
+      id={id}
+      className={
+        sub
+          ? 'scroll-mt-20 space-y-3 border-t border-line pt-5 first:border-t-0 first:pt-0'
+          : 'scroll-mt-20 space-y-3 rounded-lg border border-line bg-surface p-4 sm:p-5'
+      }
+    >
       <div>
-        <h2 className="text-sm font-semibold text-fg">{title}</h2>
+        <Heading className={sub ? 'text-sm font-medium text-fg' : 'text-sm font-semibold text-fg'}>{title}</Heading>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       </div>
       {children}
@@ -60,19 +80,22 @@ function Section({ title, description, children }: { title: string; description?
   )
 }
 
-function RegionSection() {
+/** Region picker, at the top of Streaming services (it decides which services are listed). */
+function RegionField() {
   const profile = useProfile()
   const update = useUpdateProfile()
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   return (
-    <Section title="Region" description="Used for streaming services (and game prices, later).">
-      {profile.isLoading ? (
-        <Loader2 className="size-4 animate-spin text-muted" />
-      ) : (
+    <>
+      {profile.isLoading ? null : (
         <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="region" className="text-sm text-muted">
+            Region
+          </label>
           <select
+            id="region"
             aria-label="Region"
             value={profile.data?.country_code ?? 'US'}
             onChange={async (e) => {
@@ -101,7 +124,7 @@ function RegionSection() {
           {error && <span className="text-sm text-bad">{error}</span>}
         </div>
       )}
-    </Section>
+    </>
   )
 }
 
@@ -137,9 +160,11 @@ function StreamingSection() {
 
   return (
     <Section
+      id="streaming"
       title="Streaming services"
-      description="Pick the services you have. Title pages show where to watch on these only."
+      description="Pick your region and the services you have. Title pages show where to watch on these only."
     >
+      <RegionField />
       {profile.isLoading || list.isLoading ? (
         <Loader2 className="size-4 animate-spin text-muted" />
       ) : list.error ? (
@@ -184,7 +209,7 @@ function StreamingSection() {
             </button>
           )}
           <p className="text-xs text-faint">
-            {selected.size} selected. Changing your region shows that region’s services. Data by JustWatch.
+            {selected.size} selected. Data by JustWatch.
           </p>
           {error && <p className="text-sm text-bad">{error}</p>}
         </div>
@@ -265,6 +290,7 @@ function SteamSection() {
   const linked = !!profile.data?.steam_id
   return (
     <Section
+      sub
       title="Steam"
       description="Connect Steam so games you own are marked In your library, and games you’ve played move to In progress."
     >
@@ -343,7 +369,7 @@ function PlexSection() {
   const abort = useRef<AbortController | null>(null)
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [message, setMessage] = useState<{ on: 'plex' | 'seerr'; ok: boolean; text: string } | null>(null)
   const [editingUrl, setEditingUrl] = useState(false)
   const savedUrl = profile.data?.seerr_url ?? null
   const savedHost = savedUrl ? hostOf(savedUrl) : ''
@@ -364,7 +390,7 @@ function PlexSection() {
     setMessage(null)
     setUrl('')
     await update({ seerr_url: null })
-    setMessage({ ok: true, text: 'Seerr disconnected.' })
+    setMessage({ on: 'seerr', ok: true, text: 'Seerr disconnected.' })
   }
 
   const refreshPlex = () => queryClient.invalidateQueries({ queryKey: ['plex', user?.id] })
@@ -375,9 +401,9 @@ function PlexSection() {
     abort.current = new AbortController()
     try {
       const result = await linkPlex(abort.current.signal)
-      setMessage({ ok: true, text: `Connected to Plex as ${result.username ?? 'your account'}.` })
+      setMessage({ on: 'plex', ok: true, text: `Connected to Plex as ${result.username ?? 'your account'}.` })
     } catch (err) {
-      if (!(err instanceof Error && err.message === 'cancelled')) setMessage({ ok: false, text: friendlyError(err) })
+      if (!(err instanceof Error && err.message === 'cancelled')) setMessage({ on: 'plex', ok: false, text: friendlyError(err) })
     } finally {
       setLinking(false)
       await refreshPlex()
@@ -401,26 +427,23 @@ function PlexSection() {
         const result = await testSeerr(trimmed)
         queryClient.setQueryData(['seerr-test', user?.id, trimmed], result)
         await update({ seerr_url: trimmed })
-        setMessage({ ok: true, text: `Connected to Seerr${result.seerrUser ? ` as ${result.seerrUser}` : ''}.` })
+        setMessage({ on: 'seerr', ok: true, text: `Connected to Seerr${result.seerrUser ? ` as ${result.seerrUser}` : ''}.` })
       } else {
         await update({ seerr_url: null })
-        setMessage({ ok: true, text: 'Seerr disconnected.' })
+        setMessage({ on: 'seerr', ok: true, text: 'Seerr disconnected.' })
       }
       setEditingUrl(false)
     } catch (err) {
-      setMessage({ ok: false, text: friendlyError(err) })
+      setMessage({ on: 'seerr', ok: false, text: friendlyError(err) })
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Section
-      title="Plex & Seerr"
-      description="See whether a movie or show is already on your Plex, and request it through Seerr if it isn’t."
-    >
+    <>
+    <Section sub title="Plex" description="See whether a movie or show is already on your Plex server.">
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted">1. Plex account</p>
         {plex.isLoading ? (
           <Loader2 className="size-4 animate-spin text-muted" />
         ) : plex.data?.linked ? (
@@ -449,9 +472,11 @@ function PlexSection() {
         )}
         <p className="text-xs text-faint">You sign in on plex.tv, so On Deck never sees your Plex password.</p>
       </div>
+      {message?.on === 'plex' && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
+    </Section>
 
-      <div className="space-y-2 pt-2">
-        <p className="text-xs font-medium text-muted">2. Seerr</p>
+    <Section sub title="Seerr" description="Request movies and shows that aren’t on your Plex yet. Needs Plex connected.">
+      <div className="space-y-2">
         {savedUrl && !editingUrl ? (
           <div className="flex flex-wrap items-center gap-3">
             {!plex.data?.linked ? (
@@ -462,8 +487,7 @@ function PlexSection() {
               </span>
             ) : seerrCheck.data?.ok ? (
               <span className="flex items-center gap-1.5 text-sm text-good">
-                <Check className="size-4" /> Connected{seerrCheck.data.seerrUser ? ` as ${seerrCheck.data.seerrUser}` : ''} ·{' '}
-                {savedHost}
+                <Check className="size-4" /> Connected{seerrCheck.data.seerrUser ? ` as ${seerrCheck.data.seerrUser}` : ''}, {savedHost}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-sm text-bad">
@@ -507,9 +531,9 @@ function PlexSection() {
         )}
         <p className="text-xs text-faint">Overseerr, Jellyseerr or Seerr. It must be reachable over https.</p>
       </div>
-
-      {message && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
+      {message?.on === 'seerr' && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
     </Section>
+    </>
   )
 }
 
@@ -656,7 +680,7 @@ function DefaultCollectionsSection() {
   const [layout, save] = useNavLayout()
   const hidden = new Set(layout.hidden ?? [])
   return (
-    <Section title="Collections" description="Default collections that update themselves. Hide any you don't want; they come back here.">
+    <Section id="collections" title="Default collections" description="Collections that fill themselves. Hide any you don’t want; you can bring them back here.">
       <div className="space-y-3">
         {BUILTIN_COLLECTIONS.map((c) => (
           <Toggle
@@ -696,6 +720,7 @@ function NotificationsSection() {
   const saveDealPct = useCallback((pct: number) => void set({ deep_discount_pct: pct }), [])
   return (
     <Section
+      id="notifications"
       title="Notifications"
       description="Alerts appear under the bell in the top bar, checked every few hours. Turn them off for a single title on its page."
     >
@@ -739,7 +764,7 @@ function versionDate(iso: string) {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
 
-function AppearanceSection() {
+function ThemeToggle() {
   const { theme, setTheme } = useTheme()
   const options: { value: Theme; label: string }[] = [
     { value: 'dark', label: 'Dark' },
@@ -747,8 +772,8 @@ function AppearanceSection() {
   ]
   const group = useSlidingIndicator<HTMLDivElement>(theme)
   return (
-    <Section title="Appearance" description="Saved on this device.">
-      <div ref={group} role="radiogroup" aria-label="Theme" className="relative inline-flex rounded-lg border border-line bg-bg p-1">
+    // Compact, beside the page title: one switch doesn't need a card. Saved on this device.
+    <div ref={group} role="radiogroup" aria-label="Theme (saved on this device)" className="relative inline-flex rounded-lg border border-line bg-bg p-1">
         <span aria-hidden="true" className="slide-ind rounded-md bg-raised" />
         {options.map((o) => (
           <button
@@ -758,17 +783,54 @@ function AppearanceSection() {
             aria-checked={theme === o.value}
             onClick={() => setTheme(o.value)}
             className={clsx(
-              'hit relative h-9 rounded-md px-4 text-sm',
+              'hit relative h-7 rounded-md px-3 text-sm',
               theme === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
             )}
           >
             {o.label}
           </button>
         ))}
-      </div>
-    </Section>
+    </div>
   )
 }
+
+/** Service checks and background jobs: collapsed, since it's for when something looks wrong. Opens for /settings#status. */
+function StatusSection({ open }: { open: boolean }) {
+  const [isOpen, setOpen] = useState(open)
+  useEffect(() => {
+    if (open) setOpen(true)
+  }, [open])
+  return (
+    <details
+      id="status"
+      open={isOpen}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+      className="group scroll-mt-20 border-t border-line pt-5"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 rounded-md select-none [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-medium text-fg">Status</h3>
+          <p className="mt-1 text-sm text-muted">Service checks, background jobs, and how fresh your data is.</p>
+        </div>
+        <ChevronDown className="size-4 flex-none text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      {isOpen && (
+        <div className="pt-3">
+          <StatusPanel />
+        </div>
+      )}
+    </details>
+  )
+}
+
+const JUMPS: [id: string, label: string][] = [
+  ['accounts', 'Connections'],
+  ['streaming', 'Streaming'],
+  ['notifications', 'Notifications'],
+  ['collections', 'Collections'],
+  ['navigation', 'Phone tab bar'],
+  ['data', 'Your data'],
+]
 
 export function Settings() {
   const { user, loading } = useAuth()
@@ -782,14 +844,16 @@ export function Settings() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <PageHeader title="Settings" />
-        <p className="-mt-5 text-xs text-faint tabular-nums" title={`Build ${__APP_VERSION__.build}, ${__APP_VERSION__.sha}`}>
-          v{__APP_VERSION__.build}
-          {__APP_VERSION__.date && `, ${versionDate(__APP_VERSION__.date)}`}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">Settings</h1>
+          <p className="mt-1 text-xs text-faint tabular-nums" title={`Build ${__APP_VERSION__.build}, ${__APP_VERSION__.sha}`}>
+            v{__APP_VERSION__.build}
+            {__APP_VERSION__.date && `, ${versionDate(__APP_VERSION__.date)}`}
+          </p>
+        </div>
+        <ThemeToggle />
       </div>
-      <AppearanceSection />
       {!loading && !user ? (
         <p className="text-sm text-muted">
           <Link to="/login" className="text-accent-ink hover:underline">
@@ -799,37 +863,47 @@ export function Settings() {
         </p>
       ) : (
         <>
-          <RegionSection />
-          <div id="accounts" className="scroll-mt-20 space-y-6">
+          <nav aria-label="Settings sections" className="no-scrollbar -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+            <ul className="flex gap-1.5">
+              {JUMPS.map(([id, label]) => (
+                <li key={id} className="flex-none">
+                  <a
+                    href={`#${id}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      history.replaceState(null, '', `#${id}`)
+                      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }}
+                    className="flex h-8 items-center rounded-full border border-line px-3 text-sm text-muted hover:border-accent hover:text-fg"
+                  >
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <Section id="accounts" title="Connections" description="Link the services On Deck checks for you. Each one is optional.">
             <PlexSection />
             <SteamSection />
-          </div>
+          </Section>
           <StreamingSection />
           <NotificationsSection />
           <DefaultCollectionsSection />
-          <section id="navigation" className="scroll-mt-20">
-            <Section
-              title="Navigation"
-              description="Choose the tabs on your phone’s bottom bar and their order. On a computer, drag the sidebar to rearrange it."
-            >
-              <PhoneTabsSettings />
+          <Section
+            id="navigation"
+            title="Phone tab bar"
+            description="Pick up to five pages for the bar at the bottom of your phone; everything else sits under More. On a computer, drag the sidebar to rearrange it."
+          >
+            <PhoneTabsSettings />
+          </Section>
+          <Section id="data" title="Your data" description="Share your list, keep a copy of it, and check that everything is running.">
+            <Section sub id="sharing" title="Sharing">
+              <ShareLinksSettings />
             </Section>
-          </section>
-          <section id="calendar" className="rounded-lg border border-line bg-surface p-4 sm:p-5">
-            <CalendarFeed />
-          </section>
-          <section id="status" className="scroll-mt-20">
-            <Section title="Status" description="Is everything working? Service checks, background jobs, and how fresh your data is.">
-              <StatusPanel />
-            </Section>
-          </section>
-          <section id="backup" className="scroll-mt-20">
-            <Section title="Backup & Restore" description="Export your library and settings to a file, or restore from one (it merges).">
+            <Section sub id="backup" title="Backup & Restore" description="Export your library and settings to a file, or restore from one (it merges).">
               <BackupPanel onSetUpAccounts={() => document.getElementById('accounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
             </Section>
-          </section>
-          <Section title="Sharing">
-            <ShareLinksSettings />
+            <StatusSection open={hash === '#status'} />
           </Section>
         </>
       )}

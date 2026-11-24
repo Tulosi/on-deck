@@ -23,7 +23,7 @@ Known rough edges to pick up in the full UI/UX/user-flow pass. Add to it as thin
   the labels switch.
 
 ## Phone tab bar ✅ done
-- Replaced by 5 chosen tabs + More (Settings → Navigation). Books and Collections are reachable from More.
+- Replaced by 5 chosen tabs + More (Settings → Phone tab bar). Books and Collections are reachable from More.
 
 ## Parked from Group G (to do, maybe)
 Parked on 2026-11-23 rather than built, since the broader UI/UX pass may change or replace these. Revisit

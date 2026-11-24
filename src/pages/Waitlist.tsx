@@ -245,7 +245,7 @@ function CalendarView({
         </div>
         <div className="grid grid-cols-7 gap-px bg-line">
           {cells.map((iso, i) => {
-            if (!iso) return <div key={`x${i}`} className="min-h-12 bg-bg sm:min-h-20" />
+            if (!iso) return <div key={`x${i}`} className="min-h-12 bg-bg sm:min-h-20 lg:min-h-28" />
             const list = byDay.get(iso) ?? []
             const isToday = iso === today
             const isSel = iso === day
@@ -257,7 +257,7 @@ function CalendarView({
                 aria-label={`${new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${list.length} release${list.length === 1 ? '' : 's'}`}
                 aria-pressed={isSel}
                 className={clsx(
-                  'flex min-h-12 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-20 sm:p-1.5',
+                  'flex min-h-12 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 lg:min-h-28',
                   isSel ? 'bg-raised ring-1 ring-accent ring-inset' : 'hover:bg-raised/60',
                   iso < today && 'opacity-50',
                 )}
@@ -349,7 +349,8 @@ export function Waitlist() {
   )
 
   return (
-    <div className="max-w-4xl">
+    // The list reads best narrow; the month grid gets the room it needs for titles in each day.
+    <div className={view === 'month' ? 'max-w-7xl' : 'max-w-4xl'}>
       <PageHeader title="Calendar" meta={isLoading ? undefined : `${entries.length} upcoming`}>
         <button
           type="button"

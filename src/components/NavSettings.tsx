@@ -127,18 +127,18 @@ export function PhoneTabsSettings() {
               const item = navItem(k)
               const Icon = item.icon
               return (
-                <li key={k} className="flex items-center gap-2 rounded-lg border border-dashed border-line py-1 pr-1 pl-3">
-                  <Icon className="size-4 text-faint" strokeWidth={1.75} />
-                  <span className="flex-1 text-sm text-muted">{item.label}</span>
+                <li key={k}>
                   <button
                     type="button"
-                    className={iconBtn}
-                    disabled={full}
-                    onClick={() => commit([...tabs, k])}
-                    aria-label={`Add ${item.label} to the tab bar`}
-                    title={full ? `The tab bar holds ${MAX_TABS}; remove one first` : undefined}
+                    onClick={() => commit(full ? [...tabs.slice(0, -1), k] : [...tabs, k])}
+                    aria-label={full ? `Add ${item.label} to the tab bar in place of ${navItem(tabs[tabs.length - 1]).label}` : `Add ${item.label} to the tab bar`}
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-line py-1 pr-1 pl-3 text-left hover:border-accent hover:bg-raised"
                   >
-                    <Plus className="size-4" />
+                    <Icon className="size-4 text-muted" strokeWidth={1.75} />
+                    <span className="flex-1 text-sm text-fg">{item.label}</span>
+                    <span className="grid size-8 place-items-center text-muted">
+                      <Plus className="size-4" />
+                    </span>
                   </button>
                 </li>
               )
@@ -147,7 +147,7 @@ export function PhoneTabsSettings() {
         )}
         <p className="text-xs text-faint">
           More always holds the rest, plus your collections and Settings.
-          {full && ` The bar holds ${MAX_TABS} tabs; remove one to add another.`}
+          {full && ` The bar is full, so adding one swaps out ${navItem(tabs[tabs.length - 1]).label}.`}
         </p>
       </div>
 

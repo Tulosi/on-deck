@@ -22,7 +22,7 @@ export function SteamButtons({ appId }: { appId: number }) {
           title="Start the game in the Steam app"
           className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-4 text-sm text-fg hover:bg-raised"
         >
-          <Play className="size-3.5 fill-current" aria-hidden="true" />
+          <Play className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
           {launch.label}
         </a>
       )}

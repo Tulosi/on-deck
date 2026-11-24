@@ -270,8 +270,12 @@ function SeasonOptions({
  * One bar per season: how much of what's aired you've watched. Green when the season's done, pale orange when
  * ignored. Only for shows with more than one season (one season would repeat the overall bar).
  */
-function SeasonBars({ item, seasons }: { item: UserItem; seasons: SeasonMeta[] }) {
-  if (seasons.length < 2) return null
+/**
+ * Watched of aired, per season. `min`: fewest seasons worth a list. Plex-synced shows have no other progress bar,
+ * so they get it from one season up; hand-tracked shows already show one bar beside Progress, so from two.
+ */
+function SeasonBars({ item, seasons, min }: { item: UserItem; seasons: SeasonMeta[]; min: 1 | 2 }) {
+  if (seasons.length < min) return null
   const airedIn = airedCounter(item)
   return (
     <ul aria-label="Seasons" className="divide-y divide-line rounded-lg border border-line">
@@ -483,7 +487,7 @@ function TvProgressSection({
           </div>
         </div>
         {error ? <p className="text-xs text-bad">Plex sync failed: {friendlyError(error)}</p> : null}
-        {seasons.length > 0 && <SeasonBars item={item} seasons={seasons} />}
+        {seasons.length > 0 && <SeasonBars item={item} seasons={seasons} min={1} />}
         {seasons.length > 0 && <SeasonOptions item={item} seasons={seasons} save={save} />}
       </div>
     )
@@ -549,7 +553,7 @@ function TvProgressSection({
         </>
       )}
       {note && <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">{note}</div>}
-      {showPicker && <SeasonBars item={item} seasons={seasons} />}
+      {showPicker && <SeasonBars item={item} seasons={seasons} min={2} />}
       {showPicker && <SeasonOptions item={item} seasons={seasons} save={save} />}
     </div>
   )

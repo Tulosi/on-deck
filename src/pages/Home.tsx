@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HomeSkeleton } from '../components/LazyPage'
 import { PosterRow } from '../components/PosterRow'
@@ -13,6 +14,7 @@ import { useNewForYou } from '../lib/newForYou'
 import { useFilters } from '../lib/useFilters'
 import { plainError } from '../lib/errors'
 import { useSnoozed } from '../lib/snooze'
+import { useFlipChildren } from '../lib/useFlipChildren'
 import { SampleWelcome } from '../components/SampleWelcome'
 import { useSampleCardOpen } from '../lib/sampleCard'
 
@@ -31,6 +33,9 @@ export function Home() {
   const fresh = useNewForYou(isSample ? [] : items)
   // Pick it back up? Each title can be put away for a month (Not now).
   const notNow = useSnoozed('stalled', 30)
+  // The New for you / Pick it back up? pair: rows slide over when one of them empties.
+  const [pairEl, setPairEl] = useState<HTMLDivElement | null>(null)
+  useFlipChildren(pairEl)
   const sampleCardOpen = useSampleCardOpen()
   const freshById = new Map(fresh.entries.map((e) => [e.item.id, e]))
 
@@ -88,36 +93,42 @@ export function Home() {
           <WeekList upcoming={week} href="/calendar?view=month" />
         </div>
       )}
-      <PosterRow
-        title="New for you"
-        hint="Last 7 days"
-        items={fresh.entries.map((e) => e.item)}
-        subline={(item) => freshById.get(item.id)?.label}
-        action={
-          <button type="button" onClick={fresh.clear} className="hit text-xs text-muted hover:text-fg">
-            Clear
-          </button>
-        }
-      />
+      {/* Wide screens: the two short-by-design rows (last 7 days, stalled lately) share a line, lined up with the lists
+          above. On their own, either takes the whole line; when one empties, the other slides over (useFlipChildren). */}
+      <div ref={setPairEl} className="relative grid items-start gap-10 empty:hidden xl:grid-cols-[repeat(2,minmax(0,36rem))] xl:has-[>:only-child]:grid-cols-1">
+        <PosterRow
+          inset
+          title="New for you"
+          hint="Last 7 days"
+          items={fresh.entries.map((e) => e.item)}
+          subline={(item) => freshById.get(item.id)?.label}
+          action={
+            <button type="button" onClick={fresh.clear} className="hit text-xs text-muted hover:text-fg">
+              Clear
+            </button>
+          }
+        />
+        <PosterRow
+          inset
+          title="Pick it back up?"
+          hint="Stalled in the last 3 months"
+          items={stalled.filter((i) => !notNow.hidden(i))}
+          href={`/library?status=stalled${typeParam}`}
+          footer={(item) => (
+            <button
+              type="button"
+              onClick={() => notNow.snooze(item)}
+              aria-label={`Not now: hide ${item.title.title} from this row for a month`}
+              title="Hide from this row for a month"
+              className="hit mt-1.5 text-xs text-muted hover:text-fg"
+            >
+              Not now
+            </button>
+          )}
+        />
+      </div>
       {!isSample && <RateFinished items={items} />}
       {!isSample && <ImportPrompts />}
-      <PosterRow
-        title="Pick it back up?"
-        hint="Stalled in the last 3 months"
-        items={stalled.filter((i) => !notNow.hidden(i))}
-        href={`/library?status=stalled${typeParam}`}
-        footer={(item) => (
-          <button
-            type="button"
-            onClick={() => notNow.snooze(item)}
-            aria-label={`Not now: hide ${item.title.title} from this row for a month`}
-            title="Hide from this row for a month"
-            className="hit mt-1.5 text-xs text-muted hover:text-fg"
-          >
-            Not now
-          </button>
-        )}
-      />
       <PosterRow
         title="Ready to start"
         hint="High priority and already out"

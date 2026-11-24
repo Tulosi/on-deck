@@ -5,9 +5,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
 
 /**
- * Rolling version: the build number is the commit count on main, so it goes up by itself with every push.
- * Shown quietly on Settings as "v312 · 23 Nov 2026" (commit date), with the commit hash on hover.
+ * Rolling version: MAJOR, then the build number (the commit count on main, so it goes up by itself with every
+ * push). Shown quietly on Settings as "v0.312, 23 Nov 2026" (commit date), with the commit hash on hover.
+ * MAJOR stays 0 until the owner calls it 1.0.
  */
+const MAJOR = 0
+
 function appVersion() {
   const git = (cmd: string) => {
     try {
@@ -16,7 +19,7 @@ function appVersion() {
       return ''
     }
   }
-  return { build: git('rev-list --count HEAD') || '0', date: git('log -1 --format=%cs'), sha: git('rev-parse --short HEAD') }
+  return { build: `${MAJOR}.${git('rev-list --count HEAD') || '0'}`, date: git('log -1 --format=%cs'), sha: git('rev-parse --short HEAD') }
 }
 
 // GitHub Pages serves the site from /<repo-name>/. Override with VITE_BASE if the repo name changes.

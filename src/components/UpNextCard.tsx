@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
@@ -26,6 +26,8 @@ export function UpNext({ items }: { items: UserItem[] }) {
   const row = useRef<HTMLUListElement>(null)
   const [active, setActive] = useState(0)
   const [edges, setEdges] = useState({ start: true, end: true })
+  const drag = useRef<{ id: number; x: number; left: number; moved: boolean; from: number; samples: { t: number; x: number }[] } | null>(null)
+  const swallowClick = useRef(false)
 
   // Which card is first in view, and whether there's more to either side (for the dots and arrows).
   const measure = useCallback(() => {
@@ -64,16 +66,71 @@ export function UpNext({ items }: { items: UserItem[] }) {
     const perView = Math.max(1, Math.round((el.clientWidth + (stride - cards[0].offsetWidth)) / stride))
     scrollToCard(active + dir * perView)
   }
+  /**
+   * Mouse drag (touch scrolls natively): the row follows the pointer with snapping paused, then settles on the
+   * nearest card. A quick flick moves one card on from where the drag started. A drag never counts as a click.
+   */
+  const onPointerDown = (e: PointerEvent<HTMLUListElement>) => {
+    const el = row.current
+    swallowClick.current = false
+    if (e.pointerType !== 'mouse' || e.button !== 0 || !el || el.scrollWidth <= el.clientWidth + 1) return
+    drag.current = { id: e.pointerId, x: e.clientX, left: el.scrollLeft, moved: false, from: active, samples: [{ t: e.timeStamp, x: e.clientX }] }
+  }
+  const onPointerMove = (e: PointerEvent<HTMLUListElement>) => {
+    const d = drag.current
+    const el = row.current
+    if (!d || !el || d.id !== e.pointerId) return
+    const dx = e.clientX - d.x
+    if (!d.moved) {
+      if (Math.abs(dx) < 5) return
+      d.moved = true
+      el.setPointerCapture(e.pointerId)
+      el.style.scrollSnapType = 'none'
+      el.style.scrollBehavior = 'auto'
+      el.dataset.dragging = ''
+    }
+    el.scrollLeft = d.left - dx
+    d.samples.push({ t: e.timeStamp, x: e.clientX })
+    if (d.samples.length > 8) d.samples.shift()
+  }
+  const endDrag = (e: PointerEvent<HTMLUListElement>) => {
+    const d = drag.current
+    const el = row.current
+    if (!d || !el || d.id !== e.pointerId) return
+    drag.current = null
+    if (!d.moved) return
+    swallowClick.current = true
+    delete el.dataset.dragging
+    const cards = [...el.children] as HTMLElement[]
+    const stride = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : el.clientWidth
+    // Release speed over the last few moves (px/ms); positive = pointer moving right = going back.
+    const recent = d.samples.filter((s) => e.timeStamp - s.t < 100)
+    const v = recent.length > 1 ? (recent[recent.length - 1].x - recent[0].x) / Math.max(1, recent[recent.length - 1].t - recent[0].t) : 0
+    let target = Math.round(el.scrollLeft / stride)
+    if (Math.abs(v) > 0.3 && target === d.from) target = d.from + (v < 0 ? 1 : -1)
+    scrollToCard(target)
+    // Snapping back on only once the glide has finished, or it would cut the glide short.
+    const restore = () => {
+      el.style.scrollSnapType = ''
+      el.style.scrollBehavior = ''
+    }
+    if ('onscrollend' in el) el.addEventListener('scrollend', restore, { once: true })
+    else setTimeout(restore, 450)
+  }
+
   const many = items.length > 1
+  const scrollable = !(edges.start && edges.end)
   const arrow = 'grid size-7 place-items-center rounded-full border border-line text-muted hover:border-accent hover:text-fg disabled:opacity-40 disabled:hover:border-line disabled:hover:text-muted'
 
   return (
-    <section aria-labelledby="up-next" className="@container/up space-y-3">
+    // Capped at three cards' width, so the arrows sit at the cards' right edge rather than the far side of a wide
+    // screen.
+    <section aria-labelledby="up-next" className="@container/up max-w-[calc(3*28rem+2*1rem)] space-y-3">
       <div className="flex items-end justify-between gap-4">
         <h1 id="up-next" className="text-xl font-semibold tracking-tight text-fg">
           Up next
         </h1>
-        {many && !(edges.start && edges.end) && (
+        {many && scrollable && (
           <div className="hidden gap-1 @[40rem]/up:flex">
             <button type="button" onClick={() => page(-1)} disabled={edges.start} aria-label="Previous cards" className={arrow}>
               <ChevronLeft className="size-4" />
@@ -89,7 +146,24 @@ export function UpNext({ items }: { items: UserItem[] }) {
       <ul
         ref={row}
         onScroll={measure}
-        className="no-scrollbar flex max-w-[calc(3*28rem+2*1rem)] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain @[40rem]/up:gap-4"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={(e) => {
+          if (swallowClick.current) {
+            swallowClick.current = false
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        }}
+        // Links and covers would otherwise start the browser's own drag-and-drop.
+        onDragStart={(e) => e.preventDefault()}
+        className={clsx(
+          'no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain select-none @[40rem]/up:gap-4',
+          // A mouse can grab the row when there's more than fits.
+          scrollable && 'pointer-fine:cursor-grab data-[dragging]:cursor-grabbing',
+        )}
       >
         {items.map((item, i) => (
           <li

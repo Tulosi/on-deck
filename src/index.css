@@ -111,6 +111,10 @@ textarea {
 :where(input, textarea, select):focus-visible {
   outline-offset: 0;
 }
+/* An input inside a box that already lights up its own border on focus (the search bar): one indicator, not two. */
+.field-bare:focus-visible {
+  outline: none;
+}
 /* Headings get focus after a page change (useRouteFocus) only so the next Tab starts there: no ring. */
 h1[tabindex='-1']:focus {
   outline: none;
@@ -396,8 +400,18 @@ details[open]::details-content {
   }
 }
 
-/* The rest of the page swaps instantly rather than cross-fading as one big snapshot. */
-::view-transition-old(root),
+/*
+ * The rest of the page swaps instantly rather than cross-fading as one big snapshot. The old page's picture is
+ * hidden outright (not just left un-animated): otherwise, wherever the new page's picture lets it through, the
+ * old page stays visible under the arriving one (Home's rows showing around the Library's posters). The overlay
+ * gets the page colour, so nothing else can show through either.
+ */
+::view-transition {
+  background: var(--color-bg);
+}
+::view-transition-old(root) {
+  display: none;
+}
 ::view-transition-new(root) {
   animation: none;
 }

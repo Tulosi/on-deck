@@ -165,7 +165,8 @@ export function parseFilters(p: URLSearchParams): Filters {
     length: isGame ? incList(p.get('length'), LENGTH) : [],
     maxPrice: isGame ? int(p.get('maxprice')) : null,
     sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : DEFAULT_SORT,
-    group: (GROUPS as string[]).includes(p.get('group') ?? '') ? (p.get('group') as GroupKey) : 'none',
+    // Group by type is only offered across types; inside one type it falls back to no grouping.
+    group: (GROUPS as string[]).includes(p.get('group') ?? '') && !(type && p.get('group') === 'type') ? (p.get('group') as GroupKey) : 'none',
   }
 }
 
@@ -212,7 +213,8 @@ export function withType(f: Filters, type: MediaType | null): Filters {
   const neg = { ...f.neg }
   delete neg.genre
   delete neg.coop
-  return { ...f, type, neg, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
+  const group = type && f.group === 'type' ? 'none' : f.group
+  return { ...f, type, neg, group, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
 }
 
 export function clearFilters(f: Filters): Filters {

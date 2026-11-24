@@ -365,7 +365,8 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
         onChange={(e) => set({ ...f, group: e.target.value as GroupKey })}
         className={clsx(selectClass, !stacked && 'hidden sm:block')}
       >
-        {LABELS.options.GROUPS.map((g) => (
+        {/* Grouping by type only means something across types (Library), not inside Movies, TV and so on. */}
+        {LABELS.options.GROUPS.filter((g) => g !== 'type' || !f.type).map((g) => (
           <option key={g} value={g}>
             {g === 'none' ? 'No grouping' : `Group: ${LABELS.group[g]}`}
           </option>

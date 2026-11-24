@@ -128,7 +128,7 @@ export function SearchBox() {
           aria-label={current.placeholder.replace('…', '')}
           enterKeyHint="search"
           aria-keyshortcuts="/ Meta+K Control+K"
-          className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
+          className="field-bare w-full bg-transparent text-fg outline-none placeholder:text-faint"
         />
         {/* Keyboard hint, only with a mouse/trackpad and while the box is empty and unfocused. */}
         {!text && !open && (

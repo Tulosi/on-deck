@@ -23,7 +23,9 @@ today (a show needs its next episode out; one waiting for the next episode isn't
 still shows. One scrolling row at every width, sized by the row's own width: one card per view on phones (swipe,
 or tap the dots under it), two from 40rem, three from 60rem (each at most 28rem, so wide screens show three
 rather than stretching them). Each card is a hard snap stop (`scroll-snap-stop: always`), so a fast swipe moves one
-card at a time instead of flying past several. Previous/next arrows sit beside the heading when there are more than fit.
+card at a time instead of flying past several. Previous/next arrows sit beside the heading when there are more than fit; the section is capped at three
+cards' width so they stay by the cards on wide screens. With a mouse the row can also be dragged (grab cursor): it
+follows the pointer, then settles on the nearest card, and a quick flick moves one card; a drag never opens a card.
 Continue lists the rest. Each card: poster, title, the next step set large in mono
 (`S02E05`, or hours played for a game), a short note ("Out now", "Out Tue, Nov 25", "Caught up"), and a bar for
 this season's episodes or hours against time to beat. Its one accent button is **Mark S02E05 watched** when that

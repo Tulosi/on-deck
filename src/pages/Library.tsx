@@ -205,7 +205,7 @@ export function Library() {
                 setRules.mutate({ id: editing.id, rules: rulesFrom(f) }, { onSuccess: () => navigate(`/collections/${editing.id}`) })
               }
               disabled={setRules.isPending}
-              className="flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg disabled:opacity-60"
+              className="flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-xs font-medium text-accent-fg disabled:opacity-60"
             >
               {setRules.isPending && <Loader2 className="size-3.5 animate-spin" />}
               Save changes
@@ -213,7 +213,7 @@ export function Library() {
             <button
               type="button"
               onClick={() => navigate(`/collections/${editing.id}`)}
-              className="h-8 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+              className="h-8 rounded-md border border-line px-3 text-xs text-fg hover:border-accent"
             >
               Cancel
             </button>

@@ -47,7 +47,7 @@ export function CollectionPicker({ item }: { item: UserItem }) {
                 aria-pressed={inIt}
                 onClick={() => toggleItem.mutate({ collectionId: c.id, itemId: item.id, add: !inIt })}
                 className={clsx(
-                  'flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs',
+                  'flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs',
                   inIt ? 'border-accent bg-accent/10 text-fg' : 'border-line text-muted hover:border-faint hover:text-fg',
                 )}
               >
@@ -66,12 +66,12 @@ export function CollectionPicker({ item }: { item: UserItem }) {
                 placeholder="New collection name"
                 maxLength={80}
                 aria-label="New collection name"
-                className="h-8 w-48 rounded-full border border-line bg-bg px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent"
+                className="h-8 w-48 rounded-md border border-line bg-bg px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent"
               />
               <button
                 type="submit"
                 disabled={!name.trim() || create.isPending}
-                className="flex h-8 items-center gap-1 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg disabled:opacity-60"
+                className="flex h-8 items-center gap-1 rounded-md bg-accent px-3 text-xs font-medium text-accent-fg disabled:opacity-60"
               >
                 {create.isPending && <Loader2 className="size-3.5 animate-spin" />}
                 Create
@@ -81,7 +81,7 @@ export function CollectionPicker({ item }: { item: UserItem }) {
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex h-8 items-center gap-1.5 rounded-full border border-dashed border-line px-3 text-xs text-muted hover:border-faint hover:text-fg"
+              className="flex h-8 items-center gap-1.5 rounded-md border border-dashed border-line px-3 text-xs text-muted hover:border-faint hover:text-fg"
             >
               <Plus className="size-3.5" /> New collection
             </button>

@@ -9,7 +9,7 @@ import { fetchCandidates, fetchSkips, importCandidates, type Candidate, type Imp
 import { useItems } from '../lib/library'
 
 const SOURCE_NAME: Record<ImportSource, string> = { steam: 'Steam', plex: 'Plex' }
-const btn = 'flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-50'
+const btn = 'flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-50'
 
 /** Poster tile (grid view). */
 function Tile({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; inLib: boolean; skipped: boolean; onToggle: () => void }) {
@@ -52,7 +52,7 @@ function Tile({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; 
         )}
       </div>
       <p className="mt-1.5 truncate text-xs font-medium text-fg">{c.title}</p>
-      <p className="truncate font-mono text-[11px] text-faint">{c.detail}</p>
+      <p className="truncate text-xs text-faint">{c.detail}</p>
     </button>
   )
 }
@@ -67,7 +67,7 @@ function Row({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; i
           <span className="block truncate text-sm text-fg">
             {c.title} {c.year && <span className="text-faint">({c.year})</span>}
           </span>
-          <span className="block truncate font-mono text-[11px] text-muted">{c.detail}</span>
+          <span className="block truncate text-xs text-muted">{c.detail}</span>
         </span>
         {(inLib || c.suggested || skipped) && (
           <span className="shrink-0 text-xs text-faint">{inLib ? 'In library' : skipped ? 'Skipped before' : 'Suggested'}</span>
@@ -227,7 +227,7 @@ export function ImportPage() {
             <button type="button" className={btn} onClick={() => setSelected(suggestedSet())}>
               <Sparkles className="size-3.5" /> Suggested
             </button>
-            <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted focus-within:border-accent sm:max-w-xs">
+            <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-muted focus-within:border-accent sm:max-w-xs">
               <Search className="size-3.5 shrink-0" />
               <input
                 value={filter}
@@ -237,7 +237,7 @@ export function ImportPage() {
                 className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
               />
             </label>
-            <div className="ml-auto flex rounded-full border border-line p-0.5" role="radiogroup" aria-label="View">
+            <div className="ml-auto flex rounded-md border border-line p-0.5" role="radiogroup" aria-label="View">
               {(['grid', 'list'] as const).map((v) => (
                 <button
                   key={v}

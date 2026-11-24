@@ -95,7 +95,7 @@ export function StatusPanel() {
             type="button"
             onClick={() => check.mutate()}
             disabled={check.isPending}
-            className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-60"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-60"
           >
             {check.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
             {check.data ? 'Check again' : 'Check now'}

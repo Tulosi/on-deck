@@ -108,7 +108,7 @@ export function SearchPage() {
               aria-checked={active}
               onClick={() => setType(t.value)}
               className={clsx(
-                'flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors',
+                'flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors',
                 active ? 'border-accent bg-accent text-accent-fg' : 'border-line text-muted hover:text-fg',
               )}
             >

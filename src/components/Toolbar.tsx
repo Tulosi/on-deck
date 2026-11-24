@@ -131,7 +131,7 @@ function OptionGroup<T extends string>({
               title={excluded ? (on ? 'Included · tap to exclude' : off ? 'Excluded · tap to clear' : 'Tap to include') : undefined}
               onClick={() => onToggle(o)}
               className={clsx(
-                'flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors',
+                'flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs transition-colors',
                 on
                   ? 'border-accent bg-accent/15 text-fg'
                   : off
@@ -167,7 +167,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
     <div className="space-y-5">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-faint">
         Tap a filter once to include it, again to exclude it
-        <span className="inline-flex items-center gap-0.5 rounded-full border border-bad/70 bg-bad/10 px-1.5 text-bad">
+        <span className="inline-flex items-center gap-0.5 rounded-md border border-bad/70 bg-bad/10 px-1.5 text-bad">
           <X className="size-2.5" />
           <span className="line-through">like this</span>
         </span>

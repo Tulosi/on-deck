@@ -55,7 +55,7 @@ export function AddButton({ added, state, onAdd, large }: { added: boolean; stat
       onClick={onAdd}
       disabled={added || state === 'adding'}
       className={clsx(
-        'flex shrink-0 items-center gap-1 rounded-full font-medium',
+        'flex shrink-0 items-center gap-1 rounded-md font-medium',
         large ? 'h-10 px-5 text-sm' : 'h-8 px-3 text-xs',
         added ? 'text-good' : 'bg-accent text-accent-fg hover:brightness-95 disabled:opacity-60',
       )}
@@ -101,7 +101,7 @@ export function ResultRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-fg">{result.title}</span>
           {/* One line that never wraps: fixed bits keep their size, the credit is cut short. */}
-          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden font-mono text-xs whitespace-nowrap text-muted">
+          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted">
             <TypeIcon className="size-3 shrink-0" />
             <span className="shrink-0">{typeName(result.mediaType)}</span>
             {result.year && <span className="shrink-0 text-faint">· {result.year}</span>}
@@ -156,7 +156,7 @@ export function Preview({
         <Cover result={result} className="h-36 w-24 rounded-md" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-base leading-snug font-semibold text-fg">{result.title}</p>
-          <p className="font-mono text-xs text-muted">
+          <p className="text-xs text-muted">
             {[typeName(result.mediaType), result.year, result.pages ? `${result.pages} pages` : null].filter(Boolean).join(', ')}
           </p>
           {credit && <p className="text-sm text-muted">{result.mediaType === 'book' ? 'by ' : ''}{credit}</p>}
@@ -185,7 +185,7 @@ export function Preview({
           <Link
             to={`/title/${libraryId}`}
             onClick={onOpen}
-            className="flex h-10 items-center gap-1.5 rounded-full border border-line px-5 text-sm text-fg hover:border-accent"
+            className="flex h-10 items-center gap-1.5 rounded-md border border-line px-5 text-sm text-fg hover:border-accent"
           >
             <Check className="size-4 text-good" /> In your library. Open it
           </Link>

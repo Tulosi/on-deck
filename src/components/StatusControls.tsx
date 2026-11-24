@@ -208,7 +208,7 @@ function SeasonOptions({
           <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
           Per-season tracking
         </span>
-        {overridden > 0 && <span className="font-mono text-faint">{overridden} overridden</span>}
+        {overridden > 0 && <span className="text-faint">{overridden} overridden</span>}
       </summary>
       <ul className="divide-y divide-line border-t border-line">
         {seasons.map((s) => {
@@ -221,7 +221,7 @@ function SeasonOptions({
                 <p className={clsx('text-sm', value === 'ignored' ? 'text-faint line-through' : 'text-fg')}>
                   Season {s.season_number}
                 </p>
-                <p className="font-mono text-[11px] text-faint">
+                <p className="text-xs text-faint">
                   {aired === 0
                     ? 'Not aired yet'
                     : value === 'ignored'
@@ -398,7 +398,7 @@ function EpisodePicker({
           </option>
         ))}
       </select>
-      <span className="font-mono text-xs text-faint">of {episodes}</span>
+      <span className="text-xs text-faint">of <span className="font-mono">{episodes}</span></span>
     </div>
   )
 }

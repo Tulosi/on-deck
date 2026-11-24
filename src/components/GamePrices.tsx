@@ -52,7 +52,7 @@ function Row({
             href={option.url}
             target="_blank"
             rel="noreferrer"
-            className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs whitespace-nowrap text-fg hover:border-accent"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs whitespace-nowrap text-fg hover:border-accent"
           >
             {option.kind === 'keyshop' ? 'View on gg.deals' : `View on ${option.shop}`}
             <ExternalLink className="size-3.5" />

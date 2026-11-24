@@ -36,7 +36,7 @@ function Segmented<T extends string | null>({
   label: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex rounded-full border border-line bg-surface p-0.5">
+    <div role="radiogroup" aria-label={label} className="flex rounded-md border border-line bg-surface p-0.5">
       {options.map((o) => {
         const Icon = o.icon
         const active = o.value === value
@@ -48,7 +48,7 @@ function Segmented<T extends string | null>({
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={clsx(
-              'hit flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors',
+              'hit flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors',
               active ? 'bg-raised text-fg' : 'text-muted hover:text-fg',
             )}
           >
@@ -202,7 +202,7 @@ function CalendarView({
             <button
               type="button"
               onClick={() => setMonth(today.slice(0, 7))}
-              className="mr-1 h-8 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+              className="mr-1 h-8 rounded-md border border-line px-3 text-xs text-fg hover:border-accent"
             >
               Today
             </button>
@@ -350,7 +350,7 @@ export function Waitlist() {
           onClick={() => setShowFeed((s) => !s)}
           aria-expanded={showFeed}
           className={clsx(
-            'flex h-9 items-center gap-2 rounded-full border px-4 text-sm',
+            'flex h-9 items-center gap-2 rounded-md border px-4 text-sm',
             showFeed ? 'border-accent text-fg' : 'border-line text-fg hover:border-accent',
           )}
         >

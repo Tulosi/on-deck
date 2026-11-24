@@ -5,7 +5,7 @@ import { copyText, shareUrl, useShareActions, useShareLinks, type ShareLink, typ
 import type { MediaType } from '../types'
 
 const TYPE_NAME: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows', game: 'Games', book: 'Books' }
-const btn = 'flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-60'
+const btn = 'flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent disabled:opacity-60'
 
 /** One link's row: what it shares, Copy, Open, Turn off. */
 function LinkRow({ link, label }: { link: ShareLink; label: string }) {

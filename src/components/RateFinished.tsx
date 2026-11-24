@@ -68,13 +68,13 @@ function PromptCard({ p }: { p: RatePrompt }) {
         <Link to={`/title/${item.title.id}`} className="truncate text-sm font-medium text-fg hover:text-accent-ink">
           {item.title.title}
         </Link>
-        <p className="truncate font-mono text-[11px] text-faint">{p.label}</p>
+        <p className="truncate text-xs text-muted">{p.label}</p>
         <div className="mt-auto flex items-center gap-1.5 pt-2">
           <button
             type="button"
             onClick={() => void rate('liked')}
             aria-label={`Liked ${item.title.title}`}
-            className="flex h-8 items-center gap-1 rounded-full border border-line px-2.5 text-xs text-fg hover:border-good hover:text-good"
+            className="flex h-8 items-center gap-1 rounded-md border border-line px-2.5 text-xs text-fg hover:border-good hover:text-good"
           >
             <ThumbsUp className="size-3.5" /> Liked
           </button>
@@ -82,7 +82,7 @@ function PromptCard({ p }: { p: RatePrompt }) {
             type="button"
             onClick={() => void rate('disliked')}
             aria-label={`Didn’t like ${item.title.title}`}
-            className="flex h-8 items-center gap-1 rounded-full border border-line px-2.5 text-xs text-fg hover:border-bad hover:text-bad"
+            className="flex h-8 items-center gap-1 rounded-md border border-line px-2.5 text-xs text-fg hover:border-bad hover:text-bad"
           >
             <ThumbsDown className="size-3.5" /> Nope
           </button>

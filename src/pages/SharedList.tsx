@@ -154,7 +154,7 @@ export function SharedList() {
                     onClick={() => setType(t)}
                     aria-pressed={type === t}
                     className={clsx(
-                      'h-8 rounded-full px-3 text-xs',
+                      'h-8 rounded-md px-3 text-xs',
                       type === t ? 'bg-accent font-medium text-accent-fg' : 'text-muted hover:bg-raised hover:text-fg',
                     )}
                   >

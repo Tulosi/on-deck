@@ -4,6 +4,7 @@ import { episodeCode, upNext } from '../lib/home'
 import { coverProps } from '../lib/images'
 import { useUpdateItem } from '../lib/library'
 import { useAuth } from '../lib/auth'
+import { useSeerrStatus } from '../lib/integrations'
 import { toast } from '../lib/toast'
 import type { MediaType } from '../types'
 
@@ -16,10 +17,8 @@ const KIND: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: '
  */
 export function UpNextCard({ item }: { item: UserItem }) {
   const { user } = useAuth()
-  const update = useUpdateItem()
   const { title } = item
   const next = upNext(item)
-  const canMark = !!user && !!next.watchable
 
   return (
     <section aria-labelledby="up-next" className="space-y-3">
@@ -58,32 +57,103 @@ export function UpNextCard({ item }: { item: UserItem }) {
             )}
           </div>
         </div>
-        <div className="flex gap-2 border-t border-line px-4 py-3">
-          {canMark && next.watchable && (
-            <button
-              type="button"
-              onClick={() =>
-                update(item, { tvProgress: next.watchable! }).catch(() =>
-                  toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }),
-                )
-              }
-              className="h-11 flex-1 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]"
-            >
-              Mark {episodeCode(next.watchable)} watched
-            </button>
-          )}
-          <Link
-            to={`/title/${title.id}`}
-            className={
-              canMark
-                ? 'grid h-11 place-items-center rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
-                : 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105'
-            }
-          >
-            {canMark ? 'Details' : `Open ${NOUN[title.mediaType]}`}
-          </Link>
-        </div>
+        <Facts item={item} />
+        {user && (item.title.mediaType === 'tv' || item.title.mediaType === 'movie') && item.plex === 'available' ? (
+          <ActionsWithPlex item={item} />
+        ) : (
+          <Actions item={item} />
+        )}
       </div>
     </section>
+  )
+}
+
+const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+
+/** A row of plain facts under the card: where to watch, network, latest episode, runtime. Hidden when empty. */
+function Facts({ item }: { item: UserItem }) {
+  const d = (item.title.details ?? {}) as Record<string, unknown>
+  const type = item.title.mediaType
+  if (type !== 'tv' && type !== 'movie') return null
+  const last = d.last_episode_to_air as { air_date?: string | null } | null | undefined
+  const where = item.plex === 'available' ? 'Plex' : item.availableVia?.[0]
+  const facts: { k: string; v?: string; mono?: boolean }[] =
+    type === 'tv'
+      ? [
+          { k: 'Watch on', v: where },
+          { k: 'Network', v: Array.isArray(d.networks) ? (d.networks as string[])[0] : undefined },
+          { k: 'Latest episode', v: last?.air_date ? shortDate(last.air_date) : undefined, mono: true },
+        ]
+      : [
+          { k: 'Watch on', v: where },
+          { k: 'Runtime', v: typeof d.runtime === 'number' && d.runtime > 0 ? `${d.runtime} min` : undefined, mono: true },
+        ]
+  const shown = facts.filter((f) => f.v)
+  if (shown.length === 0) return null
+  return (
+    <dl className="grid border-t border-line" style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}>
+      {shown.map((f) => (
+        <div key={f.k} className="min-w-0 border-r border-line px-4 py-2 last:border-r-0">
+          <dt className="text-xs text-muted">{f.k}</dt>
+          <dd className={f.mono ? 'mt-0.5 truncate font-mono text-xs text-fg' : 'mt-0.5 truncate text-sm text-fg'}>{f.v}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/** On your Plex: ask Seerr for the Plex link, so the card can open it there. */
+function ActionsWithPlex({ item }: { item: UserItem }) {
+  const seerr = useSeerrStatus(item.title)
+  const plexUrl = seerr.data?.configured ? (seerr.data.plexUrl ?? undefined) : undefined
+  return <Actions item={item} plexUrl={plexUrl} />
+}
+
+const primary = 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
+const secondary = 'grid h-11 place-items-center rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
+
+/**
+ * One bold action: Mark watched when that's yours to do, else Open in Plex when it's there, else open the
+ * title. A quieter second button covers the next most likely step.
+ */
+function Actions({ item, plexUrl }: { item: UserItem; plexUrl?: string }) {
+  const { user } = useAuth()
+  const update = useUpdateItem()
+  const { title } = item
+  const ep = user ? upNext(item).watchable : null
+  const plexLink = (cls: string) => (
+    <a href={plexUrl} target="_blank" rel="noreferrer" className={cls}>
+      Open in Plex
+    </a>
+  )
+  const details = (cls: string, label: string) => (
+    <Link to={`/title/${title.id}`} className={cls}>
+      {label}
+    </Link>
+  )
+  return (
+    <div className="flex gap-2 border-t border-line px-4 py-3">
+      {ep ? (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              update(item, { tvProgress: ep }).catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
+            }
+            className={primary}
+          >
+            Mark {episodeCode(ep)} watched
+          </button>
+          {plexUrl ? plexLink(secondary) : details(secondary, 'Details')}
+        </>
+      ) : plexUrl ? (
+        <>
+          {plexLink(primary)}
+          {details(secondary, 'Details')}
+        </>
+      ) : (
+        details(primary, `Open ${NOUN[title.mediaType]}`)
+      )}
+    </div>
   )
 }

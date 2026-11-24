@@ -103,7 +103,7 @@ export function SearchBox() {
 
   return (
     <div ref={wrapper} className="relative max-w-md flex-1">
-      <label className="flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
+      <label className="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
         {s.fetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
         <input
           ref={input}
@@ -161,7 +161,7 @@ export function SearchBox() {
                     aria-checked={active}
                     onClick={() => setType(t.value)}
                     className={clsx(
-                      'flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors sm:px-3',
+                      'flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors sm:px-3',
                       active ? 'border-accent bg-accent text-accent-fg' : 'border-line text-muted hover:text-fg',
                     )}
                   >
@@ -208,13 +208,13 @@ export function SearchBox() {
           )}
 
           <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-surface px-4 py-2">
-            <p className="font-mono text-[11px] text-faint">
+            <p className="text-xs text-faint">
               {type === 'game'
                 ? 'PC games from IGDB'
                 : type === 'book'
                   ? 'Books from Hardcover'
                   : type === 'all'
-                    ? 'TMDB · IGDB · Hardcover'
+                    ? 'From TMDB, IGDB and Hardcover'
                     : 'From TMDB'}
             </p>
             {user && hasQuery && !preview && (

@@ -103,7 +103,7 @@ function PlexRow({ title }: { title: Title }) {
     : null
   // Nothing left to request and not fully on Plex → say so, rather than leaving the user wondering.
   const showRequestedBadge = !canRequest && status !== 'available' && status !== 'pending' && status !== 'processing'
-  const pill = 'flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs'
+  const pill = 'flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-xs'
 
   return (
     <div className="space-y-2">
@@ -243,14 +243,14 @@ function SeasonPicker({
         })}
       </ul>
       <div className="flex justify-end gap-2 border-t border-line pt-2.5">
-        <button type="button" onClick={onCancel} className="h-8 rounded-full px-3 text-xs text-muted hover:text-fg">
+        <button type="button" onClick={onCancel} className="h-8 rounded-md px-3 text-xs text-muted hover:text-fg">
           Cancel
         </button>
         <button
           type="button"
           disabled={busy || chosen.size === 0}
           onClick={() => onRequest([...chosen].sort((a, b) => a - b))}
-          className="flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg hover:brightness-95 disabled:opacity-60"
+          className="flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-xs font-medium text-accent-fg hover:brightness-95 disabled:opacity-60"
         >
           {busy && <Loader2 className="size-3.5 animate-spin" />}
           Request {chosen.size} {chosen.size === 1 ? 'season' : 'seasons'}

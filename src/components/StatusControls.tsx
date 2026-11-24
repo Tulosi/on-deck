@@ -288,7 +288,7 @@ function SeasonBars({ item, seasons, min }: { item: UserItem; seasons: SeasonMet
   if (seasons.length < min) return null
   const airedIn = airedCounter(item)
   return (
-    <ul aria-label="Seasons" className="divide-y divide-line rounded-lg border border-line">
+    <ul aria-label="Seasons" className="divide-y divide-line border-y border-line">
       {seasons.map((s) => {
         const aired = airedIn(s)
         const ignored = overrideOf(item, s.season_number) === 'ignored'
@@ -303,7 +303,7 @@ function SeasonBars({ item, seasons, min }: { item: UserItem; seasons: SeasonMet
               ? `Season ${s.season_number}: ignored`
               : `Season ${s.season_number}: ${w} of ${aired} aired episodes watched`
         return (
-          <li key={s.season_number} className="flex items-center gap-3 px-3 py-2">
+          <li key={s.season_number} className="flex items-center gap-3 py-2">
             <span className="w-20 shrink-0 text-sm text-fg">Season {s.season_number}</span>
             <div role="img" aria-label={label} className="h-1 flex-1 overflow-hidden rounded-full bg-raised">
               <div
@@ -578,7 +578,7 @@ function NextUp({ item, mark }: { item: UserItem; mark: (ep: { season: number; e
   if (!next.value || item.progress === 'dropped' || next.note === 'Last watched') return null
   const ep = next.watchable
   return (
-    <div className="rounded-lg border border-line bg-bg p-3">
+    <div className="border-t border-line pt-4">
       <div className="flex items-baseline justify-between gap-3">
         <p className={labelClass}>Next up</p>
         {next.note && <p className="text-xs text-muted">{next.note}</p>}

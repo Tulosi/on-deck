@@ -55,6 +55,7 @@ interface ItemRow {
   created_at: string
   updated_at: string
   last_activity_at: string | null
+  snoozed_until: string | null
   season_overrides: Record<string, SeasonOverride> | null
   steam_playtime_minutes: number | null
   steam_last_played: string | null
@@ -114,6 +115,7 @@ function toUserItem(row: ItemRow): UserItem {
     addedAt: row.created_at,
     updatedAt: row.updated_at,
     lastActivityAt: row.last_activity_at ?? undefined,
+    snoozedUntil: row.snoozed_until ?? undefined,
     seasonOverrides: row.season_overrides ?? {},
     steamPlaytimeMinutes: row.steam_playtime_minutes ?? undefined,
     steamLastPlayed: row.steam_last_played ?? undefined,
@@ -232,7 +234,7 @@ export function useItems() {
       const itemsReq = supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, stalled_at, archived_at, completed_at, created_at, updated_at, last_activity_at, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, stalled_at, archived_at, completed_at, created_at, updated_at, last_activity_at, snoozed_until, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       const availReq = supabase!
@@ -500,6 +502,8 @@ export interface ItemPatch {
   ratingSkipped?: string[]
   /** true = archive, false = take out of the archive. */
   archived?: boolean
+  /** Hide from Home's "Pick it back up?" row until this time (ISO); null shows it again. */
+  snoozedUntil?: string | null
   /** Written by Plex sync (not the user): stamps plex_checked_at, so last_activity_at keeps Plex's own watch time. */
   fromPlex?: boolean
 }
@@ -528,6 +532,7 @@ export function useUpdateItem() {
     if (patch.ratingSkipped !== undefined) row.rating_skipped = patch.ratingSkipped
     if (patch.archived !== undefined) row.archived_at = patch.archived ? new Date().toISOString() : null
     if (patch.seasonOverrides !== undefined) row.season_overrides = patch.seasonOverrides
+    if (patch.snoozedUntil !== undefined) row.snoozed_until = patch.snoozedUntil
     if (patch.fromPlex) row.plex_checked_at = new Date().toISOString()
     // Status / episode changes by the user count as activity (the database stamps it too).
     const activity = !patch.fromPlex && (patch.progress !== undefined || patch.tvProgress !== undefined)
@@ -570,6 +575,7 @@ export function useUpdateItem() {
               ...(patch.archived !== undefined && { archivedAt: patch.archived ? new Date().toISOString() : undefined }),
               ...(patch.progress === 'stalled' && { stalledAt: new Date().toISOString() }),
               ...(patch.seasonOverrides !== undefined && { seasonOverrides: patch.seasonOverrides }),
+              ...(patch.snoozedUntil !== undefined && { snoozedUntil: patch.snoozedUntil ?? undefined }),
               ...(activity && { lastActivityAt: new Date().toISOString() }),
             }
           : i,

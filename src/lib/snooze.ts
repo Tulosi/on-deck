@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { useAuth } from './auth'
+import { useUpdateItem } from './library'
 import { undoable } from './toast'
+import type { UserItem } from '../types'
 
 const DAY = 86_400_000
 
@@ -16,28 +19,34 @@ function read(key: string): Until {
 }
 
 /**
- * Titles put away from one Home row for a while, on this device. `hidden(id)` is true until that title's time runs
- * out; `snooze(id, name)` hides it now, with an Undo toast.
+ * Titles put away from Home's "Pick it back up?" row for a while. `hidden(item)` is true until that title's time runs
+ * out; `snooze(item)` hides it now, with an Undo toast. Signed in, the time is saved on the item (`snoozed_until`), so
+ * it holds on every device; signed out (the sample library) it's kept on this device. Titles hidden on this device
+ * before the column existed stay hidden until their month is up.
  */
 export function useSnoozed(row: string, days: number) {
+  const { user } = useAuth()
+  const update = useUpdateItem()
   const key = `ondeck.snooze.${row}`
   const [until, setUntil] = useState<Until>(() => read(key))
-  const hidden = (id: string) => (until[id] ?? 0) > Date.now()
-  const snooze = (id: string, name: string) => {
+  const hidden = (item: UserItem) =>
+    (until[item.id] ?? 0) > Date.now() || (!!item.snoozedUntil && Date.parse(item.snoozedUntil) > Date.now())
+  const snooze = (item: UserItem) => {
     const t = Date.now() + days * DAY
     undoable({
-      message: `${name} won’t show here for a month`,
-      hide: () => setUntil((u) => ({ ...u, [id]: t })),
+      message: `${item.title.title} won’t show here for a month`,
+      hide: () => setUntil((u) => ({ ...u, [item.id]: t })),
       commit: async () => {
+        if (user) return update(item, { snoozedUntil: new Date(t).toISOString() })
         try {
-          localStorage.setItem(key, JSON.stringify({ ...read(key), [id]: t }))
+          localStorage.setItem(key, JSON.stringify({ ...read(key), [item.id]: t }))
         } catch {
           // Storage blocked: it stays hidden until the page reloads.
         }
       },
       restore: () =>
         setUntil((u) => {
-          const { [id]: _, ...rest } = u
+          const { [item.id]: _, ...rest } = u
           return rest
         }),
     })

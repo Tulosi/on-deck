@@ -309,16 +309,19 @@ export function TitleDetail() {
           <img {...backdropProps(title.backdropUrl)} alt="" fetchPriority="high" className="size-full object-cover opacity-60" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="hit absolute top-4 left-4 flex h-9 items-center gap-1.5 rounded-md border border-line bg-bg/90 px-3 text-sm text-fg hover:bg-raised md:left-6"
-        >
-          <ArrowLeft className="size-4" /> Back
-        </button>
+        {/* Lined up with the content block below, which is centred on wide screens. */}
+        <div className="absolute inset-x-0 top-4 mx-auto max-w-6xl px-4 md:px-6">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="hit flex h-9 items-center gap-1.5 rounded-md border border-line bg-bg/90 px-3 text-sm text-fg hover:bg-raised"
+          >
+            <ArrowLeft className="size-4" /> Back
+          </button>
+        </div>
       </div>
 
-      <div className={clsx('relative flex max-w-5xl flex-row items-end gap-4 px-4 sm:gap-5 md:px-6', title.backdropUrl ? '-mt-16 md:-mt-24' : 'mt-2')}>
+      <div className={clsx('relative mx-auto flex max-w-6xl flex-row items-end gap-4 px-4 sm:gap-5 md:px-6', title.backdropUrl ? '-mt-16 md:-mt-24' : 'mt-2')}>
         <ViewTransition name={morph} share="poster-morph" default="none">
         <div className="aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-lg border border-line bg-raised shadow-2xl sm:w-36 md:w-40">
           {title.coverUrl ? (
@@ -378,52 +381,56 @@ export function TitleDetail() {
 
       <Overview text={title.overview} tagline={tagline} lines={3} className="mt-4 px-4 sm:hidden" />
 
-      <div className="mt-6 grid max-w-5xl gap-6 px-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_14rem]">
+      {/* Two columns, centred as one block: what you do on the left, what you look up on the right. */}
+      <div className="mx-auto mt-6 grid max-w-6xl gap-6 px-4 pb-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
         <div className="min-w-0 space-y-5">
-          {/* The main action first: status and progress sit right under the title, above the overview. */}
+          {/* The main action first: status and progress sit right under the title. */}
           {title.mediaType === 'game' && title.steamAppId && <SteamButtons appId={title.steamAppId} />}
           {isSample && <SampleNote />}
           <StatusControls item={item} />
-          <CastRow d={d} />
           <TrackingDetails item={item} />
+          <CastRow d={d} />
+        </div>
+
+        {/* Reference: facts, where to get it, collections. A rule rather than a box, since some sections draw boxes. */}
+        <aside className="min-w-0 self-start divide-y divide-line border-t border-line lg:border-t-0 lg:border-l lg:pl-6 [&>*]:py-5 lg:[&>*:first-child]:pt-0 [&_h2]:text-base">
+          <section className="space-y-3">
+            <h2 className="font-semibold tracking-tight text-fg">About</h2>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <Fact
+                label={
+                  release.preRelease
+                    ? title.mediaType === 'tv' ? 'Premieres' : title.mediaType === 'book' ? 'Publishes' : 'Releases'
+                    : title.mediaType === 'tv' ? 'First aired' : title.mediaType === 'book' ? 'Published' : 'Released'
+                }
+                value={release.fuzzyLabel ?? formatDate(title.releaseDate)}
+              />
+              <Fact label="Runtime" value={runtime} />
+              <Fact label="Seasons" value={seasons} />
+              <Fact label="Network" value={networks} />
+              <Fact
+                label="Next episode"
+                value={
+                  next?.air_date
+                    ? `${episodeCode({ season: next.season_number ?? 1, episode: next.episode_number ?? 1 })}, ${formatDate(next.air_date)}`
+                    : undefined
+                }
+              />
+              <Fact label="Status" value={title.mediaType === 'game' || title.mediaType === 'book' ? undefined : statusText} />
+              {title.mediaType === 'game' && <GameFacts d={d} />}
+              {title.mediaType === 'book' && <BookFacts d={d} />}
+            </dl>
+            {(title.mediaType === 'game' || title.mediaType === 'book') && <GameLinks d={d} />}
+          </section>
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
           {title.mediaType === 'game' && (!isSample || item.gamePrice) && <GamePrices item={item} />}
           {!isSample && <CollectionPicker item={item} />}
-        </div>
-
-        <aside className="space-y-5">
-          <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-            <Fact
-              label={
-                release.preRelease
-                  ? title.mediaType === 'tv' ? 'Premieres' : title.mediaType === 'book' ? 'Publishes' : 'Releases'
-                  : title.mediaType === 'tv' ? 'First aired' : title.mediaType === 'book' ? 'Published' : 'Released'
-              }
-              value={release.fuzzyLabel ?? formatDate(title.releaseDate)}
-            />
-            <Fact label="Runtime" value={runtime} />
-            <Fact label="Seasons" value={seasons} />
-            <Fact label="Network" value={networks} />
-            <Fact
-              label="Next episode"
-              value={
-                next?.air_date
-                  ? `${episodeCode({ season: next.season_number ?? 1, episode: next.episode_number ?? 1 })}, ${formatDate(next.air_date)}`
-                  : undefined
-              }
-            />
-            <Fact label="Status" value={title.mediaType === 'game' || title.mediaType === 'book' ? undefined : statusText} />
-            {title.mediaType === 'game' && <GameFacts d={d} />}
-            {title.mediaType === 'book' && <BookFacts d={d} />}
-          </dl>
-          {(title.mediaType === 'game' || title.mediaType === 'book') && <GameLinks d={d} />}
-
           {!isSample && (
-            <div className="space-y-2">
+            <div>
               <button
                 type="button"
                 onClick={remove}
-                className="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm text-muted hover:border-bad hover:text-bad disabled:opacity-60"
+                className="flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm text-muted hover:border-bad hover:text-bad"
               >
                 <Trash2 className="size-4" />
                 Remove from library

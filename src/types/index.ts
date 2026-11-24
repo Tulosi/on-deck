@@ -72,6 +72,8 @@ export interface UserItem {
   updatedAt?: string
   /** Last real interaction (status / episode change, Plex watch, Steam play): Home's Continue order. */
   lastActivityAt?: string
+  /** Kept out of Home's "Pick it back up?" row until then (ISO), on every device. */
+  snoozedUntil?: string
   /** TV: per-season completion overrides (season number → state); omitted seasons are auto. */
   seasonOverrides?: Record<string, SeasonOverride>
   /** Games only — poster badge: the cheapest current price (formatted) and its % off Steam's full price. */

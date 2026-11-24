@@ -67,8 +67,17 @@ Nothing here has been built.
 
 ---
 
-**Fixed the same day:** #1 (sublines), #4 (search on phones), #5 (targets: type pills, status segments, Sign in
-links, search chips and result rows) and #6 (labels).
+**Fixed the same day:** all nine.
+- #1 (sublines), #4 (search on phones), #5 (targets: type pills, status segments, Sign in links, search chips and
+  result rows) and #6 (labels).
+- #2 (the top-bar Sign in is quiet and the footer note hidden while the card shows), #3 (sample collections, read-only
+  collection pages, a Settings preview) and #7 (the sign-in page stands alone).
+- #8: layout B. The two columns are centred as one block (max 72rem): Tracking, Your take and Cast on the left; About,
+  Where to watch, Price, Collections and Remove on the right, set off by a rule rather than a box. Next up and the
+  season bars are divided sections, not boxes inside Tracking.
+- #9: `snoozed_until` on `user_items`; signed in, Not now saves there and holds on every device.
+
+Still open: the detector's 11px note under a game's Price box.
 
 ## 4. Suggested order
 

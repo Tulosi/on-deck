@@ -104,12 +104,12 @@ export function Home() {
       <PosterRow
         title="Pick it back up?"
         hint="Stalled in the last 3 months"
-        items={stalled.filter((i) => !notNow.hidden(i.id))}
+        items={stalled.filter((i) => !notNow.hidden(i))}
         href={`/library?status=stalled${typeParam}`}
         footer={(item) => (
           <button
             type="button"
-            onClick={() => notNow.snooze(item.id, item.title.title)}
+            onClick={() => notNow.snooze(item)}
             aria-label={`Not now: hide ${item.title.title} from this row for a month`}
             title="Hide from this row for a month"
             className="hit mt-1.5 text-xs text-muted hover:text-fg"

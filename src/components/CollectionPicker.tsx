@@ -60,10 +60,11 @@ export function CollectionPicker({ item }: { item: UserItem }) {
             <form onSubmit={submit} className="flex items-center gap-2">
               <input
                 autoFocus
+                autoComplete="off"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setAdding(false)}
-                placeholder="New collection name"
+                placeholder="New collection name…"
                 maxLength={80}
                 aria-label="New collection name"
                 className="h-8 w-48 rounded-md border border-line bg-bg px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent"

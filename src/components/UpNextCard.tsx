@@ -204,7 +204,7 @@ export function UpNext({ items }: { items: UserItem[] }) {
         ))}
       </ul>
       {many && (
-        <div className="flex justify-center gap-1 @[40rem]/up:hidden">
+        <div className="flex justify-center @[40rem]/up:hidden">
           {items.map((item, i) => (
             <button
               key={item.id}
@@ -212,7 +212,7 @@ export function UpNext({ items }: { items: UserItem[] }) {
               onClick={() => scrollToCard(i)}
               aria-label={`Show ${item.title.title}`}
               aria-current={i === active}
-              className="grid size-6 place-items-center"
+              className="grid h-11 w-8 place-items-center"
             >
               <span className={clsx('block h-1.5 rounded-full transition-[width,background-color] duration-200', i === active ? 'w-4 bg-fg' : 'w-1.5 bg-line')} />
             </button>
@@ -239,7 +239,7 @@ function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
           </div>
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <Link to={`/title/${title.id}`} className="truncate text-base font-semibold text-fg hover:underline">
+          <Link to={`/title/${title.id}`} className="hit truncate text-base font-semibold text-fg hover:underline">
             {title.title}
           </Link>
           {next.value ? (

@@ -109,8 +109,8 @@ export function WeekList({ upcoming, href }: { upcoming: Upcoming[]; href: strin
       <ul>
         {upcoming.map((u) => (
           <li key={u.item.id} className="border-b border-line last:border-b-0">
-            <Link to={`/title/${u.item.title.id}`} className="flex items-baseline gap-3 py-2 hover:text-accent-ink">
-              <span className="w-20 flex-none font-mono text-xs text-muted">{weekDay(u)}</span>
+            <Link to={`/title/${u.item.title.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:text-accent-ink">
+              <span className="w-20 flex-none text-xs text-muted tabular-nums">{weekDay(u)}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-fg">{u.item.title.title}</span>
               <span className={/^S\d/.test(u.label) ? 'font-mono text-xs text-muted' : 'text-xs text-muted'}>{u.label}</span>
             </Link>

@@ -155,7 +155,7 @@ export const PosterCard = memo(function PosterCard({
               vis('score'),
             )}
           >
-            <span className="hidden text-white/55 sm:inline">{title.score.label} </span>
+            <span className="hidden font-sans text-white/55 sm:inline">{title.score.label} </span>
             {title.score.value}
           </span>
         )}

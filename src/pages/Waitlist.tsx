@@ -210,7 +210,7 @@ function CalendarView({
             <button
               type="button"
               onClick={() => go(today.slice(0, 7))}
-              className="mr-1 h-8 rounded-md border border-line px-3 text-xs text-fg hover:border-accent"
+              className="hit mr-1 h-9 rounded-md border border-line px-3 text-xs sm:h-8 text-fg hover:border-accent"
             >
               Today
             </button>
@@ -219,7 +219,7 @@ function CalendarView({
             type="button"
             aria-label="Previous month"
             onClick={() => go(shiftMonth(month, -1))}
-            className="flex size-8 items-center justify-center rounded-md border border-line text-fg hover:border-accent"
+            className="hit flex size-9 items-center justify-center rounded-md border border-line text-fg hover:border-accent sm:size-8"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -227,7 +227,7 @@ function CalendarView({
             type="button"
             aria-label="Next month"
             onClick={() => go(shiftMonth(month, 1))}
-            className="flex size-8 items-center justify-center rounded-md border border-line text-fg hover:border-accent"
+            className="hit flex size-9 items-center justify-center rounded-md border border-line text-fg hover:border-accent sm:size-8"
           >
             <ChevronRight className="size-4" />
           </button>
@@ -258,7 +258,7 @@ function CalendarView({
                 aria-pressed={isSel}
                 className={clsx(
                   'flex min-h-12 flex-col items-stretch gap-1 bg-surface p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 lg:min-h-28',
-                  isSel ? 'bg-raised ring-1 ring-accent ring-inset' : 'hover:bg-raised/60',
+                  isSel ? 'bg-raised ring-1 ring-fg/50 ring-inset' : 'hover:bg-raised/60',
                   iso < today && 'opacity-50',
                 )}
               >
@@ -357,7 +357,7 @@ export function Waitlist() {
           onClick={() => setShowFeed((s) => !s)}
           aria-expanded={showFeed}
           className={clsx(
-            'flex h-9 items-center gap-2 rounded-md border px-4 text-sm',
+            'flex h-11 items-center gap-2 rounded-md border px-4 text-sm sm:h-9',
             showFeed ? 'border-accent text-fg' : 'border-line text-fg hover:border-accent',
           )}
         >

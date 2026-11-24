@@ -14,6 +14,8 @@ import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
 import { plexStateOf } from '../lib/plexSync'
 import { episodeCode } from '../lib/release'
 import { upNext } from '../lib/home'
+import { useKeys } from '../lib/shortcuts'
+import { toast } from '../lib/toast'
 import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
 import { type Progress, type SeasonOverride, type UserItem } from '../types'
 
@@ -27,6 +29,7 @@ function Segmented<T extends string>({
   onChange,
   aside,
   fit,
+  numberKeys,
 }: {
   label: string
   value: T
@@ -36,6 +39,8 @@ function Segmented<T extends string>({
   aside?: ReactNode
   /** Size to the labels instead of stretching across the card (short options like Priority). */
   fit?: boolean
+  /** Options answer the number keys 1, 2, 3… (announced to screen readers; the handler lives with the caller). */
+  numberKeys?: boolean
 }) {
   // Laid out by the space the control actually has (a container query), not the window width: on desktop the
   // card sits in a narrower column. Narrow: 2 per row for 4 options, 3 + 2 for 5 (never a lone option on its
@@ -57,12 +62,14 @@ function Segmented<T extends string>({
         className={clsx('relative grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', fit ? 'w-fit grid-flow-col auto-cols-fr' : [row, cols])}
       >
         <span aria-hidden="true" className="slide-ind rounded-md bg-raised shadow-[inset_0_0_0_1px_var(--color-line)]" />
-        {options.map((o) => (
+        {options.map((o, i) => (
           <button
             key={o.value}
             type="button"
             role="radio"
             aria-checked={value === o.value}
+            aria-keyshortcuts={numberKeys ? String(i + 1) : undefined}
+            title={numberKeys ? `${o.label} (${i + 1})` : undefined}
             onClick={() => onChange(o.value)}
             className={clsx(
               // Labels wrap inside their button (never overrun it) when space is tight.
@@ -81,7 +88,7 @@ function Segmented<T extends string>({
 }
 
 /** Archive: confirm, then hide the title everywhere by default. Archived titles show a notice to bring them back. */
-function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<void> }) {
+function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<unknown> }) {
   const [confirming, setConfirming] = useState(false)
   const panel = useDialog<HTMLDivElement>(confirming, () => setConfirming(false))
   if (item.archivedAt) {
@@ -109,7 +116,7 @@ function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch
       {confirming &&
         createPortal(
           <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="archive-title">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setConfirming(false)} />
+            <div className="absolute inset-0 bg-black/60" onClick={() => setConfirming(false)} aria-hidden="true" />
             <div ref={panel} tabIndex={-1} className="relative w-full max-w-sm space-y-3 rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
               <p id="archive-title" className="text-base font-semibold text-fg">
                 Archive “{item.title.title}”?
@@ -192,7 +199,7 @@ function SeasonOptions({
 }: {
   item: UserItem
   seasons: SeasonMeta[]
-  save: (patch: ItemPatch) => Promise<void>
+  save: (patch: ItemPatch) => Promise<unknown>
 }) {
   const airedIn = airedCounter(item)
   const overridden = Object.keys(item.seasonOverrides ?? {}).length
@@ -456,7 +463,7 @@ function TvProgressSection({
   loading: boolean
   error: unknown
   onRefresh: () => void
-  save: (patch: ItemPatch) => Promise<void>
+  save: (patch: ItemPatch) => Promise<unknown>
 }) {
   const plexFound = !!(watch?.configured && watch.found)
   const syncOn = plexFound && item.plexSync !== false
@@ -564,7 +571,7 @@ function TvProgressSection({
  * TV: the next episode, set large, with the one bold action on the page when it's out and yours to mark
  * (Plex isn't tracking the show). Hidden when there's nothing next (caught up, or no season data).
  */
-function NextUp({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<void> }) {
+function NextUp({ item, mark }: { item: UserItem; mark: (ep: { season: number; episode: number }) => void }) {
   const next = upNext(item)
   if (!next.value || item.progress === 'dropped' || next.note === 'Last watched') return null
   const ep = next.watchable
@@ -580,8 +587,9 @@ function NextUp({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Pr
       {ep && (
         <button
           type="button"
-          // save() reports its own errors beside the Tracking heading.
-          onClick={() => void save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) })}
+          onClick={() => mark(ep)}
+          aria-keyshortcuts="w"
+          title="Mark watched (W)"
           className="mt-3 h-11 w-full rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98] sm:w-auto"
         >
           Mark {episodeCode(ep)} watched
@@ -608,7 +616,7 @@ function MovieProgressSection({
   loading: boolean
   error: unknown
   onRefresh: () => void
-  save: (patch: ItemPatch) => Promise<void>
+  save: (patch: ItemPatch) => Promise<unknown>
 }) {
   if (error) {
     return (
@@ -764,13 +772,16 @@ function useSaver(item: UserItem) {
   const update = useUpdateItem()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
-  async function save(patch: ItemPatch) {
+  /** Resolves true once saved; a failure shows beside the Tracking heading and resolves false. */
+  async function save(patch: ItemPatch): Promise<boolean> {
     setError(null)
     setPending((n) => n + 1)
     try {
       await update(item, patch)
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Couldn’t save that change.')
+      return false
     } finally {
       setPending((n) => n - 1)
     }
@@ -855,6 +866,35 @@ export function StatusControls({ item }: { item: UserItem }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plexWatch.data, item.id, item.progress, item.plexSync])
 
+  // Status change, from a tap or the number keys. TV marked done by hand → up to the latest aired episode (Plex
+  // keeps control while syncing).
+  const setProgress = (progress: Progress) => {
+    const caughtUp =
+      type === 'tv' && (progress === 'completed' || progress === 'caught_up') && !plexSyncActive
+        ? latestAired(item, seasons)
+        : null
+    void save(caughtUp ? { progress, tvProgress: caughtUp } : { progress })
+  }
+  // Next episode watched, from the button or W. Undo puts back the episode (and status) from before.
+  const markNext = (ep: { season: number; episode: number }) => {
+    const before = { tvProgress: item.tvProgress ?? null, progress: item.progress }
+    save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) }).then((ok) =>
+      ok && toast({ message: `Marked ${episodeCode(ep)} watched`, action: { label: 'Undo', onClick: () => void save(before) } }),
+    )
+  }
+  useKeys((key) => {
+    const n = Number(key)
+    if (Number.isInteger(n) && n >= 1 && n <= progressOptions.length) {
+      setProgress(progressOptions[n - 1].value)
+      return true
+    }
+    if (key.toLowerCase() === 'w' && type === 'tv') {
+      const next = upNext(item)
+      if (!next.watchable || item.progress === 'dropped' || next.note === 'Last watched') return
+      markNext(next.watchable)
+      return true
+    }
+  })
   return (
     <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -881,14 +921,8 @@ export function StatusControls({ item }: { item: UserItem }) {
         value={shownProgress}
         options={progressOptions}
         aside={<ArchiveButton item={item} save={save} />}
-        onChange={(progress) => {
-          // TV marked done by hand → up to the latest aired episode (Plex keeps control while syncing).
-          const caughtUp =
-            type === 'tv' && (progress === 'completed' || progress === 'caught_up') && !plexSyncActive
-              ? latestAired(item, seasons)
-              : null
-          void save(caughtUp ? { progress, tvProgress: caughtUp } : { progress })
-        }}
+        numberKeys
+        onChange={setProgress}
       />
       {type === 'game' && item.steamPlaytimeMinutes != null && (
         <p className="-mt-2 text-xs text-muted">
@@ -915,7 +949,7 @@ export function StatusControls({ item }: { item: UserItem }) {
         />
       )}
 
-      {type === 'tv' && <NextUp item={item} save={save} />}
+      {type === 'tv' && <NextUp item={item} mark={markNext} />}
 
       {type === 'tv' && (
         <TvProgressSection

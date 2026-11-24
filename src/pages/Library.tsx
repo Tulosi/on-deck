@@ -222,9 +222,10 @@ export function Library() {
           </p>
           <input
             autoFocus
+            autoComplete="off"
             value={saveName}
             onChange={(e) => setSaveName(e.target.value)}
-            placeholder="Name, e.g. Quick wins"
+            placeholder="Name, e.g. Quick wins…"
             maxLength={80}
             aria-label="Smart collection name"
             className="h-9 min-w-0 flex-1 rounded-md border border-line bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint focus:border-accent"
@@ -305,7 +306,7 @@ export function Library() {
 
       {isSample && (
         <p className="mt-10 text-center text-xs text-faint">
-          Sample data. <Link to="/login" className="text-accent-ink hover:underline">Sign in</Link> to filter your own library.
+          Sample data. <Link to="/login" className="hit text-accent-ink hover:underline">Sign in</Link> to filter your own library.
         </p>
       )}
     </div>

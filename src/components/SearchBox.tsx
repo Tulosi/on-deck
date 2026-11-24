@@ -103,7 +103,7 @@ export function SearchBox() {
 
   return (
     <div ref={wrapper} className="relative max-w-md flex-1">
-      <label className="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
+      <label className="flex h-11 items-center gap-2 rounded-md sm:h-9 border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
         {s.fetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
         <input
           ref={input}

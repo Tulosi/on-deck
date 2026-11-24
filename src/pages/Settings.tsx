@@ -23,6 +23,7 @@ import { useNavLayout } from '../lib/navLayout'
 import { useTheme, type Theme } from '../lib/theme'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 import { usePush } from '../lib/push'
+import { undoable } from '../lib/toast'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
 // Regions offered for streaming availability (and, later, game prices).
@@ -171,6 +172,9 @@ function StreamingSection() {
         <div className="space-y-3">
           <input
             type="search"
+            name="service-search"
+            autoComplete="off"
+            aria-label="Search streaming services"
             placeholder={`Search ${services.length} services in ${country ? regionName(country) : 'your region'}…`}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -504,6 +508,9 @@ function PlexSection() {
             <input
               type="url"
               inputMode="url"
+              name="seerr-url"
+              autoComplete="off"
+              aria-label="Seerr address"
               placeholder="https://requests.example.com"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -614,7 +621,16 @@ type AlertSettings = { price_low?: boolean; deep_discount?: boolean; deep_discou
 function PushControls() {
   const push = usePush()
   const [tested, setTested] = useState<string | null>(null)
-  const others = push.devices.filter((d) => d.endpoint !== push.endpoint)
+  // Removed devices hide at once; the delete waits for the Undo window to pass.
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const others = push.devices.filter((d) => d.endpoint !== push.endpoint && !hidden.has(d.id))
+  const toggleHidden = (id: string, on: boolean) =>
+    setHidden((h) => {
+      const next = new Set(h)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
   return (
     <div className="space-y-3 border-t border-line pt-4">
       <p className="text-xs font-medium text-muted">Push notifications</p>
@@ -667,7 +683,18 @@ function PushControls() {
                       : 'Location shows the next time this device opens On Deck.'}
                   </p>
                 </div>
-                <button type="button" onClick={() => void push.removeDevice(d.id)} className="text-xs text-muted hover:text-bad">
+                <button
+                  type="button"
+                  onClick={() =>
+                    undoable({
+                      message: `Removed ${(d.device ?? 'device').replace(' · ', ', ')}`,
+                      hide: () => toggleHidden(d.id, true),
+                      commit: () => push.removeDevice(d.id),
+                      restore: () => toggleHidden(d.id, false),
+                    })
+                  }
+                  className="hit text-xs text-muted hover:text-bad"
+                >
                   Remove
                 </button>
               </li>

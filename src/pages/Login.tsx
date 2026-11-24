@@ -9,7 +9,7 @@ import { requestPasswordReset, supabase } from '../lib/supabase'
 type Mode = 'sign-in' | 'sign-up' | 'forgot'
 
 const inputClass =
-  'h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint focus:border-accent'
+  'h-11 w-full rounded-md border border-line bg-bg px-3 text-sm sm:h-10 text-fg outline-none placeholder:text-faint focus:border-accent'
 
 export function Login() {
   const { user, loading } = useAuth()
@@ -82,7 +82,7 @@ export function Login() {
                   type="button"
                   onClick={() => switchMode(m)}
                   className={clsx(
-                    'flex-1 rounded-md py-1.5 text-sm transition-colors',
+                    'flex-1 rounded-md py-3 text-sm transition-colors sm:py-1.5',
                     mode === m ? 'bg-raised text-fg' : 'text-muted hover:text-fg',
                   )}
                 >
@@ -112,7 +112,7 @@ export function Login() {
                     <button
                       type="button"
                       onClick={() => switchMode('forgot')}
-                      className="text-xs text-accent-ink hover:underline"
+                      className="hit text-xs text-accent-ink hover:underline"
                     >
                       Forgot password?
                     </button>
@@ -137,7 +137,7 @@ export function Login() {
             <button
               type="submit"
               disabled={busy}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent sm:h-10 text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60"
             >
               {busy && <Loader2 className="size-4 animate-spin" />}
               {mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Send reset link'}
@@ -145,7 +145,7 @@ export function Login() {
           </form>
 
           {mode === 'forgot' && (
-            <button type="button" onClick={() => switchMode('sign-in')} className="text-sm text-muted hover:text-fg">
+            <button type="button" onClick={() => switchMode('sign-in')} className="hit text-sm text-muted hover:text-fg">
               ← Back to sign in
             </button>
           )}

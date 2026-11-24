@@ -234,7 +234,7 @@ export function ImportPage() {
               <input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filter by title"
+                placeholder="Filter by title…"
                 aria-label="Filter by title"
                 className="w-full bg-transparent text-fg outline-none placeholder:text-faint"
               />

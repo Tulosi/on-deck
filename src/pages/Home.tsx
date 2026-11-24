@@ -92,7 +92,7 @@ export function Home() {
         items={fresh.entries.map((e) => e.item)}
         subline={(item) => freshById.get(item.id)?.label}
         action={
-          <button type="button" onClick={fresh.clear} className="text-xs text-muted hover:text-fg">
+          <button type="button" onClick={fresh.clear} className="hit text-xs text-muted hover:text-fg">
             Clear
           </button>
         }
@@ -117,6 +117,15 @@ export function Home() {
         items={onDeal}
         href="/collections/default-deals"
       />
+      {isSample && (
+        <p className="text-center text-xs text-faint">
+          This is sample data.{' '}
+          <Link to="/login" className="hit text-accent-ink hover:underline">
+            Sign in
+          </Link>{' '}
+          to build your own library.
+        </p>
+      )}
     </div>
   )
 }

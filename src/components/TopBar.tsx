@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { LogIn, LogOut, Settings } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
@@ -10,7 +10,8 @@ import { SearchBox } from './SearchBox'
 const iconButton = 'hit grid size-9 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg'
 
 export function TopBar() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  const { pathname } = useLocation()
   const queryClient = useQueryClient()
 
   async function signOut() {
@@ -45,14 +46,21 @@ export function TopBar() {
             </button>
           </>
         ) : (
-          <Link
-            to="/login"
-            className="hit ml-1 flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-95"
-            aria-label="Sign in"
-          >
-            <LogIn className="size-4" />
-            <span className="hidden sm:inline">Sign in</span>
-          </Link>
+          // Signed out: the sample-data note lives here instead of in a banner under the bar (it took a row of
+          // its own on every page). Not on the Sign in page itself.
+          !loading &&
+          pathname !== '/login' && (
+            <>
+              <span className="mr-1 hidden text-xs text-muted sm:inline">Viewing sample data</span>
+              <Link
+                to="/login"
+                className="hit flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95"
+              >
+                <LogIn className="size-4" />
+                Sign in
+              </Link>
+            </>
+          )
         )}
       </div>
     </header>

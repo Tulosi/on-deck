@@ -226,7 +226,8 @@ export function usePush() {
   }
 
   const removeDevice = async (id: string) => {
-    await supabase!.from('push_subscriptions').delete().eq('id', id)
+    const { error: delError } = await supabase!.from('push_subscriptions').delete().eq('id', id)
+    if (delError) throw delError
     await load()
   }
 

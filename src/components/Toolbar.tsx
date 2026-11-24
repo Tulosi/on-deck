@@ -59,7 +59,7 @@ function LabelsButton() {
 
 // ─── Type pills (Layer 1) ──────────────────────────────────────────────────
 
-const selectClass = 'h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
+const selectClass = 'h-10 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 
 // ─── Filters panel ─────────────────────────────────────────────────────────
 //
@@ -320,11 +320,11 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
             <p className="text-sm font-semibold text-fg">Filters</p>
             <div className="flex items-center gap-3">
               {count > 0 && (
-                <button type="button" onClick={() => set(clearFilters(f))} className="text-xs text-muted hover:text-fg">
+                <button type="button" onClick={() => set(clearFilters(f))} className="hit text-xs text-muted hover:text-fg">
                   Clear all
                 </button>
               )}
-              <button type="button" aria-label="Close filters" onClick={() => setOpen(false)} className="text-muted hover:text-fg">
+              <button type="button" aria-label="Close filters" onClick={() => setOpen(false)} className="hit text-muted hover:text-fg">
                 <X className="size-4" />
               </button>
             </div>
@@ -394,7 +394,7 @@ export function Toolbar() {
   }
 
   return (
-    <div className="sticky top-14 z-10 flex h-11 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur md:px-6">
+    <div className="sticky top-14 z-10 flex h-12 items-center gap-3 border-b sm:h-11 border-line bg-bg/85 px-4 backdrop-blur md:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {/* Library: the sidebar sets the type on desktop, so the toolbar only offers it on phones. */}
         <TypeFilter value={f.type} onChange={setType} navOwned={isLibrary} />

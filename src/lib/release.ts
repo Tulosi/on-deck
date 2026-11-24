@@ -60,9 +60,9 @@ export function releaseChip(info: ReleaseInfo): string {
   return sameYear ? monthDay(info.date) : `${monthDay(info.date)} '${info.date.slice(2, 4)}`
 }
 
-/** Long title-page label: "Dec 18, 2026 · in 28 days", or "Release date TBA". */
+/** Long title-page label: "Dec 18, 2026, in 28 days", or "Release date TBA". */
 export function releaseLong(info: ReleaseInfo): string {
-  if (info.fuzzyLabel) return `${info.fuzzyLabel} · exact date not announced`
+  if (info.fuzzyLabel) return `${info.fuzzyLabel}, exact date not announced`
   if (!info.date || info.daysUntil == null) return 'Release date TBA'
   const full = new Date(`${info.date}T00:00:00`).toLocaleDateString(undefined, {
     month: 'short',

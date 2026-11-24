@@ -58,9 +58,10 @@ function CollectionForm({
     <form onSubmit={submit} className="space-y-3 rounded-lg border border-line bg-surface p-4">
       <input
         autoFocus
+        autoComplete="off"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Name, e.g. Co-op with Sam"
+        placeholder="Name, e.g. Co-op with Sam…"
         maxLength={80}
         aria-label="Collection name"
         className={input}
@@ -68,7 +69,7 @@ function CollectionForm({
       <input
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Description (optional)"
+        placeholder="Description (optional)…"
         maxLength={200}
         aria-label="Description"
         className={input}

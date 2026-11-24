@@ -77,7 +77,7 @@ function MoreSheet({ keys, onClose }: { keys: NavKey[]; onClose: () => void }) {
 
   return createPortal(
     <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="More">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div ref={panel} tabIndex={-1} className="sheet-in absolute inset-x-0 bottom-0 max-h-[75dvh] outline-none overflow-y-auto overscroll-contain rounded-t-2xl border-t border-line bg-surface pb-[calc(env(safe-area-inset-bottom)+4rem)]">
         {/* Drag the header down to close (a quick flick is enough). */}
         <div {...drag} className="sticky top-0 touch-none border-b border-line bg-surface px-4 pt-2 pb-3 select-none">

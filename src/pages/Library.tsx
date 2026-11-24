@@ -306,7 +306,7 @@ export function Library() {
 
       {isSample && (
         <p className="mt-10 text-center text-xs text-faint">
-          Sample data. <Link to="/login" className="hit text-accent-ink hover:underline">Sign in</Link> to filter your own library.
+          A sample library to try out. <Link to="/login" className="hit text-accent-ink hover:underline">Sign in</Link> to keep your own.
         </p>
       )}
     </div>

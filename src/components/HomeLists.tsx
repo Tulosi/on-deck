@@ -9,7 +9,6 @@ import type { MediaType, UserItem } from '../types'
 import { continueStat, episodeCode, nextWatchable, weekDay, type Upcoming } from '../lib/home'
 import { coverProps } from '../lib/images'
 import { useUpdateItem } from '../lib/library'
-import { useAuth } from '../lib/auth'
 import { markWatched } from '../lib/markWatched'
 
 const KIND: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
@@ -50,11 +49,10 @@ export function ContinueList({ items, total, href }: { items: UserItem[]; total:
 }
 
 function ContinueRow({ item, leaving }: { item: UserItem; leaving: boolean }) {
-  const { user } = useAuth()
   const update = useUpdateItem()
   const { title } = item
   const stat = continueStat(item)
-  const ep = user ? nextWatchable(item) : null
+  const ep = nextWatchable(item)
   const mark = () => {
     if (ep) markWatched(update, item, ep)
   }

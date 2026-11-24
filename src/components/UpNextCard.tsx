@@ -340,11 +340,11 @@ function Actions({
   open?: { label: string; href: string }
   launch?: { label: string; href: string }
 }) {
-  const { user } = useAuth()
   const primary = lead ? lemon : quietMain
   const update = useUpdateItem()
   const { title } = item
-  const ep = user ? upNext(item).watchable : null
+  // Signed out, this marks the sample (the sandbox), so it works there too.
+  const ep = upNext(item).watchable
   const openLink = (cls: string) =>
     open && (
       <a href={open.href} target={open.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className={cls}>

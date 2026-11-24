@@ -297,3 +297,62 @@ export function SearchResultsBody({
     </>
   )
 }
+
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+const TYPE_ICON = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen } as const
+
+/**
+ * Signed out: search looks through the sample library (and whatever you've changed in it), so it can be tried
+ * without an account. Every word you type has to start a word of the title ("sev", "gate bald").
+ */
+export function SampleSearch({ text, type, onOpen }: { text: string; type: SearchType; onOpen?: () => void }) {
+  const { allItems } = useItems()
+  const words = fold(text).split(/\s+/).filter(Boolean)
+  const hits =
+    words.length === 0
+      ? []
+      : allItems.filter((i) => {
+          if (type !== 'all' && i.title.mediaType !== type) return false
+          const titleWords = fold(i.title.title).split(/[^a-z0-9]+/)
+          return words.every((w) => titleWords.some((t) => t.startsWith(w)))
+        })
+  return (
+    <div>
+      {words.length === 0 ? (
+        <p className="px-4 py-5 text-sm text-faint">Type a title from the sample library, like “sev” or “hades”.</p>
+      ) : hits.length === 0 ? (
+        <p className="px-4 py-5 text-sm text-muted">Nothing in the sample library matches “{text.trim()}”.</p>
+      ) : (
+        <ul>
+          {hits.map((i) => {
+            const Icon = TYPE_ICON[i.title.mediaType]
+            return (
+              <li key={i.id}>
+                <Link
+                  to={`/title/${i.title.id}`}
+                  onClick={onOpen}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-raised"
+                >
+                  <Icon className="size-4 shrink-0 text-faint" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-fg">{i.title.title}</span>
+                  {i.title.year != null && <span className="font-mono text-xs text-muted">{i.title.year}</span>}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <p className="border-t border-line px-4 py-3 text-xs text-muted">
+        Searching the sample library.{' '}
+        <Link to="/login" onClick={onOpen} className="hit text-accent-ink hover:underline">
+          Sign in
+        </Link>{' '}
+        to search every movie, show, game and book.
+      </p>
+    </div>
+  )
+}

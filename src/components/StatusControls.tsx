@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { Archive, ArchiveRestore, Check, ChevronRight, Library, Loader2, RefreshCw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { friendlyError, useAvailability, usePlexWatch, type PlexWatch } from '../lib/integrations'
 import { useUpdateItem, type ItemPatch } from '../lib/library'
+import { useAuth } from '../lib/auth'
 import { statusesFor, statusLabel } from '../lib/statusLabels'
 import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
 import { plexStateOf } from '../lib/plexSync'
@@ -74,7 +75,7 @@ function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={clsx(
               // Labels wrap inside their button (never overrun it) when space is tight.
-              'relative rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors',
+              'relative min-h-10 rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors sm:min-h-0',
               value === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
             )}
           >
@@ -97,7 +98,7 @@ function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch
       <button
         type="button"
         onClick={() => void save({ archived: false })}
-        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-accent/60 bg-accent/10 px-3 text-sm text-fg hover:border-accent @[30rem]/status:h-auto @[30rem]/status:self-stretch"
+        className="flex h-11 items-center gap-1.5 self-start rounded-lg border sm:h-9 border-accent/60 bg-accent/10 px-3 text-sm text-fg hover:border-accent @[30rem]/status:h-auto @[30rem]/status:self-stretch"
         title="Take this title out of the archive"
       >
         <ArchiveRestore className="size-4" /> Unarchive
@@ -109,7 +110,7 @@ function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="flex h-9 items-center gap-1.5 self-start rounded-lg border border-line px-3 text-sm text-muted hover:border-faint hover:text-fg @[30rem]/status:h-auto @[30rem]/status:self-stretch"
+        className="flex h-11 items-center gap-1.5 self-start rounded-lg border sm:h-9 border-line px-3 text-sm text-muted hover:border-faint hover:text-fg @[30rem]/status:h-auto @[30rem]/status:self-stretch"
         title="Archive this title"
       >
         <Archive className="size-4" /> Archive
@@ -172,7 +173,7 @@ function Toggle({
       aria-pressed={on}
       onClick={onClick}
       className={clsx(
-        'flex h-9 items-center gap-2 rounded-md border px-3.5 text-sm whitespace-nowrap transition-colors',
+        'flex h-11 items-center gap-2 rounded-md border px-3.5 text-sm whitespace-nowrap transition-colors sm:h-9',
         on ? activeClass : 'border-line text-muted hover:border-faint hover:text-fg',
       )}
     >
@@ -220,7 +221,7 @@ function SeasonOptions({
 
   return (
     <details className="group rounded-lg border border-line bg-bg">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs text-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs sm:min-h-0 text-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-1.5">
           <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
           Per-season tracking
@@ -255,7 +256,7 @@ function SeasonOptions({
                     aria-checked={value === c.value}
                     onClick={() => set(s.season_number, c.value)}
                     className={clsx(
-                      'rounded px-2 py-1 text-xs whitespace-nowrap transition-colors',
+                      'hit rounded px-2 py-1 text-xs whitespace-nowrap transition-colors',
                       value === c.value ? 'bg-raised font-medium text-fg' : 'text-muted hover:text-fg',
                     )}
                   >
@@ -369,7 +370,7 @@ function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: 
 }
 
 const selectClass =
-  'h-9 rounded-lg border border-line bg-bg px-2.5 text-sm text-fg outline-none focus:border-accent'
+  'h-11 rounded-lg border border-line bg-bg px-2.5 text-sm text-fg outline-none focus:border-accent sm:h-9'
 
 /**
  * Season + episode dropdowns, limited to the show's actual seasons and episode counts. `value` null = not
@@ -554,7 +555,7 @@ function TvProgressSection({
               }
             />
             {item.tvProgress && (
-              <button type="button" onClick={() => save({ tvProgress: null })} className="text-xs text-muted hover:text-fg">
+              <button type="button" onClick={() => save({ tvProgress: null })} className="hit text-xs text-muted hover:text-fg">
                 Clear
               </button>
             )}
@@ -688,7 +689,14 @@ function MovieProgressSection({
 
 /** Top-right of the card for movies/TV: can the user watch it through any of their sources? */
 function AvailabilityBadge({ item }: { item: UserItem }) {
-  const availability = useAvailability(item.title)
+  const { user } = useAuth()
+  const live = useAvailability(item.title)
+  // Sample titles (signed out) carry their own Plex state; there are no sources to check.
+  const availability: typeof live = user
+    ? live
+    : item.plex === 'available'
+      ? { state: 'available', via: ['Plex'] }
+      : { state: 'unavailable' }
   const base = 'flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs whitespace-nowrap'
   switch (availability.state) {
     case 'loading':

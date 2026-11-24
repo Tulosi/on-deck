@@ -114,11 +114,11 @@ export function Home() {
       />
       {isSample && (
         <p className="text-center text-xs text-faint">
-          This is sample data.{' '}
+          A sample library to try out: mark episodes, change statuses, search it. Changes last until you reload.{' '}
           <Link to="/login" className="hit text-accent-ink hover:underline">
             Sign in
           </Link>{' '}
-          to build your own library.
+          to keep your own.
         </p>
       )}
     </div>

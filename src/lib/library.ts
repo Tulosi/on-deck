@@ -169,7 +169,8 @@ export const libraryKey = (userId: string | undefined) => ['library', userId]
 
 /**
  * The items to show. Signed in → the user's real list from Supabase.
- * Signed out → sample data (isSample: true) so the UI can still be explored.
+ * Signed out → sample data (isSample: true), kept in the same cache under the signed-out key, so the app's own
+ * controls can change it: a sandbox that lives in this tab until a reload or sign-in.
  */
 interface AvailabilityRow {
   title_id: string
@@ -220,8 +221,12 @@ export function useItems() {
   const { user, loading: authLoading } = useAuth()
   const query = useQuery({
     queryKey: libraryKey(user?.id),
-    enabled: !!user && !!supabase,
+    enabled: !authLoading && (!user || !!supabase),
+    // The sample never goes stale on its own (a refetch would throw away what you changed).
+    staleTime: user ? undefined : Infinity,
+    gcTime: user ? undefined : Infinity,
     queryFn: async () => {
+      if (!user) return sampleItems.map((i) => ({ ...i, title: { ...i.title } }))
       // Four reads, run side by side: the library, stored availability (movies/TV, written by the
       // `availability` function), and game prices for the user's region (shared cache from `prices`).
       const itemsReq = supabase!
@@ -254,7 +259,7 @@ export function useItems() {
     },
   })
 
-  const all = user ? query.data : authLoading ? EMPTY : sampleItems
+  const all = authLoading ? EMPTY : (query.data ?? (user ? undefined : sampleItems))
   // Archived titles are hidden everywhere by default; `allItems` is for the few places that need them
   // (the title page, search's "already added", the Library's Archived filter, collections).
   // Memoised so pages can memoise their own filtering on a stable list.
@@ -570,6 +575,9 @@ export function useUpdateItem() {
           : i,
       ),
     )
+
+    // Signed out: the sample sandbox. The change above is the whole save.
+    if (!user) return
 
     const { error } = await supabase!.from('user_items').update(row).eq('id', item.id)
     if (error) {

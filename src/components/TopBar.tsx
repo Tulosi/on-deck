@@ -51,7 +51,7 @@ export function TopBar() {
           !loading &&
           pathname !== '/login' && (
             <>
-              <span className="mr-1 hidden text-xs text-muted sm:inline">Viewing sample data</span>
+              <span className="mr-1 hidden text-xs text-muted sm:inline">Trying the sample library</span>
               <Link
                 to="/login"
                 className="hit flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95"

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2, Maximize2, Search, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { resultKey, type SearchResult } from '../lib/library'
 import { useDebounced, useSearch, type SearchType } from '../lib/search'
-import { isSearchType, Preview, ResultRow, SEARCH_TYPES, saveType, savedType, SearchResultsBody, useAdder } from './SearchResults'
+import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, savedType, SearchResultsBody, useAdder } from './SearchResults'
 
 /** Full search page URL for a query and type. */
 export const fullSearchHref = (q: string, type: SearchType) =>
@@ -183,12 +183,7 @@ export function SearchBox() {
           </div>
 
           {!user ? (
-            <p className="px-4 py-5 text-sm text-muted">
-              <Link to="/login" onClick={() => setOpen(false)} className="text-accent-ink hover:underline">
-                Sign in
-              </Link>{' '}
-              to search and add titles.
-            </p>
+            <SampleSearch text={text} type={type} onOpen={close} />
           ) : preview ? (
             <Preview
               result={preview}
@@ -208,6 +203,7 @@ export function SearchBox() {
             <SearchResultsBody s={s} row={row} onSuggest={(t) => setText(t)} />
           )}
 
+          {user && (
           <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-surface px-4 py-2">
             <p className="text-xs text-faint">
               {type === 'game'
@@ -224,6 +220,7 @@ export function SearchBox() {
               </button>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

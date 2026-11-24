@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useDialog } from '../lib/useDialog'
 import { createPortal } from 'react-dom'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2, Search as SearchIcon, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
-import { isSearchType, Preview, ResultRow, SEARCH_TYPES, saveType, savedType, SearchResultsBody, useAdder } from '../components/SearchResults'
+import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, savedType, SearchResultsBody, useAdder } from '../components/SearchResults'
 import { useAuth } from '../lib/auth'
 import { resultKey, type SearchResult } from '../lib/library'
 import { useDebounced, useSearch, type SearchType } from '../lib/search'
@@ -58,20 +58,6 @@ export function SearchPage() {
   )
   const current = SEARCH_TYPES.find((t) => t.value === type)!
 
-  if (!loading && !user) {
-    return (
-      <div>
-        <PageHeader title="Search" />
-        <p className="py-16 text-center text-sm text-muted">
-          <Link to="/login" className="text-accent-ink hover:underline">
-            Sign in
-          </Link>{' '}
-          to search and add titles.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Search" meta={s.ready && !s.fetching ? `${s.total} result${s.total === 1 ? '' : 's'}` : undefined} />
@@ -120,7 +106,9 @@ export function SearchPage() {
       </div>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-line bg-surface">
-        {s.text.length < 2 ? (
+        {!loading && !user ? (
+          <SampleSearch text={text} type={type} />
+        ) : s.text.length < 2 ? (
           <p className="px-4 py-6 text-sm text-faint">
             Type a title. Typos are OK, since close spellings are suggested. Add a year (“dresden files 2026”) to see
             that year first.

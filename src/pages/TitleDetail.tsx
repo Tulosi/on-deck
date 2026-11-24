@@ -252,17 +252,16 @@ function CastRow({ d }: { d: Record<string, unknown> }) {
 }
 
 /** Sample mode: where Tracking would be, say how to get it instead of leaving a gap. */
-function SignInToTrack() {
+/** Signed out: the controls below work on the sample, and this says where those changes go. */
+function SampleNote() {
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-line px-4 py-3 sm:px-5">
-      <p className="text-sm text-muted">Track your status, progress and ratings for this title.</p>
-      <Link
-        to="/login"
-        className="hit rounded-md bg-accent px-3 py-2 text-sm font-semibold text-accent-fg hover:brightness-105"
-      >
-        Sign in to track
-      </Link>
-    </section>
+    <p className="rounded-lg border border-dashed border-line px-4 py-3 text-sm text-muted">
+      This is a sample title, so try anything. Changes last until you reload.{' '}
+      <Link to="/login" className="hit text-accent-ink hover:underline">
+        Sign in
+      </Link>{' '}
+      to keep a library of your own.
+    </p>
   )
 }
 
@@ -383,11 +382,12 @@ export function TitleDetail() {
         <div className="min-w-0 space-y-5">
           {/* The main action first: status and progress sit right under the title, above the overview. */}
           {title.mediaType === 'game' && title.steamAppId && <SteamButtons appId={title.steamAppId} />}
-          {isSample ? <SignInToTrack /> : <StatusControls item={item} />}
+          {isSample && <SampleNote />}
+          <StatusControls item={item} />
           <CastRow d={d} />
-          {!isSample && <TrackingDetails item={item} />}
+          <TrackingDetails item={item} />
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
-          {!isSample && title.mediaType === 'game' && <GamePrices item={item} />}
+          {title.mediaType === 'game' && (!isSample || item.gamePrice) && <GamePrices item={item} />}
           {!isSample && <CollectionPicker item={item} />}
         </div>
 

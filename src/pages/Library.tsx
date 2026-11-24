@@ -152,7 +152,7 @@ export function Library() {
   const card = (item: (typeof results)[number]) => (
     <SelectableCard selecting={selecting} selected={picked.has(item.id)} onToggle={() => togglePick(item.id)} label={item.title.title}>
       {/* Big libraries: the browser skips laying out and painting cards that are off screen. */}
-      <PosterCard item={item} className={results.length > REORDER_MAX ? 'cv-auto' : undefined} />
+      <PosterCard item={item} className={results.length > REORDER_MAX ? 'cv-auto' : undefined} showDeal={f.deal.length > 0} />
     </SelectableCard>
   )
 

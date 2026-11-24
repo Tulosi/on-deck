@@ -76,6 +76,7 @@ export const PosterCard = memo(function PosterCard({
   chipMode,
   subline,
   morphKey,
+  showDeal,
 }: {
   item: UserItem
   className?: string
@@ -85,15 +86,18 @@ export const PosterCard = memo(function PosterCard({
   subline?: string
   /** Makes the morph name unique when the same title shows twice on one page (Home rows). */
   morphKey?: string
+  /** A deals view (On sale / Historical low filter): show the price chip even on games you own. */
+  showDeal?: boolean
 }) {
   const { title } = item
   const savedMode = useChipMode()
   const chipClass = chipVisibility(chipMode ?? savedMode)
   /** Visibility classes for chips, or null when chips are hidden. One global setting for all chip types. */
   const vis = (_key: string) => chipClass
-  // Games you don't own: cheapest price, or Free-To-Play. (An unreleased game shows its release chip instead.)
+  // Games you don't own (or any game, in a deals view): cheapest price, or Free-To-Play. (An unreleased game
+  // shows its release chip instead.)
   const isFree = title.mediaType === 'game' && !!item.gamePrice?.isFree
-  const showPrice = title.mediaType === 'game' && !item.owned && (item.price || isFree)
+  const showPrice = title.mediaType === 'game' && (!item.owned || showDeal) && (item.price || isFree)
   const showPlex = (title.mediaType === 'movie' || title.mediaType === 'tv') && item.plex
   const release = releaseInfo(title)
   const schedule = release.preRelease ? null : tvSchedule(title)

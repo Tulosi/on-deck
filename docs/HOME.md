@@ -28,8 +28,8 @@ Continue lists the rest. Each card: poster, title, the next step set large in mo
 (`S02E05`, or hours played for a game), a short note ("Out now", "Out Tue, Nov 25", "Caught up"), and a bar for
 this season's episodes or hours against time to beat. Its one accent button is **Mark S02E05 watched** when that
 one-tap save is offered (signed in, episode out, Plex not tracking the show); otherwise **Open in Plex** when the
-title is on your Plex (link from Seerr), or **Open in Steam** for a Steam game (with a mouse: the game in your Steam
-library via `steam://nav/games/details/<appid>`; on touch screens: its store page), else **Open show**. A facts row sits above the buttons: Watch on, Network
+title is on your Plex (link from Seerr), or for a Steam game **Open store page** (the Steam store listing, in the browser) with quieter
+**Launch** (`steam://rungameid/<appid>`, computers only) and **Details** beside it. Else **Open show**. A facts row sits above the buttons: Watch on, Network
 and Latest episode for shows, Watch on and Runtime for movies (each shown only when known). Continue
 below lists the rest as compact rows (up to 5, with the next episode or hours on the right and a check button
 for the one-tap save), and **Next 7 days** is a dated list beside it on wide screens ("Tomorrow  Show  S02E06").
@@ -99,6 +99,10 @@ Your top **High-priority Wanted** titles that you can **actually start right now
 
 ### 5. Deals (games, later)
 Wanted, unowned games at a **historical low** or **≥ 50 % off**, cheapest first. Uses the game pricing rules.
+The heading opens the **Deals** smart collection (`/collections/default-deals`). In any deals view (Library with an
+On sale / Historical low filter, or a smart collection with a deal rule) every poster shows its price and discount
+chip, owned games included; elsewhere only games you don't own do. Game title pages put **Open store page** and
+(on computers) **Launch** above the tracking controls.
 
 ### 6. Pinned views (optional, later)
 Saved views (from the Library) can be pinned to Home as extra rows, below the built-in ones.

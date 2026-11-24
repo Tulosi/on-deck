@@ -265,6 +265,8 @@ export function CollectionDetail() {
   const byId = new Map(items.map((i) => [i.id, i]))
   const list = itemsOf(c, byId, items, showArchived, dealPct)
   const smart = c.rules != null
+  // A deals collection shows the price chip on every poster, owned games included.
+  const dealView = smart && parseFilters(new URLSearchParams(c.rules!)).deal.length > 0
   const builtin = !!c.builtin
   const archivedHere = smart ? 0 : c.itemIds.filter((id) => byId.get(id)?.archivedAt).length
 
@@ -375,7 +377,7 @@ export function CollectionDetail() {
         <div className={grid}>
           {list.map((item, index) => (
             <div key={item.id} className="relative">
-              <PosterCard item={item} />
+              <PosterCard item={item} showDeal={dealView} />
               {arranging && (
                 <div className="absolute inset-x-1 top-1 flex justify-between gap-1">
                   <div className="flex gap-1">

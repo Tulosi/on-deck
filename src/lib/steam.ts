@@ -72,3 +72,21 @@ export function useSteamOwnershipCheck() {
       .catch(() => undefined)
   }, [user, queryClient])
 }
+
+// ── Links into Steam for a game's app id (Home's Up next card, the title page). ──
+export interface SteamLink {
+  label: string
+  href: string
+}
+
+/** The game's Steam store listing, in the browser. */
+export const steamStore = (appId: number): SteamLink => ({ label: 'Open store page', href: `https://store.steampowered.com/app/${appId}` })
+
+/**
+ * Starts the game in the Steam desktop app. Offered only with a mouse (a computer, where Steam is usually
+ * installed): phones and tablets can't run it.
+ */
+export function steamLaunch(appId: number): SteamLink | undefined {
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return undefined
+  return { label: 'Launch', href: `steam://rungameid/${appId}` }
+}

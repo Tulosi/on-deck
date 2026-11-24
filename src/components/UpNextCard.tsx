@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
+import { steamLaunch, steamStore } from '../lib/steam'
 import { RollingText } from './RollingText'
 import type { UserItem } from '../types'
 import { episodeCode, upNext } from '../lib/home'
@@ -167,7 +168,7 @@ function UpNextCard({ item }: { item: UserItem }) {
       {user && (item.title.mediaType === 'tv' || item.title.mediaType === 'movie') && item.plex === 'available' ? (
         <ActionsWithPlex item={item} />
       ) : item.title.mediaType === 'game' && item.title.steamAppId ? (
-        <Actions item={item} open={steamLink(item.title.steamAppId)} />
+        <Actions item={item} open={steamStore(item.title.steamAppId)} launch={steamLaunch(item.title.steamAppId)} />
       ) : (
         <Actions item={item} />
       )}
@@ -216,23 +217,15 @@ function ActionsWithPlex({ item }: { item: UserItem }) {
   return <Actions item={item} open={plexUrl ? { label: 'Open in Plex', href: plexUrl } : undefined} />
 }
 
-/**
- * A Steam game's page. With a mouse (a computer, where the Steam app is usually installed) it opens the game in
- * your Steam library, with its Play button; on touch screens, the store page in the browser or the Steam app.
- */
-function steamLink(appId: number) {
-  const desktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches
-  return { label: 'Open in Steam', href: desktop ? `steam://nav/games/details/${appId}` : `https://store.steampowered.com/app/${appId}` }
-}
-
 const primary = 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
 const secondary = 'grid h-11 place-items-center rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
 
 /**
- * One bold action: Mark watched when that's yours to do, else open it where you play or watch it (Plex,
- * Steam), else open the title. A quieter second button covers the next most likely step.
+ * One bold action: Mark watched when that's yours to do, else open it where you watch or buy it (Plex, the
+ * Steam store page), else open the title. Quieter buttons cover the next most likely steps: Details, and for a
+ * Steam game on a computer, Launch (starts it in the Steam app).
  */
-function Actions({ item, open }: { item: UserItem; open?: { label: string; href: string } }) {
+function Actions({ item, open, launch }: { item: UserItem; open?: { label: string; href: string }; launch?: { label: string; href: string } }) {
   const { user } = useAuth()
   const update = useUpdateItem()
   const { title } = item
@@ -266,6 +259,11 @@ function Actions({ item, open }: { item: UserItem; open?: { label: string; href:
       ) : open ? (
         <>
           {openLink(primary)}
+          {launch && (
+            <a href={launch.href} title="Start the game in the Steam app" className={secondary}>
+              {launch.label}
+            </a>
+          )}
           {details(secondary, 'Details')}
         </>
       ) : (

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, ViewTransition } from 'react'
 import { backdropProps, coverProps } from '../lib/images'
 import { posterMorphName } from '../components/PosterCard'
+import { SteamButtons } from '../components/SteamButtons'
 import clsx from 'clsx'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, ExternalLink, Radio, BookOpen, Film, Gamepad2, Loader2, Trash2, Tv } from 'lucide-react'
@@ -386,6 +387,7 @@ export function TitleDetail() {
       <div className="mt-6 grid max-w-5xl gap-6 px-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_14rem]">
         <div className="min-w-0 space-y-5">
           {/* The main action first: status and progress sit right under the title, above the overview. */}
+          {title.mediaType === 'game' && title.steamAppId && <SteamButtons appId={title.steamAppId} />}
           {isSample ? <SignInToTrack /> : <StatusControls item={item} />}
           <CastRow d={d} />
           {!isSample && <TrackingDetails item={item} />}

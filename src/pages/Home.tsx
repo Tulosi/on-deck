@@ -114,7 +114,7 @@ export function Home() {
         title="Deals"
         hint={`Games at a historical low or ${dealPct}%+ off`}
         items={onDeal}
-        href="/library?type=game&deal=on_sale&sort=price"
+        href="/collections/default-deals"
       />
     </div>
   )

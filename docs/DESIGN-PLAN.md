@@ -64,7 +64,11 @@ toast either way to dismiss it. `useSwipe` was checked frame by frame against Mo
 `dragSnapToOrigin`, `dragDirectionLock`) on identical scripted drags: the same 1:1 tracking, the same half-speed past
 the edge, the same release spring (fitted: stiffness 200, damping 40, settle within 2 to 17 ms of Motion's, no
 overshoot), catching mid-settle carries on from where it is, and a mostly vertical drag never moves it. A swipe
-commits past 40% of the width or on a quick flick; a toast thrown away leaves with a 220 ms ease-out.
+commits past 40% of the width or on a quick flick; a toast thrown away leaves with a 220 ms ease-out. **Priority scale:** Priority is a four-notch scale (`PriorityScale`): each level
+carries a small signal-strength mark (one to three rising bars; None shows them all faint), any level is one tap,
+and pressing and dragging along the row moves the highlight notch by notch, saving once on release. A mostly
+vertical drag is a scroll and changes nothing; arrow keys, Home and End step through levels. On narrow cards the
+bars sit above each label and the control spans the card; from 24rem it is one compact row.
 
 ## The brief, as I read it
 - **Subject:** a household's queue of films, shows, games and books. "On deck" is baseball's name for the batter

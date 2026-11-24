@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDialog } from '../lib/useDialog'
 import clsx from 'clsx'
 import { RollingText } from './RollingText'
+import { PriorityScale } from './PriorityScale'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
@@ -14,7 +15,7 @@ import { plexStateOf } from '../lib/plexSync'
 import { episodeCode } from '../lib/release'
 import { upNext } from '../lib/home'
 import { airedCounter, completion, isOngoing, overrideOf, seasonsOf, watchedIn, type SeasonMeta } from '../lib/seasons'
-import { type Priority, type Progress, type SeasonOverride, type UserItem } from '../types'
+import { type Progress, type SeasonOverride, type UserItem } from '../types'
 
 const labelClass = 'text-xs font-medium text-muted'
 
@@ -935,12 +936,6 @@ export function StatusControls({ item }: { item: UserItem }) {
 /** The rest of your tracking: rating, priority and notes. Below the overview on the title page. */
 export function TrackingDetails({ item }: { item: UserItem }) {
   const { save, update, pending, error } = useSaver(item)
-  const priorityOptions: { value: Priority | 'none'; label: string }[] = [
-    { value: 'none', label: 'None' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-  ]
   return (
     <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex items-center gap-3">
@@ -974,13 +969,7 @@ export function TrackingDetails({ item }: { item: UserItem }) {
       </div>
       </div>
 
-      <Segmented
-        label="Priority"
-        fit
-        value={item.priority ?? 'none'}
-        options={priorityOptions}
-        onChange={(p) => save({ priority: p === 'none' ? null : p })}
-      />
+      <PriorityScale value={item.priority ?? 'none'} onChange={(p) => save({ priority: p === 'none' ? null : p })} />
 
       <Notes key={item.id} initial={item.notes ?? ''} onSave={(notes) => update(item, { notes })} />
     </section>

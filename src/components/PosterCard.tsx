@@ -92,7 +92,7 @@ export const PosterCard = memo(function PosterCard({
   const { title } = item
   const savedMode = useChipMode()
   const chipClass = chipVisibility(chipMode ?? savedMode)
-  /** Visibility classes for chips, or null when chips are hidden. One global setting for all chip types. */
+  /** Visibility classes for chips (one global setting for all chip types). */
   const vis = (_key: string) => chipClass
   // Games you don't own (or any game, in a deals view): cheapest price, or Free-To-Play. (An unreleased game
   // shows its release chip instead.)
@@ -141,14 +141,14 @@ export const PosterCard = memo(function PosterCard({
         {/* At most two badges: your status (Playing, Caught up, Finished, Stalled) and your opinion (favourite
             beats liked / didn't like). "Owned" is in words under the title instead of one more icon. */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-          {status && vis('status') !== null && <Badge icon={status.icon} label={status.label} className={vis('status')!} />}
-          {opinion && vis('rating') !== null && (
+          {status && <Badge icon={status.icon} label={status.label} className={vis('status')} />}
+          {opinion && (
             <Badge icon={opinion.icon} label={opinion.label} className={clsx(opinion.className, vis('rating'))} />
           )}
         </div>
 
         {/* Headline review score */}
-        {title.score && vis('score') !== null && (
+        {title.score && (
           <span
             className={clsx(
               'absolute top-1.5 right-1.5 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-medium text-white',
@@ -162,14 +162,14 @@ export const PosterCard = memo(function PosterCard({
 
         {/* Bottom chips share one row: left (price / countdown / schedule) and right (Early Access / Plex).
             When they don't fit side by side, the right one wraps upward instead of overlapping. */}
-        {anyBottom && vis('release') !== null && (
+        {anyBottom && (
           <>
             {/* Soft gradient behind bottom chips, for readability (follows the labels setting). */}
             <div className={clsx('pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent', vis('release'))} />
             <div className="absolute inset-x-1.5 bottom-1.5 flex flex-wrap-reverse items-end justify-between gap-1">
               <div className="flex min-w-0 flex-col items-start gap-1">
         {/* Price — games the user doesn't own yet */}
-                {showPrice && !release.preRelease && vis('price') !== null && (
+                {showPrice && !release.preRelease && (
                   <span
                     title={item.price?.atLow ? 'Historical low' : undefined}
                     className={clsx(
@@ -192,7 +192,7 @@ export const PosterCard = memo(function PosterCard({
                 )}
 
                 {/* Pre-release countdown (movies/TV); bottom-left is free for them — games use it for price. */}
-                {release.preRelease && vis('release') !== null && (
+                {release.preRelease && (
                   <span
                     title={releaseLong(release)}
                     className={clsx(
@@ -206,7 +206,7 @@ export const PosterCard = memo(function PosterCard({
                 )}
 
                 {/* TV schedule: airing (blue) or new season coming (yellow). */}
-                {schedule && vis('release') !== null && (
+                {schedule && (
                   <span
                     title={tvScheduleLong(schedule)}
                     className={clsx(
@@ -231,7 +231,7 @@ export const PosterCard = memo(function PosterCard({
               </div>
               <div className="ml-auto flex flex-col items-end gap-1">
         {/* Early Access (games): bottom-right is free on game posters (Plex dots are movies/TV only). */}
-                {title.mediaType === 'game' && title.details?.early_access === true && vis('release') !== null && (
+                {title.mediaType === 'game' && title.details?.early_access === true && (
                   <span
                     title="Early access: not at 1.0 yet"
                     className={clsx(
@@ -246,7 +246,7 @@ export const PosterCard = memo(function PosterCard({
                 )}
 
                 {/* Plex availability */}
-                {showPlex && vis('plex') !== null && (
+                {showPlex && (
                   <span
                     title={plexMeta[item.plex!].label}
                     className={clsx(

@@ -23,18 +23,19 @@ import type { MediaType } from '../types'
 // ─── Poster labels button ──────────────────────────────────────────────────
 
 /**
- * One on/off button for the chips on posters (scores, Plex, prices, dates). A saved "on hover" setting from
- * the old three-way switch still works and counts as on; this button only switches between shown and hidden.
+ * One on/off button for the chips on posters (scores, Plex, prices, dates). Off hides them, but on a computer
+ * they still appear while you hover a poster, so there the off state reads "Hover only". A saved "on hover"
+ * setting from the old three-way switch counts as off.
  */
 function LabelsButton() {
   const [mode, setMode] = useChipModeControl()
-  const on = mode !== 'hide'
+  const on = mode === 'show'
   return (
     <button
       type="button"
       aria-pressed={on}
       aria-label="Poster labels"
-      title={on ? 'Hide poster labels' : 'Show poster labels'}
+      title={on ? 'Hide poster labels (on a computer they still show when you hover a poster)' : 'Always show poster labels'}
       onClick={() => setMode(on ? 'hide' : 'show')}
       className={clsx(
         'hit flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
@@ -42,7 +43,15 @@ function LabelsButton() {
       )}
     >
       {on ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
-      <span className="hidden sm:inline">{on ? 'Labels on' : 'Labels off'}</span>
+      {on ? (
+        <span className="hidden sm:inline">Labels on</span>
+      ) : (
+        <>
+          {/* Devices that can hover get the chips back on hover; touch screens don't. */}
+          <span className="hidden sm:inline [@media(hover:hover)]:sm:hidden">Labels off</span>
+          <span className="hidden [@media(hover:hover)]:sm:inline">Hover only</span>
+        </>
+      )}
     </button>
   )
 }

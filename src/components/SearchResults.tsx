@@ -335,7 +335,7 @@ export function SampleSearch({ text, type, onOpen }: { text: string; type: Searc
                 <Link
                   to={`/title/${i.title.id}`}
                   onClick={onOpen}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-raised"
+                  className="flex min-h-11 items-center gap-3 px-4 py-2.5 hover:bg-raised"
                 >
                   <Icon className="size-4 shrink-0 text-faint" />
                   <span className="min-w-0 flex-1 truncate text-sm text-fg">{i.title.title}</span>

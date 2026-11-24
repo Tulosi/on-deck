@@ -108,9 +108,11 @@ export function Login() {
               />
             </label>
             {mode !== 'forgot' && (
-              <label className="block space-y-1.5">
+              <div className="space-y-1.5">
                 <span className="flex items-baseline justify-between">
-                  <span className="text-xs text-muted">Password</span>
+                  <label htmlFor="password" className="text-xs text-muted">
+                    Password
+                  </label>
                   {mode === 'sign-in' && (
                     <button
                       type="button"
@@ -122,6 +124,7 @@ export function Login() {
                   )}
                 </span>
                 <input
+                  id="password"
                   type="password"
                   required
                   minLength={8}
@@ -131,7 +134,7 @@ export function Login() {
                   className={inputClass}
                 />
                 {mode === 'sign-up' && <span className="text-xs text-faint">At least 8 characters.</span>}
-              </label>
+              </div>
             )}
 
             {error && <p className="text-sm text-bad">{error}</p>}

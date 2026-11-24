@@ -73,16 +73,16 @@ export function SearchPage() {
           placeholder={current.placeholder}
           aria-label={current.placeholder.replace('…', '')}
           enterKeyHint="search"
-          className="w-full bg-transparent text-base text-fg outline-none placeholder:text-faint"
+          className="field-bare w-full bg-transparent text-base text-fg outline-none placeholder:text-faint [&::-webkit-search-cancel-button]:appearance-none"
         />
         {text && (
-          <button type="button" onClick={() => setText('')} aria-label="Clear search" className="text-muted hover:text-fg">
+          <button type="button" onClick={() => setText('')} aria-label="Clear search" className="hit text-muted hover:text-fg">
             <X className="size-4" />
           </button>
         )}
       </label>
 
-      <div role="radiogroup" aria-label="Search for" className="mt-3 flex flex-wrap gap-1.5">
+      <div role="radiogroup" aria-label="Search for" className="no-scrollbar -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {SEARCH_TYPES.map((t) => {
           const Icon = t.icon
           const active = t.value === type
@@ -94,7 +94,7 @@ export function SearchPage() {
               aria-checked={active}
               onClick={() => setType(t.value)}
               className={clsx(
-                'flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors',
+                'flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors sm:h-8',
                 active ? 'border-line bg-raised text-fg' : 'border-transparent text-muted hover:text-fg',
               )}
             >

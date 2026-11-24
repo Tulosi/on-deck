@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useDialog } from '../lib/useDialog'
 import clsx from 'clsx'
 import { RollingText } from './RollingText'
@@ -75,7 +75,7 @@ function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={clsx(
               // Labels wrap inside their button (never overrun it) when space is tight.
-              'relative min-h-10 rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors sm:min-h-0',
+              'relative min-h-11 rounded-md px-2 py-1.5 text-sm leading-tight text-balance transition-colors sm:min-h-0',
               value === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
             )}
           >
@@ -724,6 +724,7 @@ function AvailabilityBadge({ item }: { item: UserItem }) {
 
 /** Notes box that saves itself shortly after you stop typing (and on blur). */
 function Notes({ initial, onSave }: { initial: string; onSave: (text: string) => Promise<void> }) {
+  const id = useId()
   const [text, setText] = useState(initial)
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const lastSaved = useRef(initial)
@@ -748,7 +749,9 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <p className={labelClass}>Notes</p>
+        <label htmlFor={`notes-${id}`} className={labelClass}>
+          Notes
+        </label>
         <span className="text-xs text-faint" aria-live="polite">
           {state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : state === 'error' ? (
             <span className="text-bad">Couldn’t save. Try again.</span>
@@ -756,6 +759,7 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
         </span>
       </div>
       <textarea
+        id={`notes-${id}`}
         value={text}
         rows={3}
         placeholder="Anything to remember, like who recommended it or where you left off…"

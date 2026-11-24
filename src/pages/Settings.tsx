@@ -923,7 +923,7 @@ export function Settings() {
       </div>
       {!loading && !user ? (
         <p className="text-sm text-muted">
-          <Link to="/login" className="text-accent-ink hover:underline">
+          <Link to="/login" className="hit text-accent-ink hover:underline">
             Sign in
           </Link>{' '}
           to change your settings.

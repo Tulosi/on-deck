@@ -280,17 +280,19 @@ export const PosterCard = memo(function PosterCard({
       <div className="mt-2 px-0.5">
         <p className="truncate text-sm font-medium text-fg">{title.title}</p>
         {/* Numbers in mono, words in the text face; spacing instead of separator dots. */}
-        <p className="flex min-w-0 items-baseline gap-2 truncate text-xs text-muted">
+        {/* At most three short pieces, so nothing gets squeezed to a sliver: the status word takes the place of the
+            author / studio, and when room runs out it ends in "…" instead of being cut. */}
+        <p className="flex min-w-0 items-baseline gap-2 overflow-hidden text-xs whitespace-nowrap text-muted">
           {episode ? (
-            <span className="font-mono text-fg">{episode}</span>
+            <span className="shrink-0 font-mono text-fg">{episode}</span>
           ) : (
-            title.year != null && <span className="font-mono">{title.year}</span>
+            title.year != null && <span className="shrink-0 font-mono">{title.year}</span>
           )}
-          {status && <span className="shrink-0">{status}</span>}
+          {status && <span className="min-w-0 truncate">{status}</span>}
           {/* The author / studio needs more room than a 3-across phone grid has. */}
-          {secondary && <span className={clsx('truncate', !subline && 'hidden sm:inline')}>{secondary}</span>}
+          {secondary && !status && <span className={clsx('min-w-0 truncate', !subline && 'hidden sm:inline')}>{secondary}</span>}
           {/* Narrow phone grids: the status word wins the room. */}
-          {owned && <span className={clsx(status && 'hidden sm:inline')}>Owned</span>}
+          {owned && <span className={clsx('shrink-0', status && 'hidden sm:inline')}>Owned</span>}
         </p>
       </div>
     </Link>

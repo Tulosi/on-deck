@@ -79,7 +79,7 @@ export function TypeFilter({
               aria-checked={value === o.value}
               onClick={() => onChange(o.value)}
               className={clsx(
-                'relative h-9 shrink-0 rounded-full px-3 text-xs whitespace-nowrap transition-colors sm:h-7',
+                'hit relative h-9 shrink-0 rounded-full px-3 text-xs whitespace-nowrap transition-colors sm:h-7',
                 value === o.value ? 'font-medium text-fg' : 'text-muted hover:text-fg',
               )}
             >

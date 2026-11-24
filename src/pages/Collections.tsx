@@ -27,7 +27,7 @@ const primary =
 function SignInNote() {
   return (
     <p className="py-16 text-center text-sm text-muted">
-      <Link to="/login" className="text-accent-ink hover:underline">
+      <Link to="/login" className="hit text-accent-ink hover:underline">
         Sign in
       </Link>{' '}
       to make collections: named lists that can mix movies, shows, games and books.

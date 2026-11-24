@@ -30,7 +30,7 @@ export function SampleWelcome() {
   return (
     <section
       aria-labelledby="sample-welcome"
-      className="relative rounded-xl border border-accent/50 bg-accent/10 px-5 py-4 sm:flex sm:items-center sm:gap-6 sm:py-5"
+      className="relative max-w-3xl rounded-xl border border-accent/50 bg-accent/10 px-5 py-4 sm:flex sm:items-center sm:gap-6 sm:py-5"
     >
       <div className="min-w-0 flex-1 pr-8 sm:pr-0">
         <h2 id="sample-welcome" className="text-base font-semibold text-fg">

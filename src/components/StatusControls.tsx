@@ -258,6 +258,47 @@ function SeasonOptions({
   )
 }
 
+/**
+ * One bar per season: how much of what's aired you've watched. Green when the season's done, pale orange when
+ * ignored. Only for shows with more than one season (one season would repeat the overall bar).
+ */
+function SeasonBars({ item, seasons }: { item: UserItem; seasons: SeasonMeta[] }) {
+  if (seasons.length < 2) return null
+  const airedIn = airedCounter(item)
+  return (
+    <ul aria-label="Seasons" className="divide-y divide-line rounded-lg border border-line">
+      {seasons.map((s) => {
+        const aired = airedIn(s)
+        const ignored = overrideOf(item, s.season_number) === 'ignored'
+        const w = ignored ? 0 : watchedIn(item, s, aired)
+        const pct = ignored ? 100 : aired > 0 ? (w / aired) * 100 : 0
+        const done = !ignored && aired > 0 && w >= aired
+        const text = aired === 0 ? 'Not aired' : ignored ? 'Ignored' : `${w}/${aired}`
+        const label =
+          aired === 0
+            ? `Season ${s.season_number}: not aired yet`
+            : ignored
+              ? `Season ${s.season_number}: ignored`
+              : `Season ${s.season_number}: ${w} of ${aired} aired episodes watched`
+        return (
+          <li key={s.season_number} className="flex items-center gap-3 px-3 py-2">
+            <span className="w-20 shrink-0 text-sm text-fg">Season {s.season_number}</span>
+            <div role="img" aria-label={label} className="h-1 flex-1 overflow-hidden rounded-full bg-raised">
+              <div
+                className={clsx('h-full', ignored ? 'bg-warn/70' : done ? 'bg-good' : 'bg-accent-ink')}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className={clsx('w-16 shrink-0 text-right text-xs text-muted', aired > 0 && !ignored && 'font-mono')} aria-hidden="true">
+              {text}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 /** "Watched up to" label with a completion bar: watched / aired episodes. */
 function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: SeasonMeta[]; checking?: boolean }) {
   const { watched, ignored, aired } = completion(item, seasons)
@@ -434,6 +475,7 @@ function TvProgressSection({
           </div>
         </div>
         {error ? <p className="text-xs text-bad">Plex sync failed: {friendlyError(error)}</p> : null}
+        {seasons.length > 0 && <SeasonBars item={item} seasons={seasons} />}
         {seasons.length > 0 && <SeasonOptions item={item} seasons={seasons} save={save} />}
       </div>
     )
@@ -499,6 +541,7 @@ function TvProgressSection({
         </>
       )}
       {note && <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">{note}</div>}
+      {showPicker && <SeasonBars item={item} seasons={seasons} />}
       {showPicker && <SeasonOptions item={item} seasons={seasons} save={save} />}
     </div>
   )

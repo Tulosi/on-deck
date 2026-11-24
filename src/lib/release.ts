@@ -51,13 +51,13 @@ const monthDay = (iso: string) =>
 
 /** Short poster label: "TODAY", "TOMORROW", "IN 12 DAYS", "DEC 18", "MAR 14 '27", or "TBA". */
 export function releaseChip(info: ReleaseInfo): string {
-  if (info.fuzzyLabel) return info.fuzzyLabel.toUpperCase()
+  if (info.fuzzyLabel) return info.fuzzyLabel
   if (!info.date || info.daysUntil == null) return 'TBA'
-  if (info.daysUntil === 0) return 'TODAY'
-  if (info.daysUntil === 1) return 'TOMORROW'
-  if (info.daysUntil <= 30) return `IN ${info.daysUntil} DAYS`
+  if (info.daysUntil === 0) return 'Today'
+  if (info.daysUntil === 1) return 'Tomorrow'
+  if (info.daysUntil <= 30) return `In ${info.daysUntil} days`
   const sameYear = info.date.slice(0, 4) === todayIso().slice(0, 4)
-  return (sameYear ? monthDay(info.date) : `${monthDay(info.date)} '${info.date.slice(2, 4)}`).toUpperCase()
+  return sameYear ? monthDay(info.date) : `${monthDay(info.date)} '${info.date.slice(2, 4)}`
 }
 
 /** Long title-page label: "Dec 18, 2026 · in 28 days", or "Release date TBA". */
@@ -111,14 +111,14 @@ const weekday = (iso: string, style: 'short' | 'long' = 'short') =>
 /** Poster chip: "NEW EP TODAY", "NEXT EP WED", "NEXT EP DEC 3"; "S3 IN 12 DAYS", "S3 · MAR 14". */
 export function tvScheduleChip(s: TvSchedule): string {
   if (s.kind === 'airing') {
-    if (s.daysUntil === 0) return 'NEW EP TODAY'
-    if (s.daysUntil < 7) return `NEXT EP ${weekday(s.date)}`.toUpperCase()
-    return `NEXT EP ${monthDay(s.date)}`.toUpperCase()
+    if (s.daysUntil === 0) return 'New episode today'
+    if (s.daysUntil < 7) return `Next ep ${weekday(s.date)}`
+    return `Next ep ${monthDay(s.date)}`
   }
-  if (s.daysUntil === 0) return `S${s.season} TODAY`
-  if (s.daysUntil <= 30) return `S${s.season} IN ${s.daysUntil} DAYS`
+  if (s.daysUntil === 0) return `Season ${s.season} today`
+  if (s.daysUntil <= 30) return `Season ${s.season} in ${s.daysUntil} days`
   const sameYear = s.date.slice(0, 4) === todayIso().slice(0, 4)
-  return `S${s.season} · ${sameYear ? monthDay(s.date) : `${monthDay(s.date)} '${s.date.slice(2, 4)}`}`.toUpperCase()
+  return `Season ${s.season}, ${sameYear ? monthDay(s.date) : `${monthDay(s.date)} '${s.date.slice(2, 4)}`}`
 }
 
 /** Title-page badge text (after the "Airing" / "New season" label). */

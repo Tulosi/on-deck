@@ -25,13 +25,13 @@ import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
 
 const grid =
-  'grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-x-4 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))]'
+  'grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] sm:gap-x-4 sm:gap-y-6'
 
 /** One removable pill per active filter value, plus Clear all. */
 function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void }) {
   const pills: { key: string; label: string; remove: () => void }[] = []
   const without = <T,>(list: T[], v: T) => list.filter((x) => x !== v)
-  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: `Status: ${statusLabel(v, f.type)}`, remove: () => set({ ...f, status: without(f.status, v) }) }))
+  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: statusLabel(v, f.type), remove: () => set({ ...f, status: without(f.status, v) }) }))
   f.priority.forEach((v) => pills.push({ key: `p-${v}`, label: `Priority: ${LABELS.priority[v]}`, remove: () => set({ ...f, priority: without(f.priority, v) }) }))
   f.rating.forEach((v) => pills.push({ key: `r-${v}`, label: LABELS.rating[v], remove: () => set({ ...f, rating: without(f.rating, v) }) }))
   f.availability.forEach((v) => pills.push({ key: `av-${v}`, label: LABELS.availability[v], remove: () => set({ ...f, availability: without(f.availability, v) }) }))
@@ -80,13 +80,13 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
           type="button"
           onClick={p.remove}
           aria-label={`Remove filter ${p.label}`}
-          className="flex h-7 items-center gap-1 rounded-full border border-accent/60 bg-accent/10 pr-2 pl-2.5 text-xs text-fg hover:border-accent"
+          className="hit flex h-7 items-center gap-1.5 rounded-md bg-raised pr-2 pl-2.5 text-xs text-fg hover:bg-line"
         >
           {p.label}
           <X className="size-3 text-muted" />
         </button>
       ))}
-      <button type="button" onClick={() => set(clearFilters(f))} className="ml-1 text-xs text-muted hover:text-fg">
+      <button type="button" onClick={() => set(clearFilters(f))} className="hit ml-1 text-xs text-muted hover:text-fg">
         Clear all
       </button>
     </div>
@@ -167,7 +167,7 @@ export function Library() {
             type="button"
             onClick={() => setSaving((v) => !v)}
             aria-expanded={saving}
-            className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent"
+            className="flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent"
           >
             <Sparkles className="size-3.5" /> Save as smart collection
           </button>
@@ -178,7 +178,7 @@ export function Library() {
             onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
             aria-pressed={selecting}
             className={clsx(
-              'hit flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs hover:border-accent',
+              'hit flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs hover:border-accent',
               selecting ? 'border-accent bg-accent/10 text-fg' : 'border-line text-fg',
             )}
           >
@@ -188,7 +188,7 @@ export function Library() {
         {/* Phones: Collections isn't in the tab bar, so it's reached from here. */}
         <Link
           to="/collections"
-          className="hit flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-accent md:hidden"
+          className="hit flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg hover:border-accent md:hidden"
         >
           <Layers className="size-3.5" /> Collections
         </Link>

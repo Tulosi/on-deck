@@ -7,6 +7,7 @@ import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvSc
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
 import { coverProps } from '../lib/images'
+import { episodeCode } from '../lib/home'
 
 /** Cards are about half the screen on phones (two columns) and 128–200 px wide elsewhere. */
 const POSTER_SIZES = '(max-width: 640px) 45vw, 200px'
@@ -43,9 +44,9 @@ function CoverPlaceholder({ item }: { item: UserItem }) {
   )
 }
 
-function secondaryLine(item: UserItem): string | undefined {
-  if (item.tvProgress) return `S${item.tvProgress.season} · E${item.tvProgress.episode}`
-  return item.title.byline
+/** TV: where you are, as an episode code (S02E04). */
+function episodeLine(item: UserItem): string | undefined {
+  return item.tvProgress ? episodeCode(item.tvProgress) : undefined
 }
 
 /** The one status badge on a poster, if any. */
@@ -95,7 +96,8 @@ export const PosterCard = memo(function PosterCard({
   const showPlex = (title.mediaType === 'movie' || title.mediaType === 'tv') && item.plex
   const release = releaseInfo(title)
   const schedule = release.preRelease ? null : tvSchedule(title)
-  const secondary = subline ?? secondaryLine(item)
+  const episode = subline ? undefined : episodeLine(item)
+  const secondary = subline ?? (episode ? undefined : title.byline)
   const owned = item.owned && (title.mediaType === 'game' || title.mediaType === 'book')
   const status = statusBadge(item)
   const opinion = item.favourite
@@ -171,14 +173,14 @@ export const PosterCard = memo(function PosterCard({
                     )}
                   >
                     {isFree ? (
-                      <span className="bg-black/75 px-1.5 py-0.5 text-good">FREE-TO-PLAY</span>
+                      <span className="bg-black/75 px-1.5 py-0.5 font-sans text-good">Free</span>
                     ) : (
                       <>
                         {item.price!.discountPct ? (
                           <span className="bg-accent px-1.5 py-0.5 text-accent-fg">-{item.price!.discountPct}%</span>
                         ) : null}
                         <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
-                        {item.price!.atLow && <span className="bg-good px-1 py-0.5 text-accent-fg">LOW</span>}
+                        {item.price!.atLow && <span className="bg-good px-1 py-0.5 font-sans text-accent-fg">Low</span>}
                       </>
                     )}
                   </span>
@@ -189,7 +191,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={releaseLong(release)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-accent',
+                      'flex items-center gap-1 rounded-md border border-accent/70 bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold text-accent',
                       vis('release'),
                     )}
                   >
@@ -203,7 +205,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={tvScheduleLong(schedule)}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide',
+                      'flex items-center gap-1 rounded-md border bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold',
                       schedule.kind === 'airing' ? 'border-info/70 text-info' : 'border-accent/70 text-accent',
                       vis('release'),
                     )}
@@ -220,13 +222,13 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title="Early Access — not at 1.0 yet"
                     className={clsx(
-                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-orange-300',
+                      'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300',
                       vis('release'),
                     )}
                   >
                     {/* Very narrow posters (phone rows): the short form. */}
                     <span className="@[8.5rem]/poster:hidden">EA</span>
-                    <span className="hidden @[8.5rem]/poster:inline">EARLY ACCESS</span>
+                    <span className="hidden @[8.5rem]/poster:inline">Early access</span>
                   </span>
                 )}
 
@@ -235,7 +237,7 @@ export const PosterCard = memo(function PosterCard({
                   <span
                     title={plexMeta[item.plex!].label}
                     className={clsx(
-                      'flex items-center gap-1 rounded-full bg-black/75 px-1.5 py-0.5 text-[11px] font-medium text-white',
+                      'flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] font-medium text-white',
                       vis('plex'),
                     )}
                   >
@@ -253,10 +255,16 @@ export const PosterCard = memo(function PosterCard({
 
       <div className="mt-2 px-0.5">
         <p className="truncate text-sm font-medium text-fg">{title.title}</p>
-        <p className="truncate font-mono text-xs text-muted">
-          {title.year ?? '—'}
-          {secondary && <span className="text-faint"> · {secondary}</span>}
-          {owned && <span className="text-faint"> · Owned</span>}
+        {/* Numbers in mono, words in the text face; spacing instead of separator dots. */}
+        <p className="flex min-w-0 items-baseline gap-2 truncate text-xs text-muted">
+          {episode ? (
+            <span className="font-mono text-fg">{episode}</span>
+          ) : (
+            title.year != null && <span className="font-mono">{title.year}</span>
+          )}
+          {/* The author / studio needs more room than a 3-across phone grid has. */}
+          {secondary && <span className={clsx('truncate', !subline && 'hidden sm:inline')}>{secondary}</span>}
+          {owned && <span>Owned</span>}
         </p>
       </div>
     </Link>

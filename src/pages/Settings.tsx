@@ -22,6 +22,7 @@ import { StatusPanel } from '../components/StatusPanel'
 import { BackupPanel } from '../components/BackupPanel'
 import { BUILTIN_COLLECTIONS } from '../lib/collections'
 import { useNavLayout } from '../lib/navLayout'
+import { useTheme, type Theme } from '../lib/theme'
 import { usePush } from '../lib/push'
 import { checkSteamOwned, startSteamLogin, steamReplyParams, unlinkSteam, verifySteam } from '../lib/steam'
 
@@ -737,6 +738,35 @@ function versionDate(iso: string) {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
 
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme()
+  const options: { value: Theme; label: string }[] = [
+    { value: 'dark', label: 'Dark' },
+    { value: 'light', label: 'Light' },
+  ]
+  return (
+    <Section title="Appearance" description="Saved on this device.">
+      <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-lg border border-line bg-bg p-1">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={theme === o.value}
+            onClick={() => setTheme(o.value)}
+            className={clsx(
+              'hit h-9 rounded-md px-4 text-sm',
+              theme === o.value ? 'bg-raised font-medium text-fg' : 'text-muted hover:text-fg',
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
 export function Settings() {
   const { user, loading } = useAuth()
   const { hash } = useLocation()
@@ -756,6 +786,7 @@ export function Settings() {
           {__APP_VERSION__.date && ` · ${versionDate(__APP_VERSION__.date)}`}
         </p>
       </div>
+      <AppearanceSection />
       {!loading && !user ? (
         <p className="text-sm text-muted">
           <Link to="/login" className="text-accent-ink hover:underline">

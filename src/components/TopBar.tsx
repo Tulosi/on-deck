@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
-import { LogIn, LogOut, Moon, Settings, Sun } from 'lucide-react'
+import { LogIn, LogOut, Settings } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import { useTheme } from '../lib/theme'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { SearchBox } from './SearchBox'
@@ -11,7 +10,6 @@ import { SearchBox } from './SearchBox'
 const iconButton = 'hit grid size-9 place-items-center rounded-full text-muted hover:bg-raised hover:text-fg'
 
 export function TopBar() {
-  const { theme, toggle } = useTheme()
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
@@ -29,14 +27,6 @@ export function TopBar() {
       <SearchBox />
 
       <div className="ml-auto flex items-center gap-1">
-        <button
-          type="button"
-          onClick={toggle}
-          className={iconButton}
-          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {theme === 'dark' ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
-        </button>
         <Link to="/settings" className={`${iconButton} md:hidden`} aria-label="Settings">
           <Settings className="size-[18px]" />
         </Link>

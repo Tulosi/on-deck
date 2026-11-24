@@ -2,6 +2,7 @@ import type { UserItem } from '../types'
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { PosterRow } from '../components/PosterRow'
+import { UpNextCard } from '../components/UpNextCard'
 import { RateFinished } from '../components/RateFinished'
 import { ImportPrompts } from '../components/ImportPrompts'
 import { DEFAULT_DEAL_PCT, continueItems, recentlyStalled, continueLine, nextWatchable, deals, readyToStart, thisWeek, thisWeekLine } from '../lib/home'
@@ -74,10 +75,11 @@ export function Home() {
         </div>
       )}
 
+      {cont[0] && <UpNextCard item={cont[0]} />}
       <PosterRow
         title="Continue"
         hint="Pick up where you left off"
-        items={cont}
+        items={cont.slice(1)}
         subline={continueLine}
         footer={(item) => <WatchedNext item={item} />}
         href={`/library?status=in_progress${typeParam}`}

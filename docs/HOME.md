@@ -16,6 +16,13 @@ Recently Finished and plain priority lists Library views, not Home rows.
 
 ## Rows (top to bottom, each hidden when empty)
 
+### 0. Up next (Ember redesign, 2026-11-23)
+The most recent Continue item, as one card above the rows: poster, title, the next step set large in mono
+(`S02E05`, or hours played for a game), a short note ("Out now", "Out Tue, Nov 25", "Caught up"), and a bar for
+this season's episodes or hours against time to beat. Its one accent button is **Mark S02E05 watched** when that
+one-tap save is offered (signed in, episode out, Plex not tracking the show); otherwise **Open show**. Continue
+below lists the rest.
+
 ### 1. Continue
 Things you're in the middle of, with **the next concrete step**.
 - **TV:** In Progress shows. The subline is the next episode after Progress, and whether it's out:

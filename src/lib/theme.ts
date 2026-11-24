@@ -13,7 +13,7 @@ export function useTheme() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     // The browser / phone status bar follows the page background.
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f5f2ec' : '#0c0b0a')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f5f2ec' : '#1e1812')
     try {
       localStorage.setItem(KEY, theme)
     } catch {
@@ -21,5 +21,5 @@ export function useTheme() {
     }
   }, [theme])
 
-  return { theme, toggle: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')) }
+  return { theme, setTheme, toggle: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')) }
 }

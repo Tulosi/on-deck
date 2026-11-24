@@ -4,13 +4,13 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /*
- * Palette: black, warm grey, lemon yellow.
+ * Palette "Ember": dark warm browns, lemon yellow.
  * Components only use these semantic tokens (bg-bg, text-fg, bg-accent …),
  * so each theme just redefines the variables below.
  */
 @theme {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --font-sans: 'Chivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Chivo Mono Variable', ui-monospace, monospace;
 
   --color-bg: var(--od-bg);
   --color-surface: var(--od-surface);
@@ -38,17 +38,17 @@
 
 :root,
 [data-theme='dark'] {
-  --od-bg: #0c0b0a;
-  --od-surface: #161513;
-  --od-raised: #211f1c;
-  --od-line: #2e2b27;
-  --od-fg: #f3efe8;
-  --od-muted: #a59e94;
-  --od-faint: #8e877c; /* ≥4.5:1 on bg, surface and raised */
+  --od-bg: #1e1812;
+  --od-surface: #261f18;
+  --od-raised: #30271f;
+  --od-line: #3e342a;
+  --od-fg: #f2ece2;
+  --od-muted: #b0a493;
+  --od-faint: #9a8e7e; /* ≥4.5:1 on bg, surface and raised */
   --od-accent: #f4e04d; /* lemon */
-  --od-accent-fg: #0c0b0a; /* text on an accent fill */
+  --od-accent-fg: #1e1812; /* text on an accent fill */
   --od-accent-ink: #f4e04d; /* accent used as text/icon colour */
-  --od-good: #7fd18b;
+  --od-good: #9fd38a;
   --od-bad: #ef7a6a;
   --od-info: #7fb8e8;
   color-scheme: dark;

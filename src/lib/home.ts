@@ -178,3 +178,50 @@ export function recentlyStalled(items: UserItem[]): UserItem[] {
     .filter((i) => i.progress === 'stalled' && !!i.stalledAt && now - Date.parse(i.stalledAt) < STALLED_RECENT_MS)
     .sort((a, b) => Date.parse(b.stalledAt!) - Date.parse(a.stalledAt!))
 }
+
+/** Episode code as people write it in file names and on Plex: S02E05. */
+export const episodeCode = (ep: { season: number; episode: number }) =>
+  `S${String(ep.season).padStart(2, '0')}E${String(ep.episode).padStart(2, '0')}`
+
+export interface UpNext {
+  /** The big number: an episode code, or time played for a game. */
+  value?: string
+  /** One short line under it ("Out now", "Out Tue", "Caught up"). */
+  note?: string
+  /** A progress bar: this season's episodes, or hours played against time to beat. */
+  bar?: { done: number; total: number; text: string; label: string }
+  /** The episode a one-tap "Mark watched" would save, when that's offered. */
+  watchable?: { season: number; episode: number } | null
+}
+
+/** Home's Up next card: the most recent thing you're in the middle of, with its next concrete step. */
+export function upNext(item: UserItem): UpNext {
+  if (item.title.mediaType === 'game') {
+    const played = item.steamPlaytimeMinutes ? item.steamPlaytimeMinutes / 60 : 0
+    const beat = hoursToBeat(item)
+    return {
+      value: played ? hours(played) : undefined,
+      note: beat ? `of about ${hours(beat)} to beat` : played ? 'played' : undefined,
+      bar:
+        played && beat
+          ? { done: Math.min(played, beat), total: beat, text: `${Math.min(100, Math.round((played / beat) * 100))}%`, label: `${hours(played)} of about ${hours(beat)} played` }
+          : undefined,
+    }
+  }
+  if (item.title.mediaType !== 'tv') return {}
+  const seasons = seasonsOf(item)
+  // No season data (sample titles): show where you are rather than guess what's next.
+  if (seasons.length === 0) return item.tvProgress ? { value: episodeCode(item.tvProgress), note: 'Last watched' } : {}
+  const ep = nextEpisode(item)
+  if (!ep) return { note: 'Caught up' }
+  const state = airState(item, ep)
+  const note = state.out ? 'Out now' : state.date ? `Out ${weekday(state.date)}, ${monthDay(state.date)}` : 'Not announced yet'
+  const s = seasons.find((x) => x.season_number === ep.season)
+  const done = s ? watchedIn(item, s, s.episode_count) : 0
+  return {
+    value: episodeCode(ep),
+    note,
+    bar: s ? { done, total: s.episode_count, text: `${done}/${s.episode_count} watched`, label: `Season ${ep.season}: ${done} of ${s.episode_count} watched` } : undefined,
+    watchable: nextWatchable(item),
+  }
+}

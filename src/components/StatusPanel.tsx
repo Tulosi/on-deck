@@ -90,7 +90,7 @@ export function StatusPanel() {
       {/* Services */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Services</p>
+          <p className="text-xs font-medium text-muted">Services</p>
           <button
             type="button"
             onClick={() => check.mutate()}
@@ -119,7 +119,7 @@ export function StatusPanel() {
                   </div>
                   <span className="shrink-0 font-mono text-[11px] text-faint">
                     {c.ms != null ? `${c.ms} ms` : ''}
-                    {c.status && c.state !== 'ok' ? ` · ${c.status}` : ''}
+                    {c.status && c.state !== 'ok' ? ` (${c.status})` : ''}
                   </span>
                 </li>
               )
@@ -130,7 +130,7 @@ export function StatusPanel() {
 
       {/* Background jobs */}
       <div className="space-y-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Background jobs</p>
+        <p className="text-xs font-medium text-muted">Background jobs</p>
         <ul className="divide-y divide-line rounded-lg border border-line">
           {JOBS.map((j) => {
             const run = jobs.data?.[j.job] ?? null
@@ -159,7 +159,7 @@ export function StatusPanel() {
                       ? 'Loading…'
                       : !run
                         ? 'No runs recorded yet'
-                        : `Last run ${ago(run.ran_at)} · ${run.ok ? 'no problems' : limited ? 'rate limited' : 'had errors'}`}
+                        : `Last run ${ago(run.ran_at)}, ${run.ok ? 'no problems' : limited ? 'rate limited' : 'had errors'}`}
                   </p>
                   {run && (errorText || typeof run.summary.error === 'string') && (
                     <p className="mt-0.5 font-mono text-[11px] break-words text-bad">{errorText || String(run.summary.error)}</p>
@@ -173,7 +173,7 @@ export function StatusPanel() {
 
       {/* Your data */}
       <div className="space-y-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Your data</p>
+        <p className="text-xs font-medium text-muted">Your data</p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           <dt className="text-muted">Alerts & refresh</dt>
           <dd className="text-fg">{fresh.isLoading ? '…' : ago(fresh.data?.daily)}</dd>

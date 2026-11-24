@@ -29,7 +29,7 @@ function Row({
     >
       <div className="min-w-[9rem] flex-1">
         <p className="text-sm font-medium text-fg">{LABEL[option.kind]}</p>
-        {option.kind === 'official' && <p className="text-xs text-muted">{option.shop} · Steam key</p>}
+        {option.kind === 'official' && <p className="text-xs text-muted">{option.shop}, Steam key</p>}
         {option.kind === 'keyshop' && <p className="text-xs text-muted">Third-party key resellers</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -86,7 +86,7 @@ export function GamePrices({ item }: { item: UserItem }) {
     const best = cheapest(p)
     body =
       options.length === 0 ? (
-        <p className="text-sm text-muted">No price yet — it may not be on sale until release.</p>
+        <p className="text-sm text-muted">No price yet. It may not be on sale until release.</p>
       ) : (
         <>
           {!p.steam && <p className="text-xs text-muted">No Steam price yet.</p>}

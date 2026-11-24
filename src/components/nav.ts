@@ -16,7 +16,7 @@ export const primaryNav: NavItem[] = [
   { to: '/', label: 'Home', icon: House },
   { libraryType: null, label: 'Library', icon: LibraryBig },
   { libraryType: 'movie', label: 'Movies', icon: Film },
-  { libraryType: 'tv', label: 'TV Shows', short: 'TV', icon: Tv },
+  { libraryType: 'tv', label: 'TV shows', short: 'TV', icon: Tv },
   { libraryType: 'game', label: 'Games', icon: Gamepad2 },
   { libraryType: 'book', label: 'Books', icon: BookOpen },
   { to: '/calendar', label: 'Calendar', icon: CalendarClock },

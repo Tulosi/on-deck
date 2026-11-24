@@ -99,7 +99,7 @@ export function thisWeek(items: UserItem[]): Upcoming[] {
 
 /**
  * 3. Ready to start — High-priority Wanted titles you can start now: out, and available (movies/TV on your
- * Plex or streaming services; games/books In Your Library). Movies/TV not checked yet are kept, so the row
+ * Plex or streaming services; games/books In your library). Movies/TV not checked yet are kept, so the row
  * isn't empty before the first availability refresh, unless Plex already says it's only requested or missing.
  */
 /**

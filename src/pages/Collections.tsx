@@ -132,12 +132,12 @@ function rulesSummary(rules: string): string {
     f.type ? LABELS.type[f.type] : 'All types',
     n ? `${n} filter${n === 1 ? '' : 's'}` : 'no filters',
     `sorted by ${LABELS.sort[f.sort]}`,
-  ].join(' · ')
+  ].join(', ')
 }
 
 function DefaultBadge() {
   return (
-    <span className="inline-flex items-center rounded-full border border-line px-1.5 py-0.5 font-mono text-[11px] text-muted uppercase">
+    <span className="inline-flex items-center rounded-md border border-line px-1.5 py-0.5 text-xs text-muted">
       Default
     </span>
   )
@@ -145,7 +145,7 @@ function DefaultBadge() {
 
 function SmartBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-1.5 py-0.5 font-mono text-[11px] text-accent-ink uppercase">
+    <span className="inline-flex items-center gap-1 rounded-md border border-accent/60 px-1.5 py-0.5 text-xs text-accent-ink">
       <ListFilter className="size-3" /> Smart
     </span>
   )

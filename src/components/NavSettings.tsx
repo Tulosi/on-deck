@@ -52,8 +52,8 @@ export function PhoneTabsSettings() {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">
-          Tab bar · {tabs.length} of {MAX_TABS}
+        <p className="text-xs font-medium text-muted">
+          Tab bar ({tabs.length} of {MAX_TABS})
         </p>
         <ul className="space-y-1.5" onPointerMove={onMove}>
           {tabs.map((k, i) => {
@@ -118,7 +118,7 @@ export function PhoneTabsSettings() {
       </div>
 
       <div className="space-y-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Under More</p>
+        <p className="text-xs font-medium text-muted">Under More</p>
         {available.length === 0 ? (
           <p className="text-xs text-faint">Everything is in the tab bar.</p>
         ) : (

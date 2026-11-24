@@ -183,7 +183,7 @@ function StreamingSection() {
             </button>
           )}
           <p className="text-xs text-faint">
-            {selected.size} selected · Changing your region shows that region’s services. Data by JustWatch.
+            {selected.size} selected. Changing your region shows that region’s services. Data by JustWatch.
           </p>
           {error && <p className="text-sm text-bad">{error}</p>}
         </div>
@@ -222,11 +222,11 @@ function SteamSection() {
         ok: true,
         text:
           [
-            r.newlyOwned ? `Marked ${r.newlyOwned} game${r.newlyOwned === 1 ? '' : 's'} as In Your Library.` : '',
-            r.newlyStarted ? `Moved ${r.newlyStarted} to In Progress (played on Steam).` : '',
+            r.newlyOwned ? `Marked ${r.newlyOwned} game${r.newlyOwned === 1 ? '' : 's'} as In your library.` : '',
+            r.newlyStarted ? `Moved ${r.newlyStarted} to In progress (played on Steam).` : '',
           ]
             .filter(Boolean)
-            .join(' ') || 'Library checked — nothing new to mark.',
+            .join(' ') || 'Library checked. Nothing new to mark.',
       })
     }
   }
@@ -265,7 +265,7 @@ function SteamSection() {
   return (
     <Section
       title="Steam"
-      description="Connect Steam so games you own are marked In Your Library, and games you’ve played move to In Progress."
+      description="Connect Steam so games you own are marked In your library, and games you’ve played move to In progress."
     >
       {profile.isLoading ? (
         <Loader2 className="size-4 animate-spin text-muted" />
@@ -316,8 +316,8 @@ function SteamSection() {
         />
       )}
       <p className="text-xs text-faint">
-        You sign in on steamcommunity.com — On Deck never sees your Steam password. Your Steam profile’s
-        Game details must be Public. Anything you change yourself (In Your Library or Status) is never changed by the check.
+        You sign in on steamcommunity.com, so On Deck never sees your Steam password. Your Steam profile’s
+        Game details must be Public. Anything you change yourself (In your library or Status) is never changed by the check.
       </p>
       {message && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
     </Section>
@@ -419,7 +419,7 @@ function PlexSection() {
       description="See whether a movie or show is already on your Plex, and request it through Seerr if it isn’t."
     >
       <div className="space-y-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">1 · Plex account</p>
+        <p className="text-xs font-medium text-muted">1. Plex account</p>
         {plex.isLoading ? (
           <Loader2 className="size-4 animate-spin text-muted" />
         ) : plex.data?.linked ? (
@@ -446,11 +446,11 @@ function PlexSection() {
             Connect Plex
           </button>
         )}
-        <p className="text-xs text-faint">You sign in on plex.tv — On Deck never sees your Plex password.</p>
+        <p className="text-xs text-faint">You sign in on plex.tv, so On Deck never sees your Plex password.</p>
       </div>
 
       <div className="space-y-2 pt-2">
-        <p className="font-mono text-[11px] tracking-wider text-faint uppercase">2 · Seerr</p>
+        <p className="text-xs font-medium text-muted">2. Seerr</p>
         {savedUrl && !editingUrl ? (
           <div className="flex flex-wrap items-center gap-3">
             {!plex.data?.linked ? (
@@ -504,7 +504,7 @@ function PlexSection() {
             )}
           </div>
         )}
-        <p className="text-xs text-faint">Overseerr, Jellyseerr or Seerr — it must be reachable over https.</p>
+        <p className="text-xs text-faint">Overseerr, Jellyseerr or Seerr. It must be reachable over https.</p>
       </div>
 
       {message && <p className={`text-sm ${message.ok ? 'text-good' : 'text-bad'}`}>{message.text}</p>}
@@ -594,7 +594,7 @@ function PushControls() {
   const others = push.devices.filter((d) => d.endpoint !== push.endpoint)
   return (
     <div className="space-y-3 border-t border-line pt-4">
-      <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Push notifications</p>
+      <p className="text-xs font-medium text-muted">Push notifications</p>
       {push.support === 'ios-needs-home-screen' ? (
         <p className="text-sm text-muted">
           On iPhone and iPad, push works from the home-screen app: in Safari tap Share → <b>Add to Home Screen</b>, open
@@ -706,7 +706,7 @@ function NotificationsSection() {
             Always on: release days, one week before, date changes, new seasons, and when something you want lands
             on Plex or your services.
           </p>
-          <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Game prices (games you want and don’t own)</p>
+          <p className="text-xs font-medium text-muted">Game prices (games you want and don’t own)</p>
           <Toggle
             checked={settings.price_low !== false}
             onChange={(v) => set({ price_low: v })}

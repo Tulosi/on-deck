@@ -54,7 +54,7 @@ export interface OwnedResult {
   private?: boolean
 }
 
-/** Marks games in the user's Steam library as In Your Library (never ones they changed by hand). */
+/** Marks games in the user's Steam library as In your library (never ones they changed by hand). */
 export const checkSteamOwned = (titleIds?: string[]) => call<OwnedResult>({ action: 'owned', ...(titleIds ? { titleIds } : {}) })
 
 const ownershipStarted = new Set<string>()

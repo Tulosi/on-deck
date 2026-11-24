@@ -20,7 +20,7 @@ import { TopBar } from './TopBar'
 const TOOLBAR_PATHS = ['/', '/library', '/collections']
 
 const bannerClass =
-  'border-b border-line bg-surface px-4 py-1.5 text-center font-mono text-[11px] text-muted uppercase md:px-6'
+  'border-b border-line bg-surface px-4 py-1.5 text-center text-xs text-muted md:px-6'
 
 export function AppShell() {
   const { user, loading } = useAuth()
@@ -42,16 +42,16 @@ export function AppShell() {
         <TopBar />
         {TOOLBAR_PATHS.includes(pathname) && <Toolbar />}
         {!isSupabaseConfigured ? (
-          <div className={bannerClass}>PREVIEW MODE · sample data · connect Supabase to sign in and save</div>
+          <div className={bannerClass}>Preview with sample data. Connect Supabase to sign in and save.</div>
         ) : (
           !loading &&
           !user && (
             <div className={bannerClass}>
-              SAMPLE DATA ·{' '}
+              Sample data.{' '}
               <Link to="/login" className="text-accent-ink hover:underline">
-                sign in
+                Sign in
               </Link>{' '}
-              to build your own library
+              to build your own library.
             </div>
           )
         )}

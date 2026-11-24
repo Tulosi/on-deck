@@ -88,7 +88,7 @@ export interface UserItem {
 
 export const mediaLabels: Record<MediaType, { singular: string; plural: string; done: string }> = {
   movie: { singular: 'Movie', plural: 'Movies', done: 'Watched' },
-  tv: { singular: 'TV Show', plural: 'TV Shows', done: 'Watched' },
+  tv: { singular: 'TV show', plural: 'TV shows', done: 'Watched' },
   game: { singular: 'Game', plural: 'Games', done: 'Played' },
   book: { singular: 'Book', plural: 'Books', done: 'Read' },
 }

@@ -157,7 +157,7 @@ export function Preview({
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-base leading-snug font-semibold text-fg">{result.title}</p>
           <p className="font-mono text-xs text-muted">
-            {[typeName(result.mediaType), result.year, result.pages ? `${result.pages} pages` : null].filter(Boolean).join(' · ')}
+            {[typeName(result.mediaType), result.year, result.pages ? `${result.pages} pages` : null].filter(Boolean).join(', ')}
           </p>
           {credit && <p className="text-sm text-muted">{result.mediaType === 'book' ? 'by ' : ''}{credit}</p>}
           {result.series && <p className="text-xs text-faint">{result.series}</p>}
@@ -187,7 +187,7 @@ export function Preview({
             onClick={onOpen}
             className="flex h-10 items-center gap-1.5 rounded-full border border-line px-5 text-sm text-fg hover:border-accent"
           >
-            <Check className="size-4 text-good" /> In your library — open
+            <Check className="size-4 text-good" /> In your library. Open it
           </Link>
         ) : (
           <AddButton added={added} state={state} onAdd={onAdd} large />
@@ -232,7 +232,7 @@ export function useAdder() {
 function ResultSection({ section, empty, render }: { section: SearchSection; empty: string; render: (r: SearchResult) => ReactNode }) {
   return (
     <section className="border-b border-line last:border-b-0">
-      <p className="px-4 pt-3 pb-1 font-mono text-[11px] tracking-wider text-faint uppercase">{section.title}</p>
+      <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted">{section.title}</p>
       {section.error ? (
         <p className="px-4 pb-3 text-sm text-bad">Search failed: {(section.error as Error).message}</p>
       ) : section.isLoading ? (
@@ -283,7 +283,7 @@ export function SearchResultsBody({
       ))}
       {(s.near.length > 0 || s.nearLoading) && (
         <section className="border-t border-line">
-          <p className="flex items-center gap-1.5 px-4 pt-3 pb-1 font-mono text-[11px] tracking-wider text-faint uppercase">
+          <p className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-xs font-medium text-muted">
             <Sparkles className="size-3" /> Close matches
           </p>
           {s.nearLoading ? (

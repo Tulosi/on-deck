@@ -116,7 +116,7 @@ function OptionGroup<T extends string>({
   if (options.length === 0) return null
   return (
     <div className="space-y-1.5">
-      <p className="font-mono text-[11px] tracking-wider text-faint uppercase">{label}</p>
+      <p className="text-xs font-medium text-muted">{label}</p>
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {
           const on = selected.includes(o)
@@ -255,7 +255,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
           onToggle={(v) => set(cycleTri(f, 'deal', v))}
               />
               <label className="space-y-1.5">
-                <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Max price</span>
+                <span className="block text-xs font-medium text-muted">Max price</span>
                 <select
                   value={f.maxPrice ?? ''}
                   onChange={(e) => set({ ...f, maxPrice: e.target.value ? Number(e.target.value) : null })}
@@ -331,7 +331,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
         />
         <div className="flex flex-wrap gap-x-6 gap-y-4">
           <label className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Minimum score</span>
+            <span className="block text-xs font-medium text-muted">Minimum score</span>
             <select
               value={f.minScore ?? ''}
               onChange={(e) => set({ ...f, minScore: e.target.value ? Number(e.target.value) : null })}
@@ -346,7 +346,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
             </select>
           </label>
           <div className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Year</span>
+            <span className="block text-xs font-medium text-muted">Year</span>
             <div className="flex items-center gap-1.5 text-xs text-muted">
               <select
                 aria-label="From year"
@@ -374,7 +374,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
             </div>
           </div>
           <label className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Archived</span>
+            <span className="block text-xs font-medium text-muted">Archived</span>
             <select
               value={f.archived}
               onChange={(e) => set({ ...f, archived: e.target.value as Filters['archived'] })}
@@ -386,7 +386,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
             </select>
           </label>
           <label className="space-y-1.5">
-            <span className="block font-mono text-[11px] tracking-wider text-faint uppercase">Date added</span>
+            <span className="block text-xs font-medium text-muted">Date added</span>
             <select
               value={f.added ?? ''}
               onChange={(e) => set({ ...f, added: (e.target.value || null) as Filters['added'] })}
@@ -404,7 +404,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
         </div>
       </details>
       {!f.type && (
-        <p className="text-xs text-faint">Pick a type (Movies, TV Shows, Games, Books) for its own filters.</p>
+        <p className="text-xs text-faint">Pick a type (movies, TV shows, games, books) for its own filters.</p>
       )}
     </div>
   )
@@ -475,7 +475,7 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
           <FilterPanel f={f} set={set} />
           {/* Phones: sorting and grouping live here (the toolbar has no room for them). */}
           <div className="mt-5 space-y-2 border-t border-line pt-4 sm:hidden">
-            <p className="font-mono text-[11px] tracking-wider text-faint uppercase">Arrange</p>
+            <p className="text-xs font-medium text-muted">Arrange</p>
             <ArrangeSelects f={f} set={set} stacked />
           </div>
         </div>

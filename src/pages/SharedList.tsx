@@ -82,7 +82,10 @@ function Card({ r }: { r: SharedRow }) {
         {s && <span className="absolute top-1.5 right-1.5 rounded bg-bg/80 px-1.5 py-0.5 font-mono text-[11px] text-fg">{s}</span>}
       </div>
       <p className="mt-2 truncate text-sm font-medium text-fg">{r.title}</p>
-      <p className="truncate font-mono text-xs text-faint">{[r.year, r.byline].filter(Boolean).join(' · ') || '—'}</p>
+      <p className="flex gap-2 truncate text-xs text-muted">
+        {r.year != null && <span className="font-mono">{r.year}</span>}
+        {r.byline && <span className="truncate">{r.byline}</span>}
+      </p>
     </div>
   )
 }
@@ -120,7 +123,7 @@ export function SharedList() {
           <Link to="/" aria-label="On Deck">
             <Wordmark />
           </Link>
-          <span className="font-mono text-[11px] tracking-wider text-faint uppercase">Shared list · read-only</span>
+          <span className="text-xs font-medium text-muted">Shared list, read-only</span>
         </div>
 
         {q.isLoading ? (

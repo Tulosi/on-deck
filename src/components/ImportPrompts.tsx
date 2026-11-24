@@ -39,8 +39,9 @@ function PromptTile({
       <p className="mt-1.5 truncate text-sm font-medium text-fg" title={c.title}>
         {c.title}
       </p>
-      <p className="truncate font-mono text-[11px] text-faint">
-        {c.year ?? '—'} · {c.detail}
+      <p className="flex gap-2 truncate text-xs text-muted">
+        {c.year != null && <span className="font-mono">{c.year}</span>}
+        <span className="truncate">{c.detail}</span>
       </p>
       <div className="mt-1.5 flex gap-1.5">
         <button type="button" onClick={onAdd} disabled={busy} className={`${small} bg-accent font-medium text-accent-fg hover:brightness-95`}>

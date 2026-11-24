@@ -225,8 +225,8 @@ function SeasonOptions({
                   {aired === 0
                     ? 'Not aired yet'
                     : value === 'ignored'
-                      ? `${aired} aired · ignored`
-                      : `${w} / ${aired} watched${value === 'auto' ? ' · auto' : ''}`}
+                      ? `${aired} aired, ignored`
+                      : `${w} of ${aired} watched${value === 'auto' ? ' (auto)' : ''}`}
                 </p>
               </div>
               <div role="radiogroup" aria-label={`Season ${s.season_number}`} className="flex gap-0.5 rounded-md border border-line p-0.5">
@@ -298,7 +298,7 @@ function WatchedHeading({ item, seasons, checking }: { item: UserItem; seasons: 
           {/* Ignored episodes are tallied in the count (they're "accounted for"), and also shown on their own. */}
           <span className="font-mono text-xs text-muted">
             {watched + ignored} / {aired}
-            {ignored > 0 && <span className="text-warn"> · {ignored} ignored</span>}
+            {ignored > 0 && <span className="text-warn">, {ignored} ignored</span>}
           </span>
         </div>
       )}
@@ -451,8 +451,8 @@ function TvProgressSection({
         Manual override
         {plexLast && (
           <>
-            {' '}
-            · Plex says <span className="font-mono text-fg">{episodeCode(plexLast)}</span>
+            .{' '}
+            Plex says <span className="font-mono text-fg">{episodeCode(plexLast)}</span>
           </>
         )}
         <button type="button" onClick={() => save({ plexSync: true })} className={pillButton}>
@@ -594,7 +594,7 @@ function MovieProgressSection({
           {label}
         </span>
         <span className="text-xs text-muted">
-          {syncOn ? watch.server : `Manual override · Plex says ${label.toLowerCase()}`}
+          {syncOn ? watch.server : `Manual override. Plex says ${label.toLowerCase()}`}
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
           {syncOn ? (
@@ -676,7 +676,7 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
         <p className={labelClass}>Notes</p>
         <span className="text-xs text-faint" aria-live="polite">
           {state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : state === 'error' ? (
-            <span className="text-bad">Couldn’t save — try again</span>
+            <span className="text-bad">Couldn’t save. Try again.</span>
           ) : null}
         </span>
       </div>
@@ -737,7 +737,7 @@ function SaveState({ pending, error }: { pending: number; error: string | null }
 /**
  * The main action on a title page, placed right under the title: Status, plus how far along you are
  * (episode for TV, watched state for movies, Steam playtime for games).
- * Top right: "In Your Library" (games/books) or source availability (movies/TV).
+ * Top right: "In your library" (games/books) or source availability (movies/TV).
  * Rating, priority and notes live further down, in <TrackingDetails>.
  */
 export function StatusControls({ item }: { item: UserItem }) {
@@ -810,7 +810,7 @@ export function StatusControls({ item }: { item: UserItem }) {
             onClick={() => save({ owned: !item.owned })}
             activeClass="border-good/60 bg-good/10 text-good"
           >
-            <Library className="size-4" /> In Your Library
+            <Library className="size-4" /> In your library
             {item.owned && <Check className="size-3.5" />}
           </Toggle>
         ) : (
@@ -842,7 +842,7 @@ export function StatusControls({ item }: { item: UserItem }) {
           </span>{' '}
           played
           {item.steamLastPlayed &&
-            ` · last played ${new Date(item.steamLastPlayed).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
+            `, last played ${new Date(item.steamLastPlayed).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
         </p>
       )}
 

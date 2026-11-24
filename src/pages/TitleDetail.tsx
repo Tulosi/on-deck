@@ -88,7 +88,7 @@ function timeToBeatText(d: Record<string, unknown>): string | undefined {
     t.full != null ? `100% ${h(t.full)}` : null,
   ].filter(Boolean) as string[]
   if (!parts.length) return 'No data yet'
-  return `${parts.join(' · ')}${t.players ? ` (${t.players} player${t.players === 1 ? '' : 's'})` : ''}`
+  return `${parts.join(', ')}${t.players ? ` (${t.players} player${t.players === 1 ? '' : 's'})` : ''}`
 }
 
 function GameFacts({ d }: { d: Record<string, unknown> }) {
@@ -112,10 +112,10 @@ function GameFacts({ d }: { d: Record<string, unknown> }) {
     <>
       <Fact label="Developer" value={list(d.developer)} />
       <Fact label="Publisher" value={list(d.publisher)} />
-      <Fact label="Modes" value={modes.length ? modes.join(' · ') : undefined} />
+      <Fact label="Modes" value={modes.length ? modes.join(', ') : undefined} />
       <Fact label="Time to beat" value={timeToBeatText(d)} />
       <Fact label="Steam Deck" value={typeof d.steam_deck === 'string' ? DECK_LABEL[d.steam_deck] : undefined} />
-      <Fact label="Early Access" value={d.early_access ? 'Yes — not 1.0 yet' : undefined} />
+      <Fact label="Early Access" value={d.early_access ? 'Yes, not 1.0 yet' : undefined} />
       <Fact label="Perspective" value={list(d.perspectives)} />
     </>
   )
@@ -127,7 +127,7 @@ function BookFacts({ d }: { d: Record<string, unknown> }) {
   return (
     <>
       <Fact label={Array.isArray(d.authors) && d.authors.length > 1 ? 'Authors' : 'Author'} value={authors} />
-      <Fact label="Series" value={series?.name ? `${series.name}${series.position ? ` · #${series.position}` : ''}` : undefined} />
+      <Fact label="Series" value={series?.name ? `${series.name}${series.position ? `, book ${series.position}` : ''}` : undefined} />
       <Fact label="Pages" value={typeof d.pages === 'number' ? d.pages.toLocaleString() : undefined} />
       <Fact
         label="Readers on Hardcover"
@@ -258,7 +258,7 @@ export function TitleDetail() {
     !!next?.air_date &&
     (next.episode_number ?? 1) > 1 &&
     next.air_date >= new Date().toISOString().slice(0, 10)
-  const statusText = currentlyAiring ? 'Currently Airing' : typeof d.status === 'string' ? d.status : undefined
+  const statusText = currentlyAiring ? 'Currently airing' : typeof d.status === 'string' ? d.status : undefined
 
   // No "Are you sure?": it's removed with an Undo toast, and only deleted once that runs out.
   const remove = () => removeItem(item, () => navigate('/', { replace: true }))

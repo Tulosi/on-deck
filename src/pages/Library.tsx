@@ -265,9 +265,9 @@ export function Library() {
         <p className="py-16 text-center text-sm text-muted">
           {!isSample && (f.type === 'game' || f.type === 'book')
             ? f.type === 'book'
-              ? 'No books yet — use the search bar to add one.'
-              : 'No games yet — use the search bar to add one.'
-            : 'Nothing here yet — use the search bar to add something.'}
+              ? 'No books yet. Use the search bar to add one.'
+              : 'No games yet. Use the search bar to add one.'
+            : 'Nothing here yet. Use the search bar to add something.'}
         </p>
       ) : results.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">
@@ -317,7 +317,7 @@ export function Library() {
 
       {isSample && (
         <p className="mt-10 text-center text-xs text-faint">
-          Sample data — <Link to="/login" className="text-accent-ink hover:underline">sign in</Link> to filter your own library.
+          Sample data. <Link to="/login" className="text-accent-ink hover:underline">Sign in</Link> to filter your own library.
         </p>
       )}
     </div>

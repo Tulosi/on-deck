@@ -58,7 +58,7 @@ export interface Filters {
   rating: RatingFilter[]
   /** Minimum normalised score 0–100, or null for any. */
   minScore: number | null
-  /** Movies/TV: on Plex or my streaming services. Games/books: In Your Library. */
+  /** Movies/TV: on Plex or my streaming services. Games/books: In your library. */
   availability: AvailabilityFilter[]
   release: ReleaseFilter[]
   yearFrom: number | null
@@ -265,7 +265,7 @@ function tvProgressOf(item: UserItem): TvProgressFilter {
   return 'midway'
 }
 
-/** Movies/TV: stored availability (null = not checked yet). Games/books: In Your Library. */
+/** Movies/TV: stored availability (null = not checked yet). Games/books: In your library. */
 export function isAvailable(item: UserItem): boolean | null {
   if (item.title.mediaType === 'game' || item.title.mediaType === 'book') return item.owned
   return item.available ?? null
@@ -485,7 +485,7 @@ export interface Group {
 const STATUS_LABEL: Record<Progress, string> = Object.fromEntries(
   (['wanted', 'in_progress', 'caught_up', 'stalled', 'completed', 'dropped'] as Progress[]).map((p) => [p, statusLabel(p)]),
 ) as Record<Progress, string>
-const TYPE_LABEL: Record<MediaType, string> = { movie: 'Movies', tv: 'TV Shows', game: 'Games', book: 'Books' }
+const TYPE_LABEL: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows', game: 'Games', book: 'Books' }
 const PRIORITY_LABEL: Record<string, string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority', none: 'No priority' }
 
 /** Groups already-sorted items, keeping each group's order. Group order is fixed per key. */

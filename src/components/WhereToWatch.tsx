@@ -18,7 +18,7 @@ const plexCopy: Record<SeerrStatus, { label: string; tone: string }> = {
   available: { label: 'On your Plex', tone: 'text-good' },
   partial: { label: 'Partly on your Plex', tone: 'text-good' },
   processing: { label: 'Requested', tone: 'text-info' }, // approved; "— downloading" added only when one is active
-  pending: { label: 'Requested — awaiting approval', tone: 'text-info' },
+  pending: { label: 'Requested, awaiting approval', tone: 'text-info' },
   missing: { label: 'Not on your Plex', tone: 'text-muted' },
 }
 
@@ -264,7 +264,7 @@ function ProviderList({ label, providers }: { label: string; providers: Provider
   if (providers.length === 0) return null
   return (
     <div className="space-y-2">
-      <p className="font-mono text-[11px] tracking-wider text-faint uppercase">{label}</p>
+      <p className="text-xs font-medium text-muted">{label}</p>
       <ul className="flex flex-wrap gap-2">
         {providers.map((p) => (
           <li

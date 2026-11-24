@@ -89,7 +89,7 @@ export function ResetPassword() {
       </div>
     )
   } else if (done) {
-    body = <p className="text-sm text-good">Password updated — taking you to your library…</p>
+    body = <p className="text-sm text-good">Password updated. Taking you to your library…</p>
   } else if (!user) {
     body = (
       <div className="space-y-3 text-sm text-muted">

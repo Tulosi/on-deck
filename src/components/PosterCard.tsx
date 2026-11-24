@@ -221,7 +221,7 @@ export const PosterCard = memo(function PosterCard({
         {/* Early Access (games): bottom-right is free on game posters (Plex dots are movies/TV only). */}
                 {title.mediaType === 'game' && title.details?.early_access === true && vis('release') !== null && (
                   <span
-                    title="Early Access — not at 1.0 yet"
+                    title="Early access: not at 1.0 yet"
                     className={clsx(
                       'rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300',
                       vis('release'),

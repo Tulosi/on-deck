@@ -101,7 +101,7 @@ function EntryRow({ entry }: { entry: WaitlistEntry }) {
         {cd && (
           <p
             className={clsx(
-              'mt-1 inline-block rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase',
+              'mt-1 inline-block rounded-md px-1.5 py-0.5 text-xs font-semibold',
               soon ? 'bg-accent text-accent-fg' : 'bg-raised text-muted',
             )}
           >
@@ -229,7 +229,7 @@ function CalendarView({
       <div className="overflow-hidden rounded-lg border border-line">
         <div className="grid grid-cols-7 border-b border-line bg-surface">
           {weekdays.map((w) => (
-            <div key={w} className="py-2 text-center font-mono text-[11px] text-faint uppercase">
+            <div key={w} className="py-2 text-center text-xs text-muted">
               {w}
             </div>
           ))}

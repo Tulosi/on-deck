@@ -2,23 +2,23 @@
 import type { MediaType, Progress } from '../types'
 
 const WORDS: Record<MediaType, Partial<Record<Progress, string>>> = {
-  movie: { wanted: 'Want to Watch', in_progress: 'In Progress', completed: 'Watched It', dropped: 'Dropped It' },
+  movie: { wanted: 'Want to watch', in_progress: 'In progress', completed: 'Watched it', dropped: 'Dropped it' },
   tv: {
-    wanted: 'Want to Watch',
-    in_progress: 'In Progress',
-    caught_up: 'Caught Up',
-    completed: 'Watched It',
-    dropped: 'Dropped It',
+    wanted: 'Want to watch',
+    in_progress: 'In progress',
+    caught_up: 'Caught up',
+    completed: 'Watched it',
+    dropped: 'Dropped it',
   },
-  game: { wanted: 'Want to Play', in_progress: 'Playing It', stalled: 'Stalled', completed: 'Beat It', dropped: 'Dropped It' },
-  book: { wanted: 'Want to Read', in_progress: 'Reading It', stalled: 'Stalled', completed: 'Read It', dropped: 'Dropped It' },
+  game: { wanted: 'Want to play', in_progress: 'Playing it', stalled: 'Stalled', completed: 'Beat it', dropped: 'Dropped it' },
+  book: { wanted: 'Want to read', in_progress: 'Reading it', stalled: 'Stalled', completed: 'Read it', dropped: 'Dropped it' },
 }
 
 /** When several types are mixed (Library → All, groupings): neutral words. */
 const MIXED: Record<Progress, string> = {
   wanted: 'Wanted',
-  in_progress: 'In Progress',
-  caught_up: 'Caught Up',
+  in_progress: 'In progress',
+  caught_up: 'Caught up',
   stalled: 'Stalled',
   completed: 'Done',
   dropped: 'Dropped',

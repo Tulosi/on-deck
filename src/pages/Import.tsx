@@ -70,7 +70,7 @@ function Row({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; i
           <span className="block truncate font-mono text-[11px] text-muted">{c.detail}</span>
         </span>
         {(inLib || c.suggested || skipped) && (
-          <span className="shrink-0 font-mono text-[11px] text-faint uppercase">{inLib ? 'In library' : skipped ? 'Skipped before' : 'Suggested'}</span>
+          <span className="shrink-0 text-xs text-faint">{inLib ? 'In library' : skipped ? 'Skipped before' : 'Suggested'}</span>
         )}
       </label>
     </li>
@@ -324,7 +324,7 @@ export function ImportPage() {
                 Added <b>{result.added}</b> to your library
                 {result.failed.length ? (
                   <span className="text-bad" title={result.failed.map((f) => f.title).join(', ')}>
-                    {' '}· {result.failed.length} couldn’t be added (still ticked — add again to retry)
+                    {' '}{result.failed.length} couldn’t be added. They’re still ticked, so add again to retry.
                   </span>
                 ) : (
                   ''
@@ -336,7 +336,7 @@ export function ImportPage() {
               </p>
             ) : (
               <p className="text-sm text-muted">
-                <b className="text-fg">{count}</b> selected · unticked titles are remembered and stay unticked next time
+                <b className="text-fg">{count}</b> selected. Unticked titles are remembered and stay unticked next time
               </p>
             )}
             {!progress && (

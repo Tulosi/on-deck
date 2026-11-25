@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2, Search as SearchIcon, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
-import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, SearchResultsBody, useAdder } from '../components/SearchResults'
+import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, useSearchTypes, SearchResultsBody, useAdder } from '../components/SearchResults'
 import { useAuth } from '../lib/auth'
 import { resultKey, type SearchResult } from '../lib/library'
 import { useDebounced, useSearch, type SearchType } from '../lib/search'
@@ -76,6 +76,7 @@ export function SearchPage() {
     />
   )
   const current = SEARCH_TYPES.find((t) => t.value === type)!
+  const searchTypes = useSearchTypes()
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -108,7 +109,7 @@ export function SearchPage() {
       </label>
 
       <div role="radiogroup" aria-label="Search for" className="mt-3 flex gap-1 sm:flex-wrap sm:gap-1.5">
-        {SEARCH_TYPES.map((t) => {
+        {searchTypes.map((t) => {
           const Icon = t.icon
           const active = t.value === type
           return (

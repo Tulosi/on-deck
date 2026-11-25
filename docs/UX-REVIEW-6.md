@@ -287,3 +287,25 @@ This run was up from 29 and 27.
 **Not changed:**
 - Library is still under More in the default phone tab bar. The four type tabs cover it, and the tabs can be changed in Settings → Navigation.
 - Two-type combinations on a 390px phone lose a few letters in the pill. The checklist shows the full choice.
+
+---
+
+## 8. Nielsen rescore after 7e461e5
+
+A fresh, independent reviewer scored **33 / 40** (Good) again, but the scores per heuristic moved:
+- **Now 4:** Visibility (toasts with Undo on every change), Recognition (shortcut hints, the per-title shortcuts list) and Flexibility. Last time's fixes landed.
+- **Now 3:** Match with the real world and User control. They were 4 last time. This reviewer found different gaps.
+
+The total is the same because each new reviewer looks somewhere new.
+
+**Real gaps it found (confirmed in code):**
+
+| # | Sev | Issue |
+|---|---|---|
+| 22 | P2 | Bulk status changes have no Undo ([library.ts](../src/lib/library.ts) `setStatus`). It's the one change to many titles that can't be taken back, and it can clear their dates. |
+| 23 | P2 | Sign-in enforces the 8-character minimum meant for new passwords ([Login.tsx](../src/pages/Login.tsx) `minLength={8}` in every mode). A shorter existing password is blocked by the browser's popup. |
+| 24 | P3 | A bulk failure doesn't name the titles or offer Retry. |
+| 25 | P3 | The login error isn't announced to screen readers (no `role="alert"`). Validation uses browser popups. |
+| 26 | P3 | On phones, "Details" on Home clashes with the cards' own "Details" buttons. The Library filter's status words still differ from title pages. |
+
+**Taste or ceiling:** Library's desktop toolbar (about 10 controls in one row), three sample-mode notices, and no concept help page.

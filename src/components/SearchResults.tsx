@@ -1,5 +1,6 @@
 // Search results UI shared by the top-bar dropdown (SearchBox) and the full search page (pages/Search.tsx).
 import { useState, type ReactNode } from 'react'
+import { useTypeOrder } from '../lib/navLayout'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { ArrowLeft, BookOpen, Check, ChevronRight, Film, Gamepad2, Layers, Loader2, Plus, Sparkles, Star, Tv, type LucideIcon } from 'lucide-react'
@@ -17,6 +18,11 @@ export const SEARCH_TYPES: { value: SearchType; label: string; icon: LucideIcon;
   { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search games…' },
   { value: 'book', label: 'Books', icon: BookOpen, placeholder: 'Search books…' },
 ]
+/** The search tabs with the media types in your nav's order (All stays first). */
+export function useSearchTypes() {
+  const order = useTypeOrder()
+  return [SEARCH_TYPES[0], ...order.map((t) => SEARCH_TYPES.find((s) => s.value === t)!)]
+}
 export const TYPE_KEY = 'ondeck.searchType'
 export const isSearchType = (v: unknown): v is SearchType => SEARCH_TYPES.some((t) => t.value === v)
 

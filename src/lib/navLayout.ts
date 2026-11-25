@@ -4,7 +4,10 @@
 //   collections: your collections, below the divider
 //   tabs: the phone tab bar's chosen tabs, in order (the rest go under More)
 //   hidden: default collections the user has hidden (Waitlist, Early Access, Deals)
+import { useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { tabsFrom } from '../components/nav'
+import type { MediaType } from '../types'
 import { useAuth } from './auth'
 import { useProfile, useUpdateProfile } from './integrations'
 
@@ -12,7 +15,7 @@ export type Section = 'main' | 'types' | 'collections' | 'tabs' | 'hidden'
 export type NavLayout = Partial<Record<Section, string[]>>
 
 export const DEFAULT_MAIN = ['home', 'library', 'waitlist']
-export const DEFAULT_TYPES = ['movie', 'tv', 'game', 'book']
+export const DEFAULT_TYPES = ['tv', 'movie', 'game', 'book']
 const LOCAL_KEY = 'ondeck.navLayout'
 
 /** Saved order first (known keys only), then anything new in its default position. */
@@ -79,4 +82,25 @@ export function useNavLayout(): [NavLayout, (section: Section, order: string[]) 
     void update({ nav_layout: next })
   }
   return [layout, save]
+}
+
+const PHONE = '(max-width: 767.98px)'
+const subscribePhone = (cb: () => void) => {
+  const m = matchMedia(PHONE)
+  m.addEventListener('change', cb)
+  return () => m.removeEventListener('change', cb)
+}
+
+/**
+ * The four media types in your own nav order, for type chips and tabs everywhere: the sidebar's Library order
+ * (TV shows, Movies, Games, Books unless rearranged). On phones, a customised tab bar's order wins, with any types
+ * not in the bar following in sidebar order.
+ */
+export function useTypeOrder(): MediaType[] {
+  const [layout] = useNavLayout()
+  const phone = useSyncExternalStore(subscribePhone, () => matchMedia(PHONE).matches, () => false)
+  const sidebar = ordered(DEFAULT_TYPES, layout.types) as MediaType[]
+  if (!phone || !layout.tabs?.length) return sidebar
+  const inBar = tabsFrom(layout.tabs).filter((k): k is MediaType => (sidebar as string[]).includes(k))
+  return [...inBar, ...sidebar.filter((t) => !inBar.includes(t))]
 }

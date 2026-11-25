@@ -22,6 +22,15 @@ const plexMeta: Record<PlexStatus, { label: string; className: string }> = {
   missing: { label: 'Not on Plex', className: 'bg-[#9a8e7e]' },
 }
 
+/**
+ * The availability chip: Plex's state, except that when Plex doesn't have it but one of your streaming services
+ * does, it says where to watch instead ("On Netflix") rather than "Not on Plex".
+ */
+function plexChip(item: UserItem): { label: string; className: string } {
+  const service = item.plex === 'missing' ? item.availableVia?.find((v) => v !== 'Plex') : undefined
+  return service ? { label: `On ${service}`, className: plexMeta.available.className } : plexMeta[item.plex!]
+}
+
 function Badge({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {
   return (
     <span
@@ -256,7 +265,7 @@ export const PosterCard = memo(function PosterCard({
                 )}
 
               </div>
-              <div className="ml-auto flex flex-col items-end gap-1">
+              <div className="ml-auto flex max-w-full min-w-0 flex-col items-end gap-1">
         {/* Early Access (games): bottom-right is free on game posters (Plex dots are movies/TV only). */}
                 {title.mediaType === 'game' && title.details?.early_access === true && (
                   <span
@@ -274,15 +283,15 @@ export const PosterCard = memo(function PosterCard({
                 {/* Plex availability */}
                 {showPlex && (
                   <span
-                    title={plexMeta[item.plex!].label}
+                    title={plexChip(item).label}
                     className={clsx(
-                      'flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] font-medium text-white',
+                      'flex max-w-full min-w-0 items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] font-medium text-white',
                       vis('plex'),
                     )}
                   >
-                    {/* Words, not just the dot's colour: "On Plex", "Requested", "Not on Plex". */}
-                    <span className={clsx('size-2 shrink-0 rounded-full', plexMeta[item.plex!].className)} />
-                    {plexMeta[item.plex!].label}
+                    {/* Words, not just the dot's colour: "On Plex", "On Netflix", "Requested", "Not on Plex". */}
+                    <span className={clsx('size-2 shrink-0 rounded-full', plexChip(item).className)} />
+                    <span className="truncate">{plexChip(item).label}</span>
                   </span>
                 )}
               </div>

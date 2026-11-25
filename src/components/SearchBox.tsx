@@ -6,7 +6,7 @@ import { Loader2, Maximize2, Search, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { resultKey, type SearchResult } from '../lib/library'
 import { useDebounced, useSearch, type SearchType } from '../lib/search'
-import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, savedType, SearchResultsBody, useAdder } from './SearchResults'
+import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, useSearchTypes, savedType, SearchResultsBody, useAdder } from './SearchResults'
 
 /** Full search page URL for a query and type. */
 export const fullSearchHref = (q: string, type: SearchType) =>
@@ -50,6 +50,7 @@ export function SearchBox() {
 
   const s = useSearch(query, type, 12)
   const current = SEARCH_TYPES.find((t) => t.value === type)!
+  const searchTypes = useSearchTypes()
 
   const close = () => {
     setOpen(false)
@@ -182,7 +183,7 @@ export function SearchBox() {
           {/* Type picker + close */}
           <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-surface py-2 pr-2 pl-3">
             <div role="radiogroup" aria-label="Search for" className="flex min-w-0 flex-1 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
-              {SEARCH_TYPES.map((t) => {
+              {searchTypes.map((t) => {
                 const Icon = t.icon
                 const active = t.value === type
                 return (

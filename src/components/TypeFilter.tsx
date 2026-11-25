@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Check, ChevronDown, ListFilter } from 'lucide-react'
-import { LABELS, normTypes, TYPES, typesLabel } from '../lib/filters'
+import { LABELS, normTypes, typesLabel } from '../lib/filters'
+import { useTypeOrder } from '../lib/navLayout'
 import type { MediaType } from '../types'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 
@@ -13,9 +14,11 @@ import { useSlidingIndicator } from '../lib/useSlidingIndicator'
  * dropdown, so this reads as a filter on the page rather than a second set of tabs.
  */
 export function TypeFilter({ value, onChange }: { value: MediaType | null; onChange: (t: MediaType | null) => void }) {
+  // In your nav's order (sidebar on desktop, tab bar on phones).
+  const order = useTypeOrder()
   const options: { value: MediaType | null; label: string }[] = [
     { value: null, label: 'All' },
-    ...TYPES.map((t) => ({ value: t, label: LABELS.type[t] })),
+    ...order.map((t) => ({ value: t, label: LABELS.type[t] })),
   ]
   // When the pills overflow and scroll sideways, keep the selected one in view.
   const pills = useRef<HTMLDivElement | null>(null)
@@ -88,6 +91,7 @@ export function TypeFilter({ value, onChange }: { value: MediaType | null; onCha
  * per type that toggles on and off. Phones: the same "Showing:" pill as elsewhere, opening a short checklist.
  */
 export function TypesFilter({ value, onChange }: { value: MediaType[]; onChange: (ts: MediaType[]) => void }) {
+  const order = useTypeOrder()
   const toggle = (t: MediaType) => onChange(normTypes(value.includes(t) ? value.filter((x) => x !== t) : [...value, t]))
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
@@ -142,7 +146,7 @@ export function TypesFilter({ value, onChange }: { value: MediaType[]; onChange:
             >
               <Check className={clsx('size-4 text-accent-ink', value.length && 'invisible')} aria-hidden="true" /> All types
             </button>
-            {TYPES.map((t) => (
+            {order.map((t) => (
               <label key={t} className="flex h-11 cursor-pointer items-center gap-3 rounded-lg px-3 text-sm text-fg hover:bg-surface">
                 <input
                   type="checkbox"
@@ -160,7 +164,7 @@ export function TypesFilter({ value, onChange }: { value: MediaType[]; onChange:
         <button type="button" aria-pressed={!value.length} onClick={() => onChange([])} className={chip(!value.length)}>
           All
         </button>
-        {TYPES.map((t) => (
+        {order.map((t) => (
           <button
             key={t}
             type="button"

@@ -27,17 +27,51 @@ const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (
  * PC games, plus games with no platform listed yet: IGDB often adds a new or unreleased game (AetherCycle, in Early
  * Access) before anyone fills in its releases, and those would otherwise never show up.
  */
+const FIELDS =
+  'fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent,external_games.uid,external_games.external_game_source'
+const WHERE = `(platforms = (${PC}) | platforms = null) & version_parent = null`
+const igdbSearch = (q: string, limit: number) => igdb('games', `search "${q}"; ${FIELDS}; where ${WHERE}; limit ${limit};`)
+const developerOf = (g: Json): string | null => ((g.involved_companies ?? []) as Json[]).find((c) => c.developer)?.company?.name ?? null
+const devKey = (d: string | null | undefined) => (d ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+/**
+ * "Series: Subtitle" (or "Series - Subtitle") → ['Series', 'Subtitle']. Stores often list a spin-off under the
+ * subtitle alone: "Atomic Heart: The CUBE" is "The Cube" on IGDB and "The CUBE" on Steam.
+ */
+function splitSubtitle(q: string): [string, string] | null {
+  const m = q.match(/^(.{2,}?)\s*(?::|\s[-–—]\s)\s*(.{2,})$/)
+  return m ? [m[1].trim(), m[2].trim()] : null
+}
+
 async function search(query: string, limit = 12, fuzzy = false) {
   const q = query.trim().replace(/"/g, '')
   if (q.length < 2) return json({ results: [] })
   // Steam's store in parallel (normal searches only), for games IGDB doesn't know yet.
   const steamHits = fuzzy ? Promise.resolve([]) : steamSearch(q, 8).catch(() => [])
-  const games = await igdb(
+  // "Series: Subtitle": also look up the subtitle on its own, keeping only games by the series' own developer
+  // (so "Atomic Heart: The CUBE" finds Mundfish's The Cube, not every cube game).
+  const parts = fuzzy ? null : splitSubtitle(q)
+  const spinOffs = parts
+    ? Promise.all([igdbSearch(parts[0], 6), igdbSearch(parts[1], 12), steamSearch(parts[1], 8).catch(() => [])])
+        .then(([series, subs, steamSubs]) => {
+          const devs = new Set(series.map((g) => devKey(developerOf(g))).filter(Boolean))
+          return {
+            igdb: subs.filter((g) => devs.has(devKey(developerOf(g)))),
+            steam: steamSubs.filter((h) => devs.has(devKey(h.developer))),
+          }
+        })
+        .catch(() => ({ igdb: [] as Json[], steam: [] as Awaited<ReturnType<typeof steamSearch>> }))
+    : Promise.resolve({ igdb: [] as Json[], steam: [] as Awaited<ReturnType<typeof steamSearch>> })
+  const direct = await igdb(
     'games',
     fuzzy
-      ? `fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent,external_games.uid,external_games.external_game_source; where name ~ *"${fuzzyStem(q)}"* & (platforms = (${PC}) | platforms = null) & version_parent = null; sort total_rating_count desc; limit ${limit};`
-      : `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent,external_games.uid,external_games.external_game_source; where (platforms = (${PC}) | platforms = null) & version_parent = null; limit ${limit};`,
+      ? `${FIELDS}; where name ~ *"${fuzzyStem(q)}"* & ${WHERE}; sort total_rating_count desc; limit ${limit};`
+      : `search "${q}"; ${FIELDS}; where ${WHERE}; limit ${limit};`,
   )
+  const extra = await spinOffs
+  const seen = new Set(direct.map((g) => g.id))
+  // Exact matches first, then the subtitle's spin-offs.
+  const games = [...direct, ...extra.igdb.filter((g) => !seen.has(g.id) && seen.add(g.id))]
   const results = games.map((g) => ({
     igdbId: g.id as number,
     mediaType: 'game' as const,
@@ -45,8 +79,7 @@ async function search(query: string, limit = 12, fuzzy = false) {
     year: g.first_release_date ? new Date(g.first_release_date * 1000).getUTCFullYear() : null,
     posterUrl: igdbImage(g.cover?.image_id, 't_cover_small'),
     overview: (g.summary as string | undefined) ?? null,
-    developer:
-      ((g.involved_companies ?? []) as Json[]).find((c) => c.developer)?.company?.name ?? null,
+    developer: developerOf(g),
   }))
   // Steam games IGDB already has (by Steam app id, or the same name) are left out; the rest go after IGDB's.
   const linked = new Set(
@@ -56,7 +89,8 @@ async function search(query: string, limit = 12, fuzzy = false) {
   )
   const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '')
   const names = new Set(results.map((r) => norm(r.title)))
-  const steamOnly = (await steamHits)
+  const steamOnly = [...(await steamHits), ...extra.steam]
+    .filter((h, i, all) => all.findIndex((x) => x.steamAppId === h.steamAppId) === i)
     .filter((h) => !linked.has(String(h.steamAppId)) && !names.has(norm(h.title)))
     .map((h) => ({ ...h, mediaType: 'game' as const }))
   return json({ results: [...results, ...steamOnly.slice(0, 4)] })

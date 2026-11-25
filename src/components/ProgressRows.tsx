@@ -76,7 +76,9 @@ function lineFor(item: UserItem): Line {
 function plexLine(item: UserItem): string | undefined {
   if (item.plex === 'available') return 'On Plex'
   if (item.plex === 'requested') return 'Requested on Plex'
-  if (item.plex === 'missing') return 'Not on Plex'
+  // Not on Plex, but on one of your streaming services: say where to watch it.
+  const service = item.availableVia?.find((v) => v !== 'Plex')
+  if (item.plex === 'missing') return service ? `On ${service}` : 'Not on Plex'
   return undefined
 }
 

@@ -38,12 +38,10 @@ export function TypeFilter({ value, onChange }: { value: MediaType | null; onCha
   return (
     <>
       {/* Phones, on every page that has it (Library included), so it looks the same everywhere. */}
-      <label className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg focus-within:border-accent md:hidden">
-        <ListFilter className="size-4 text-muted" aria-hidden="true" />
-        <span>
-          <span className="text-muted">Showing:</span> {value ? LABELS.type[value] : 'All types'}
-        </span>
-        <ChevronDown className="size-4 text-muted" aria-hidden="true" />
+      <label className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs text-fg focus-within:border-accent md:hidden">
+        <ListFilter className="size-3.5 text-muted" aria-hidden="true" />
+        <span>{value ? LABELS.type[value] : 'All'}</span>
+        <ChevronDown className="size-3.5 text-muted" aria-hidden="true" />
         {/* The real control: invisible over the pill, so phones get their native picker. */}
         <select
           aria-label="Show only"
@@ -119,12 +117,11 @@ export function TypesFilter({ value, onChange }: { value: MediaType[]; onChange:
           aria-expanded={open}
           aria-haspopup="true"
           onClick={() => setOpen((o) => !o)}
-          className="flex h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg aria-expanded:border-accent max-[26rem]:px-3"
+          className="flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs text-fg aria-expanded:border-accent"
         >
-          <ListFilter className="size-4 shrink-0 text-muted max-[26rem]:hidden" aria-hidden="true" />
+          {/* Same size and shape as the buttons beside it (Pick, Poster info), so the row reads as one set. */}
+          <ListFilter className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
           <span className="truncate">
-            {/* Narrow phones, or several types: the arrow says it's a menu, so the choice gets the room. */}
-            {value.length < 2 && <span className="text-muted max-[26rem]:hidden">Showing: </span>}
             {/* The page heading below spells the picks out, so narrow phones just count them: three or more below
                 26rem, two below 24rem. */}
             {value.length > 1 ? (
@@ -135,10 +132,10 @@ export function TypesFilter({ value, onChange }: { value: MediaType[]; onChange:
                 <span className={value.length > 2 ? 'min-[26rem]:hidden' : 'min-[24rem]:hidden'}>{value.length} types</span>
               </>
             ) : (
-              (typesShortLabel(order.filter((t) => value.includes(t))) ?? 'All types')
+              (typesShortLabel(order.filter((t) => value.includes(t))) ?? 'All')
             )}
           </span>
-          <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden="true" />
+          <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
         </button>
         {open && (
           <div

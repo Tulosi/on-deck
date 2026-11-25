@@ -61,7 +61,7 @@ export function PickButton() {
       type="button"
       onClick={openPicker}
       aria-label="Pick for me"
-      className="hit flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-faint sm:h-7"
+      className="hit flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs text-fg hover:border-faint sm:h-7 md:rounded-full"
     >
       <Dices className="size-3.5 text-accent-ink" aria-hidden="true" />
       {/* Narrow phones: "Pick", so the type pill keeps its room. */}

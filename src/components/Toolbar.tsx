@@ -41,8 +41,9 @@ function LabelsButton() {
       title={on ? 'Show poster details only on hover (scores, prices, dates)' : 'Always show poster details (scores, prices, dates)'}
       onClick={() => setMode(on ? 'hide' : 'show')}
       className={clsx(
-        'hit flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
-        on ? 'border-line bg-raised text-fg' : 'border-line text-muted hover:text-fg',
+        // Phones: the same outline button as the type menu and Pick beside it.
+        'hit flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs transition-colors sm:h-7 sm:rounded-md sm:px-2',
+        on ? 'text-fg sm:bg-raised' : 'text-muted hover:text-fg',
       )}
     >
       {on ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
@@ -415,7 +416,7 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className={clsx(
-          'hit flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors',
+          'hit flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors sm:h-7 sm:rounded-md sm:px-2.5',
           open || count ? 'border-accent text-fg' : 'border-line text-muted hover:text-fg',
         )}
       >

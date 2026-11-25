@@ -232,15 +232,14 @@ h1[tabindex='-1']:focus {
     transform: translateY(6px);
   }
 }
-/* A result coming into focus (Pick for me's details): rises and sharpens out of a slight blur. */
+/* A result arriving (Pick for me's details): a short fade with a small rise, staggered by the caller. */
 .reveal {
-  animation: reveal 420ms var(--ease-out) both;
+  animation: reveal 320ms var(--ease-out) both;
 }
 @keyframes reveal {
   from {
     opacity: 0;
-    transform: translateY(6px);
-    filter: blur(4px);
+    transform: translateY(4px);
   }
 }
 

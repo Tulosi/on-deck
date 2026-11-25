@@ -30,29 +30,44 @@ const FRICTION_S = 0.36
 const HANDOFF = 1.5
 const SPRING = { stiffness: 210, damping: 19 }
 /** Wind-up before the spin: the reel pulls back a touch first, like a lever, so the launch reads as a push. */
-const WINDUP_MS = 160
+const WINDUP_MS = 120
 const WINDUP = 0.18
-/** How far each poster turns away on the cylinder (degrees per step out), and the depth it's seen at. */
-const TILT = 18
-const PERSPECTIVE = 900
+/**
+ * Coverflow geometry, as Swiper's and Embla's 3D carousels lay it out: posters stand in real depth (pushed back with
+ * translateZ and seen through `PERSPECTIVE`), turned in towards the front one, with the nearest neighbours well
+ * visible and the further ones tucked in close behind them.
+ */
+const PERSPECTIVE = 1000
+/** Sideways step to the first neighbour, then to each one after (fractions of a poster's width). */
+const STEP_FIRST = 0.66
+const STEP_REST = 0.3
+/** Turn of the first neighbour, then extra per step beyond (degrees). */
+const TURN_FIRST = 32
+const TURN_REST = 6
+/** How far back each step out sits (px). */
+const DEPTH = 130
 
 /**
- * Where a poster sits for its distance `d` from the front (in posters, fractional mid-spin): round a faux cylinder,
- * each step out 10 % smaller (down to 54 %) and noticeably darker, bunched closer the further round it goes, and
- * anything further fades out round the back. `k` shrinks the whole arrangement to fit a narrow stage.
+ * Where a poster sits for its distance `d` from the front (in posters, fractional mid-spin). `k` shrinks the whole
+ * arrangement to fit a narrow stage.
  */
 function placement(d: number, k: number) {
-  const a = Math.abs(d)
-  const x = Math.sign(d) * CARD_W * 0.74 * Math.sin(Math.min(a, 3) * 0.69) * k
-  const scale = Math.max(0.54, 1 - 0.1 * a) * k
-  const opacity = Math.max(0, Math.min(1, (2.9 - a) / 0.7))
-  const brightness = Math.max(0.15, 1 - 0.46 * a)
-  // Turned to follow the curve, the way a poster on the outside of a drum would face.
-  const tilt = Math.sign(d) * Math.min(a, 2.5) * TILT
-  return { x, scale, opacity, z: Math.round(100 - a * 20), brightness, tilt }
+  const a = Math.min(Math.abs(d), 3)
+  const dir = Math.sign(d)
+  const near = Math.min(a, 1)
+  const far = Math.max(0, a - 1)
+  const x = dir * CARD_W * (STEP_FIRST * near + STEP_REST * far) * k
+  const turn = -dir * (TURN_FIRST * near + TURN_REST * far)
+  const z = -DEPTH * a * k
+  // Size as drawn (perspective included), for the corner fix.
+  const drawn = k * (PERSPECTIVE / (PERSPECTIVE - z))
+  const opacity = Math.max(0, Math.min(1, (2.6 - a) / 0.6))
+  const brightness = 1 - 0.32 * Math.min(a, 2)
+  return { x, z, turn, k, drawn, opacity, brightness, layer: Math.round(100 - a * 20) }
 }
 
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+/** Strong ease-out (cubic-bezier(0.23, 1, 0.32, 1) in spirit): moves at once on the click, then eases. */
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 4)
 
 /**
  * A spring as a CSS `linear()` easing, for the pick's landing pop (WAAPI). Browsers without `linear()` get a strong
@@ -97,7 +112,7 @@ export function PickButton() {
       type="button"
       onClick={openPicker}
       aria-label="Pick for me"
-      className="hit flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs text-fg hover:border-faint sm:h-7 md:rounded-full"
+      className="hit flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs text-fg hover:border-faint transition-[transform,border-color,filter] duration-150 active:scale-[0.97] sm:h-7 md:rounded-full"
     >
       <Dices className="size-3.5 text-accent-ink" aria-hidden="true" />
       {/* Narrow phones: "Pick", so the type pill keeps its room. */}
@@ -160,8 +175,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     setSpinning(true)
   }
 
-  // Run the carousel: fast with a little motion blur, slowing like a wheel running out of speed, just past the pick,
-  // then easing back onto it. Positions are set straight on the elements each frame (no re-render).
+  // Run the carousel: flung fast, slowing like a wheel running out of speed, a spring settling it onto the pick,
+  // Positions are set straight on the elements each frame (no re-render).
   // Reduced motion: it simply appears at the pick.
   useLayoutEffect(() => {
     const stage = stageEl.current
@@ -171,7 +186,14 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     const k = Math.min(1, stage.clientWidth / (CARD_W * 2.75))
     // Start a few posters in, so both sides are full from the first frame.
     const FROM = 3
-    const place = (pos: number, blur: number) => {
+    // Each poster's face (rounded, clipped) and the dark shade over it that dims it: opacity only, no filters.
+    const faces = cards.map((el) => el.firstElementChild as HTMLElement)
+    const shades = cards.map((el) => el.querySelector<HTMLElement>('[data-shade]')!)
+    const shade = (n: number, dark: number, ms = 0) => {
+      shades[n].style.transition = ms ? `opacity ${ms}ms cubic-bezier(0.23, 1, 0.32, 1)` : ''
+      shades[n].style.opacity = dark.toFixed(3)
+    }
+    const place = (pos: number) => {
       cards.forEach((el, n) => {
         const d = n - pos
         if (Math.abs(d) > 3) {
@@ -180,13 +202,12 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         }
         const p = placement(d, k)
         el.style.visibility = 'visible'
-        el.style.transition = ''
-        el.style.transform = `translate(-50%, -50%) translateX(${p.x.toFixed(1)}px) rotateY(${p.tilt.toFixed(1)}deg) scale(${p.scale.toFixed(3)})`
+        el.style.transform = `translate(-50%, -50%) translate3d(${p.x.toFixed(1)}px, 0, ${p.z.toFixed(1)}px) rotateY(${p.turn.toFixed(1)}deg) scale(${p.k.toFixed(3)})`
         el.style.opacity = p.opacity.toFixed(3)
-        el.style.zIndex = String(p.z)
-        // Cards are scaled, so the corner is drawn larger to come out at the library posters' 6px at any size.
-        el.style.setProperty('--r', `${(6 / p.scale).toFixed(2)}px`)
-        el.style.filter = `brightness(${p.brightness.toFixed(3)})${blur > 0.2 ? ` blur(${blur.toFixed(1)}px)` : ''}`
+        el.style.zIndex = String(p.layer)
+        // Cards are drawn smaller with depth, so the corner is set larger to come out at the library posters' 6px.
+        faces[n].style.borderRadius = `${(6 / p.drawn).toFixed(2)}px`
+        shade(n, 1 - p.brightness)
       })
     }
     const done = () => {
@@ -195,16 +216,15 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       frontEl.current?.animate(
         [
           { transform: 'scale(1)', easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
-          { transform: 'scale(1.045)', offset: 0.2, easing: POP_EASING },
+          { transform: 'scale(1.03)', offset: 0.2, easing: POP_EASING },
           { transform: 'scale(1)' },
         ],
-        { duration: 640 },
+        { duration: 480 },
       )
       cards.forEach((el, n) => {
         if (n === reel.at || el.style.visibility === 'hidden') return
         const p = placement(n - reel.at, k)
-        el.style.transition = 'filter 500ms cubic-bezier(0.23, 1, 0.32, 1)'
-        el.style.filter = `brightness(${(p.brightness * 0.6).toFixed(3)})`
+        shade(n, 1 - p.brightness * 0.7, 280)
       })
     }
     // A light tick on phones as each poster passes the front, like a wheel's clicker (Android; others ignore it).
@@ -217,14 +237,16 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       }
     }
     if (reel.resting) {
-      place(reel.at, 0)
+      place(reel.at)
       cards.forEach((el, n) => {
-        if (el.style.visibility !== 'hidden') el.style.filter = `brightness(${(placement(n - reel.at, k).brightness * 0.55).toFixed(3)})`
+        if (el.style.visibility !== 'hidden') shade(n, 1 - placement(n - reel.at, k).brightness * 0.55)
       })
       return
     }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      place(reel.at, 0)
+      // No travel: the posters simply fade over to the pick.
+      place(reel.at)
+      stage.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' })
       done()
       return
     }
@@ -233,7 +255,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     const finish = () => {
       if (finished) return
       finished = true
-      place(reel.at, 0)
+      place(reel.at)
       done()
     }
     // Next frame, even where the browser holds back animation frames (a background tab): falls back to a timer.
@@ -263,13 +285,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     const watchdog = setTimeout(finish, WINDUP_MS + handT * 1000 + 1500)
 
     const t0 = performance.now()
-    let last = FROM
-    let lastNow = t0
     const frame = (now: number) => {
       if (finished) return
       const t = (now - t0 - WINDUP_MS) / 1000
       let pos: number
-      if (t < 0) pos = FROM - WINDUP * easeInOut(1 + (t * 1000) / WINDUP_MS)
+      if (t < 0) pos = FROM - WINDUP * easeOut(1 + (t * 1000) / WINDUP_MS)
       else if (t < handT) pos = flingAt(t)
       else {
         // Spring, stepped in small fixed steps so it's the same at any frame rate.
@@ -286,15 +306,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         }
         pos = reel.at + spring.x
       }
-      // Motion blur from the actual speed (posters a second): smeared while flung, sharp as it slows.
-      const speed = Math.abs(pos - last) / Math.max(0.001, (now - lastNow) / 1000)
-      last = pos
-      lastNow = now
-      place(pos, Math.min(3, speed * 0.13))
+      place(pos)
       tick(pos)
       next(frame)
     }
-    place(FROM, 0)
+    place(FROM)
     next(frame)
     return () => {
       finished = true
@@ -362,7 +378,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         <div
           ref={stageEl}
           className="relative mt-5 overflow-hidden"
-          style={{ aspectRatio: `${CARD_W * 2.75} / ${STAGE_H}`, maxHeight: STAGE_H, maskImage: 'linear-gradient(90deg, transparent, #000 19%, #000 81%, transparent)' }}
+          style={{ aspectRatio: `${CARD_W * 2.75} / ${STAGE_H}`, maxHeight: STAGE_H, maskImage: 'linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent)' }}
           aria-hidden="true"
         >
           {reel ? (
@@ -412,7 +428,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
               )}
               <div className="reveal mt-3 flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: '120ms' }}>
                 {pick.progress === 'wanted' && (
-                  <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110">
+                  <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110 transition-[transform,border-color,filter] duration-150 active:scale-[0.97]">
                     {START_WORD[pick.title.mediaType]}
                   </button>
                 )}
@@ -420,7 +436,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                   to={`/title/${pick.title.id}`}
                   onClick={onClose}
                   className={clsx(
-                    'hit flex h-9 items-center rounded-lg px-3.5 text-sm font-medium',
+                    'hit flex h-9 items-center rounded-lg px-3.5 text-sm font-medium transition-[transform,border-color,filter] duration-150 active:scale-[0.97]',
                     pick.progress === 'wanted' ? 'border border-line text-fg hover:border-faint' : 'bg-accent text-accent-fg hover:brightness-110',
                   )}
                 >
@@ -433,7 +449,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                     if (!left) seen.current.clear()
                     if (kind) spin(kind)
                   }}
-                  className="hit flex h-9 items-center gap-1.5 rounded-lg border border-line px-3.5 text-sm text-fg hover:border-faint"
+                  className="hit flex h-9 items-center gap-1.5 rounded-lg border border-line px-3.5 text-sm text-fg hover:border-faint transition-[transform,border-color,filter] duration-150 active:scale-[0.97]"
                 >
                   <RotateCcw className="size-3.5" aria-hidden="true" /> {left ? 'Spin again' : 'Start over'}
                 </button>
@@ -460,8 +476,8 @@ function Card({ item, front, frontRef }: { item: UserItem; front: boolean; front
       <div
         ref={frontRef}
         className={clsx(
-          'size-full overflow-hidden rounded-[var(--r,6px)] bg-raised shadow-[0_12px_30px_-8px_rgb(0_0_0/0.7)] transition-shadow duration-300',
-          front && 'ring-2 ring-accent shadow-[0_0_32px_-6px_var(--color-accent)]',
+          'relative size-full overflow-hidden rounded-md bg-raised shadow-[0_12px_30px_-8px_rgb(0_0_0/0.7)] transition-shadow duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
+          front && 'ring-2 ring-accent',
         )}
       >
         {t.coverUrl ? (
@@ -472,6 +488,7 @@ function Card({ item, front, frontRef }: { item: UserItem; front: boolean; front
             {t.title}
           </div>
         )}
+        <div data-shade className="pointer-events-none absolute inset-0 bg-black opacity-0" />
       </div>
     </div>
   )

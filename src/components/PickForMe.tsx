@@ -24,6 +24,12 @@ const STAGE_H = 260
 const SPIN_MS = 1700
 const OVERSHOOT = 0.04
 const SETTLE_MS = 40
+/** Wind-up before the spin: the reel pulls back a touch first, like a lever, so the launch reads as a push. */
+const WINDUP_MS = 150
+const WINDUP = 0.14
+/** How far each poster turns away on the cylinder (degrees per step out), and the depth it's seen at. */
+const TILT = 18
+const PERSPECTIVE = 900
 
 /**
  * Where a poster sits for its distance `d` from the front (in posters, fractional mid-spin): round a faux cylinder,
@@ -36,7 +42,9 @@ function placement(d: number, k: number) {
   const scale = Math.max(0.54, 1 - 0.1 * a) * k
   const opacity = Math.max(0, Math.min(1, (2.9 - a) / 0.7))
   const brightness = Math.max(0.15, 1 - 0.46 * a)
-  return { x, scale, opacity, z: Math.round(100 - a * 20), brightness }
+  // Turned to follow the curve, the way a poster on the outside of a drum would face.
+  const tilt = Math.sign(d) * Math.min(a, 2.5) * TILT
+  return { x, scale, opacity, z: Math.round(100 - a * 20), brightness, tilt }
 }
 
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3.5)
@@ -131,7 +139,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         }
         const p = placement(d, k)
         el.style.visibility = 'visible'
-        el.style.transform = `translate(-50%, -50%) translateX(${p.x.toFixed(1)}px) scale(${p.scale.toFixed(3)})`
+        el.style.transition = ''
+        el.style.transform = `translate(-50%, -50%) translateX(${p.x.toFixed(1)}px) rotateY(${p.tilt.toFixed(1)}deg) scale(${p.scale.toFixed(3)})`
         el.style.opacity = p.opacity.toFixed(3)
         el.style.zIndex = String(p.z)
         // Cards are scaled, so the corner is drawn larger to come out at the library posters' 6px at any size.
@@ -141,10 +150,26 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     }
     const done = () => {
       setSpinning(false)
-      frontEl.current?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }], {
-        duration: 360,
+      // The pick lifts a touch and the posters either side step back into the dark, so it's clearly the one.
+      frontEl.current?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }, { transform: 'scale(1)' }], {
+        duration: 420,
         easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
       })
+      cards.forEach((el, n) => {
+        if (n === reel.at || el.style.visibility === 'hidden') return
+        const p = placement(n - reel.at, k)
+        el.style.transition = 'filter 500ms cubic-bezier(0.23, 1, 0.32, 1)'
+        el.style.filter = `brightness(${(p.brightness * 0.6).toFixed(3)})`
+      })
+    }
+    // A light tick on phones as each poster passes the front, like a wheel's clicker (Android; others ignore it).
+    let lastSlot = FROM
+    const tick = (pos: number) => {
+      const slot = Math.round(pos)
+      if (slot !== lastSlot) {
+        lastSlot = slot
+        navigator.vibrate?.(4)
+      }
     }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       place(reel.at, 0)
@@ -175,13 +200,15 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       }, 50)
     }
     // Whatever happens, it lands.
-    const watchdog = setTimeout(finish, SPIN_MS + SETTLE_MS + 600)
+    const watchdog = setTimeout(finish, WINDUP_MS + SPIN_MS + SETTLE_MS + 600)
+    const startAt = FROM - WINDUP
     const t0 = performance.now()
     const frame = (now: number) => {
       if (finished) return
-      const t = now - t0
+      const t = now - t0 - WINDUP_MS
       let pos: number
-      if (t < SPIN_MS) pos = FROM + easeOut(t / SPIN_MS) * (target - FROM)
+      if (t < 0) pos = FROM - WINDUP * easeInOut(1 + t / WINDUP_MS)
+      else if (t < SPIN_MS) pos = startAt + easeOut(t / SPIN_MS) * (target - startAt)
       else if (t < SPIN_MS + SETTLE_MS) pos = target - easeInOut((t - SPIN_MS) / SETTLE_MS) * OVERSHOOT
       else {
         finish()
@@ -191,6 +218,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       const speed = Math.abs(pos - last)
       last = pos
       place(pos, Math.min(3, speed * 8))
+      tick(pos)
       next(frame)
     }
     let last = FROM
@@ -266,7 +294,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           aria-hidden="true"
         >
           {reel ? (
-            <div key={reel.key} className="absolute inset-0">
+            <div key={reel.key} className="absolute inset-0" style={{ perspective: PERSPECTIVE }}>
               {reel.strip.map((i, n) => (
                 <Card key={n} item={i} front={n === reel.at && !spinning} frontRef={n === reel.at ? frontEl : undefined} />
               ))}
@@ -295,17 +323,22 @@ function PickDialog({ onClose }: { onClose: () => void }) {
               </button>
             </div>
           ) : pick && !spinning ? (
-            <div className="text-center">
-              <p className="text-base font-semibold text-fg">{pick.title.title}</p>
-              <p className="mt-0.5 flex justify-center gap-3 text-xs text-muted">
+            // Details come in just after it lands, top to bottom.
+            <div key={reel?.key} className="text-center">
+              <p className="arrive text-base font-semibold text-fg">{pick.title.title}</p>
+              <p className="arrive mt-0.5 flex justify-center gap-3 text-xs text-muted" style={{ animationDelay: '40ms' }}>
                 {[pick.title.year, pick.title.byline, pick.progress !== 'wanted' && statusLabel(pick.progress, pick.title.mediaType)]
                   .filter(Boolean)
                   .map((part) => (
                     <span key={String(part)}>{part}</span>
                   ))}
               </p>
-              {reasons.length > 0 && <p className="mt-1 text-xs text-faint">{reasons.join('. ')}.</p>}
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {reasons.length > 0 && (
+                <p className="arrive mt-1 text-xs text-faint" style={{ animationDelay: '80ms' }}>
+                  {reasons.join('. ')}.
+                </p>
+              )}
+              <div className="arrive mt-3 flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: '120ms' }}>
                 {pick.progress === 'wanted' && (
                   <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110">
                     {START_WORD[pick.title.mediaType]}

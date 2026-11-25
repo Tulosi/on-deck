@@ -12,6 +12,7 @@ import {
   type SeasonInfo,
   type SeerrStatus,
 } from '../lib/integrations'
+import { streamLink } from '../lib/streamLinks'
 import type { Title } from '../types'
 
 const plexCopy: Record<SeerrStatus, { label: string; tone: string }> = {
@@ -260,25 +261,47 @@ function SeasonPicker({
   )
 }
 
-function ProviderList({ label, providers }: { label: string; providers: Provider[] }) {
+const LINK_HINT = { search: 'Search for it on', home: 'Open', options: 'See where to watch it on' } as const
+
+function ProviderList({ label, providers, title, fallback }: { label: string; providers: Provider[]; title: string; fallback: string | null }) {
   if (providers.length === 0) return null
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted">{label}</p>
       <ul className="flex flex-wrap gap-2">
-        {providers.map((p) => (
-          <li
-            key={p.name}
-            className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pr-3 pl-1.5 text-sm text-fg"
-          >
-            {p.logoUrl ? (
-              <img src={p.logoUrl} alt="" loading="lazy" className="size-7 rounded-md" />
-            ) : (
-              <span className="size-7 rounded-md bg-raised" />
-            )}
-            {p.name}
-          </li>
-        ))}
+        {providers.map((p) => {
+          const link = streamLink(p.name, title, fallback)
+          const body = (
+            <>
+              {p.logoUrl ? (
+                <img src={p.logoUrl} alt="" loading="lazy" className="size-7 rounded-md" />
+              ) : (
+                <span className="size-7 rounded-md bg-raised" />
+              )}
+              {p.name}
+            </>
+          )
+          const box = 'flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pr-3 pl-1.5 text-sm text-fg'
+          return (
+            <li key={p.name}>
+              {link ? (
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`${LINK_HINT[link.kind]} ${link.kind === 'options' ? 'TMDB' : p.name}`}
+                  className={clsx(box, 'group transition-colors hover:border-faint hover:bg-raised active:scale-[0.98]')}
+                >
+                  {body}
+                  <ExternalLink className="size-3.5 text-faint group-hover:text-muted" aria-hidden="true" />
+                  <span className="sr-only">(opens {link.kind === 'options' ? 'TMDB' : p.name})</span>
+                </a>
+              ) : (
+                <div className={box}>{body}</div>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -317,8 +340,8 @@ export function WhereToWatch({ title }: { title: Title }) {
             <p className="text-sm text-muted">Not on any of your streaming services right now.</p>
           ) : (
             <>
-              <ProviderList label="On your services" providers={stream} />
-              <ProviderList label="Free on your services" providers={free} />
+              <ProviderList label="On your services" providers={stream} title={title.title} fallback={data.link} />
+              <ProviderList label="Free on your services" providers={free} title={title.title} fallback={data.link} />
             </>
           )}
           <p className="text-xs text-faint">

@@ -1,24 +1,27 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Download, Loader2, Upload } from 'lucide-react'
+import { AlertTriangle, Download, Loader2, Upload } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { buildExport, downloadJson, importExport, readExport, type ExportFile, type ImportReport } from '../lib/backup'
+import { buildExport, downloadJson, importExport, notInFile, readExport, type ExportFile, type ImportMode, type ImportReport } from '../lib/backup'
+import { useCollections } from '../lib/collections'
 import { useItems } from '../lib/library'
 import { plainError } from '../lib/errors'
 
 const btn = 'flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm text-fg hover:border-accent disabled:opacity-60'
 const primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60'
 
-/** Settings → Backup: export the library + settings as JSON, or merge an export in. */
+/** Settings → Backup: export the library + settings as JSON, or bring an export in (added to, or replacing, the library). */
 export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }) {
   const { user } = useAuth()
   const { allItems } = useItems()
+  const { data: collections = [] } = useCollections()
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<ExportFile | null>(null)
   const [replaceSettings, setReplaceSettings] = useState(false)
+  const [mode, setMode] = useState<ImportMode>('merge')
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [report, setReport] = useState<ImportReport | null>(null)
 
@@ -42,6 +45,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
     try {
       const data = await readExport(f)
       setPending(data)
+      setMode('merge')
       setReplaceSettings(allItems.length === 0) // empty account: take the file's settings too
     } catch (e) {
       setError(plainError(e, 'Couldn’t read that file.'))
@@ -55,7 +59,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
     setError(null)
     setProgress({ done: 0, total: pending.items.length })
     try {
-      const r = await importExport(user!.id, pending, { replaceSettings, onProgress: (done, total) => setProgress({ done, total }) })
+      const r = await importExport(user!.id, pending, { replaceSettings, mode, onProgress: (done, total) => setProgress({ done, total }) })
       setReport(r)
       setPending(null)
       await Promise.all([
@@ -73,6 +77,11 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
   const exportedOn = pending
     ? new Date(pending.exported_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : ''
+  // What Replace would take away, so it's said before anything happens.
+  const toRemove = pending ? notInFile(pending, allItems.map((i) => i.title.sourceKey).filter((k): k is string => !!k)).length : 0
+  const fileCollections = new Set((pending?.collections ?? []).map((c) => c.name.trim().toLowerCase()))
+  const collectionsToRemove = pending ? collections.filter((c) => !fileCollections.has(c.name.trim().toLowerCase())).length : 0
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
   return (
     <div className="space-y-3">
@@ -94,6 +103,52 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
               {pending.items.length} title{pending.items.length === 1 ? '' : 's'} and {pending.collections.length} collection
               {pending.collections.length === 1 ? '' : 's'}, exported {exportedOn}
             </p>
+            <fieldset className="space-y-2">
+              <legend className="sr-only">How to import</legend>
+              {(
+                [
+                  { value: 'merge', label: 'Add to my library', hint: 'Titles you already have stay exactly as they are.' },
+                  {
+                    value: 'overwrite',
+                    label: 'Replace my library',
+                    hint: 'Your library ends up matching the file: its tracking wins, and anything not in it is removed.',
+                  },
+                ] as const
+              ).map((o) => (
+                <label key={o.value} className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    value={o.value}
+                    checked={mode === o.value}
+                    onChange={() => setMode(o.value)}
+                    className="mt-0.5 size-4 accent-[var(--color-accent)]"
+                  />
+                  <span>
+                    <span className="block text-fg">{o.label}</span>
+                    <span className="block text-xs text-muted">{o.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            {mode === 'overwrite' && (toRemove > 0 || collectionsToRemove > 0) && (
+              <div role="alert" className="flex max-w-prose gap-2 rounded-md border border-bad/50 bg-bad/5 p-2.5 text-sm text-fg">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-bad" aria-hidden="true" />
+                <p>
+                  This removes{' '}
+                  <b>
+                    {[toRemove > 0 && plural(toRemove, 'title'), collectionsToRemove > 0 && plural(collectionsToRemove, 'collection')]
+                      .filter(Boolean)
+                      .join(' and ')}
+                  </b>{' '}
+                  that aren’t in the file, and can’t be undone.{' '}
+                  <button type="button" onClick={() => void doExport()} disabled={exporting} className="text-accent-ink underline">
+                    Export a backup first
+                  </button>{' '}
+                  if you might want them back.
+                </p>
+              </div>
+            )}
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
                 type="checkbox"
@@ -110,7 +165,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
             </label>
             <div className="flex gap-2">
               <button type="button" onClick={() => void doImport()} className={primary}>
-                <Upload className="size-4" /> Import
+                <Upload className="size-4" /> {mode === 'overwrite' ? 'Replace my library' : 'Import'}
               </button>
               <button type="button" onClick={() => setPending(null)} className={btn}>
                 Cancel
@@ -138,7 +193,13 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
           <div className="space-y-2 rounded-lg border border-good/40 bg-good/5 p-3 text-sm">
             <p className="text-fg">
               Added <b>{report.added}</b> title{report.added === 1 ? '' : 's'}
-              {report.alreadyHad ? `. ${report.alreadyHad} already in your library (left as they were)` : ''}
+              {report.alreadyHad
+                ? report.mode === 'overwrite'
+                  ? `. ${report.alreadyHad} updated to match the file`
+                  : `. ${report.alreadyHad} already in your library (left as they were)`
+                : ''}
+              {report.removed ? `. ${plural(report.removed, 'title')} removed` : ''}
+              {report.collectionsRemoved ? `. ${plural(report.collectionsRemoved, 'collection')} removed` : ''}
               {report.collectionsCreated ? `. ${report.collectionsCreated} collection${report.collectionsCreated === 1 ? '' : 's'} created` : ''}
               {report.collectionsUpdated ? `. ${report.collectionsUpdated} topped up` : ''}
               {report.settingsApplied ? '. Settings applied' : ''}.

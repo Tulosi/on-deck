@@ -1001,7 +1001,7 @@ export function Settings() {
             <Section sub id="sharing" title="Sharing">
               <ShareLinksSettings />
             </Section>
-            <Section sub id="backup" title="Backup & Restore" description="Save your library, collections and settings to a file, or import one. Importing adds to what you have; account links aren’t included.">
+            <Section sub id="backup" title="Backup & Restore" description="Save your library, collections and settings to a file, or import one, either added to what you have or replacing it. Account links aren’t included.">
               <BackupPanel onSetUpAccounts={() => document.getElementById('accounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
             </Section>
             <StatusSection open={hash === '#status'} />

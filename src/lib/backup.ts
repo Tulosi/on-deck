@@ -31,6 +31,31 @@ const ITEM_FIELDS = [
   'created_at',
 ] as const
 
+/**
+ * What a tracking field goes back to when an overwrite import finds it missing from the file (exports leave out empty
+ * fields). `created_at` isn't here: a title already in the library keeps its own added date unless the file has one.
+ */
+const ITEM_DEFAULTS: Record<string, unknown> = {
+  owned: false,
+  owned_locked: false,
+  progress: 'wanted',
+  progress_locked: false,
+  verdict: null,
+  favourite: false,
+  priority: null,
+  notes: null,
+  current_season: null,
+  current_episode: null,
+  plex_sync: true,
+  notify: true,
+  season_overrides: {},
+  rating_skipped: [],
+  started_at: null,
+  completed_at: null,
+  stalled_at: null,
+  archived_at: null,
+}
+
 /** Profile settings carried over (no account links). */
 const SETTINGS_FIELDS = ['country_code', 'currency', 'streaming_services', 'card_chips', 'alert_settings', 'nav_layout'] as const
 
@@ -108,7 +133,7 @@ export function downloadJson(data: unknown, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-// ─── Import (merge) ────────────────────────────────────────────────────────
+// ─── Import (merge or overwrite) ───────────────────────────────────────────
 
 /** Reads and checks a file the user picked. Throws a readable message if it isn't an On Deck export. */
 export async function readExport(file: File): Promise<ExportFile> {
@@ -126,9 +151,16 @@ export async function readExport(file: File): Promise<ExportFile> {
   return { settings: {}, collections: [], ...f } as ExportFile
 }
 
+export type ImportMode = 'merge' | 'overwrite'
+
 export interface ImportReport {
+  mode: ImportMode
   added: number
+  /** Merge: left as they were. Overwrite: their tracking replaced with the file's. */
   alreadyHad: number
+  /** Overwrite only: titles in the library that weren't in the file. */
+  removed: number
+  collectionsRemoved: number
   failed: { title: string; reason: string }[]
   collectionsCreated: number
   collectionsUpdated: number
@@ -142,20 +174,37 @@ const ADD_FN: Record<string, (r: TitleRef) => { fn: string; body: Record<string,
   hardcover: (r) => ({ fn: 'hardcover', body: { action: 'add', hardcoverId: Number(r.source_id) } }),
 }
 
+/** Titles in the library that an overwrite would remove (not in the file), by source key `media:source:id`. */
+export function notInFile(file: ExportFile, libraryKeys: Iterable<string>): string[] {
+  const inFile = new Set(file.items.map((it) => refKey(it.title)))
+  return [...libraryKeys].filter((k) => !inFile.has(k))
+}
+
 /**
- * Merges an export into the signed-in user's library. Titles already in the library are left exactly as they
- * are; new ones are looked up (or fetched from their source) and added with their tracking. Collections are
- * created, or topped up when one with the same name exists. Settings are replaced only when `replaceSettings`.
+ * Brings an export into the signed-in user's library. New titles are looked up (or fetched from their source) and
+ * added with their tracking. Settings are replaced only when `replaceSettings`.
+ *
+ * - `merge` (default): titles already in the library are left exactly as they are. Collections are created, or
+ *   topped up when one with the same name exists.
+ * - `overwrite`: the library ends up matching the file. Titles in both get the file's tracking (fields the file
+ *   leaves out go back to their defaults); titles not in the file are removed. Collections are matched by name:
+ *   matches take the file's description, rules and titles (in its order), the rest are created, and collections not
+ *   in the file are deleted. Account-linked data the file doesn't carry (Steam playtime, Plex checks) is kept on
+ *   titles that stay.
  */
 export async function importExport(
   userId: string,
   file: ExportFile,
-  opts: { replaceSettings: boolean; onProgress?: (done: number, total: number) => void },
+  opts: { replaceSettings: boolean; mode?: ImportMode; onProgress?: (done: number, total: number) => void },
 ): Promise<ImportReport> {
   const db = supabase!
+  const overwrite = opts.mode === 'overwrite'
   const report: ImportReport = {
+    mode: overwrite ? 'overwrite' : 'merge',
     added: 0,
     alreadyHad: 0,
+    removed: 0,
+    collectionsRemoved: 0,
     failed: [],
     collectionsCreated: 0,
     collectionsUpdated: 0,
@@ -170,7 +219,10 @@ export async function importExport(
   for (const r of (mine ?? []) as unknown as { id: string; title: TitleRef }[]) itemIdByKey.set(refKey(r.title), r.id)
   report.wasEmpty = itemIdByKey.size === 0
 
-  const todo = file.items.filter((it) => {
+  // The same title twice in a file: the first one counts.
+  const seen = new Set<string>()
+  const fileItems = file.items.filter((it) => !seen.has(refKey(it.title)) && !!seen.add(refKey(it.title)))
+  const todo = fileItems.filter((it) => {
     if (itemIdByKey.has(refKey(it.title))) {
       report.alreadyHad++
       return false
@@ -218,6 +270,23 @@ export async function importExport(
   }
   await Promise.all([worker(), worker(), worker()])
 
+  // Overwrite: titles already in the library take the file's tracking. Updated by id, in parallel batches.
+  if (overwrite) {
+    const existing = fileItems.filter((it) => itemIdByKey.has(refKey(it.title)))
+    for (let i = 0; i < existing.length; i += 20) {
+      const results = await Promise.all(
+        existing.slice(i, i + 20).map((it) => {
+          const patch: Record<string, unknown> = { ...ITEM_DEFAULTS }
+          for (const f of ITEM_FIELDS) if (it[f] !== undefined) patch[f] = it[f]
+          return db.from('user_items').update(patch).eq('id', itemIdByKey.get(refKey(it.title))!)
+        }),
+      )
+      results.forEach((r, j) => {
+        if (r.error) report.failed.push({ title: existing[i + j].title.title, reason: 'couldn’t be updated' })
+      })
+    }
+  }
+
   // Add the library entries, keeping each title's tracking.
   const rows = todo
     .filter((it) => titleIdByKey.has(refKey(it.title)))
@@ -240,18 +309,41 @@ export async function importExport(
   }
   opts.onProgress?.(total, total)
 
+  // Overwrite: remove what the file doesn't have (their collection entries go with them).
+  if (overwrite) {
+    const fileKeys = new Set(fileItems.map((it) => refKey(it.title)))
+    const extra = [...itemIdByKey].filter(([k]) => !fileKeys.has(k)).map(([, id]) => id)
+    for (let i = 0; i < extra.length; i += 100) {
+      const { error: e } = await db.from('user_items').delete().in('id', extra.slice(i, i + 100))
+      if (e) report.failed.push({ title: '(removing titles not in the file)', reason: e.message })
+      else report.removed += Math.min(100, extra.length - i)
+    }
+  }
+
   // Refresh the id map (new entries included) for collections.
   const { data: after } = await db.from('user_items').select('id, title:titles(media_type, source, source_id)')
   itemIdByKey.clear()
   for (const r of (after ?? []) as unknown as { id: string; title: TitleRef }[]) itemIdByKey.set(refKey(r.title), r.id)
 
-  // Collections: create, or top up a same-named one.
+  // Collections: create, or top up a same-named one (overwrite: make it match the file).
   const { data: existingCols } = await db.from('collections').select('id, name, rules, collection_items(user_item_id)')
+  const cols = (existingCols ?? []) as { id: string; name: string; rules: string | null; collection_items: { user_item_id: string }[] }[]
+  const nameKey = (n: string) => n.trim().toLowerCase()
+  if (overwrite) {
+    const fileNames = new Set((file.collections ?? []).map((c) => nameKey(c.name)))
+    for (const x of cols.filter((x) => !fileNames.has(nameKey(x.name)))) {
+      const { error: e } = await db.from('collections').delete().eq('id', x.id)
+      if (!e) report.collectionsRemoved++
+    }
+  }
   for (const c of file.collections ?? []) {
-    const match = ((existingCols ?? []) as { id: string; name: string; rules: string | null; collection_items: { user_item_id: string }[] }[]).find(
-      (x) => x.name.trim().toLowerCase() === c.name.trim().toLowerCase(),
-    )
+    const match = cols.find((x) => nameKey(x.name) === nameKey(c.name))
     let colId = match?.id
+    if (match && overwrite) {
+      await db.from('collections').update({ description: c.description, rules: c.rules }).eq('id', match.id)
+      await db.from('collection_items').delete().eq('collection_id', match.id)
+      match.collection_items = []
+    }
     const present = new Set((match?.collection_items ?? []).map((x) => x.user_item_id))
     if (!colId) {
       const { data, error: e } = await db

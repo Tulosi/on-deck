@@ -27,8 +27,19 @@ import { useCollectionActions, useCollections } from '../lib/collections'
 const grid =
   'grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] sm:gap-x-4 sm:gap-y-6'
 
-/** One removable pill per active filter value, plus Clear all. */
-function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void }) {
+/**
+ * One removable pill per active filter value, plus Clear all. `covered`: settings a Show/Hide toggle below already
+ * shows (archived, Released-only on Games), left out so they aren't shown twice.
+ */
+function ActiveFilters({
+  f,
+  set,
+  covered = {},
+}: {
+  f: Filters
+  set: (next: Filters) => void
+  covered?: { archived?: boolean; released?: boolean }
+}) {
   const pills: { key: string; label: string; remove: () => void }[] = []
   const without = <T,>(list: T[], v: T) => list.filter((x) => x !== v)
   // "Is not" groups read as "Not: …".
@@ -39,7 +50,7 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
   f.availability.forEach((v) =>
     pills.push({ key: `av-${v}`, label: v === 'available' ? 'Available to me' : LABELS.availability[v], remove: () => set({ ...f, availability: without(f.availability, v) }) }),
   )
-  f.release.forEach((v) => pills.push({ key: `rel-${v}`, label: LABELS.release[v], remove: () => set({ ...f, release: without(f.release, v) }) }))
+  f.release.forEach((v) => !(covered.released && v === 'released') && pills.push({ key: `rel-${v}`, label: LABELS.release[v], remove: () => set({ ...f, release: without(f.release, v) }) }))
   f.genre.forEach((v) => pills.push({ key: `g-${v}`, label: not('genre', v), remove: () => set({ ...f, genre: without(f.genre, v) }) }))
   f.tvStatus.forEach((v) => pills.push({ key: `ts-${v}`, label: LABELS.tvStatus[v], remove: () => set({ ...f, tvStatus: without(f.tvStatus, v) }) }))
   f.coop.forEach((v) => pills.push({ key: `co-${v}`, label: not('coop', LABELS.coop[v]), remove: () => set({ ...f, coop: without(f.coop, v) }) }))
@@ -60,7 +71,7 @@ function ActiveFilters({ f, set }: { f: Filters; set: (next: Filters) => void })
   if (f.added) pills.push({ key: 'added', label: `Added: ${LABELS.added[f.added]}`, remove: () => set({ ...f, added: null }) })
   f.tvProgress.forEach((v) => pills.push({ key: `tp-${v}`, label: LABELS.tvProgress[v], remove: () => set({ ...f, tvProgress: without(f.tvProgress, v) }) }))
   // The Archive page is archived=only; that's the page itself, not a filter to remove.
-  if (f.archived === 'include') pills.push({ key: 'archived', label: 'Including archived', remove: () => set({ ...f, archived: 'hide' }) })
+  if (f.archived === 'include' && !covered.archived) pills.push({ key: 'archived', label: 'Including archived', remove: () => set({ ...f, archived: 'hide' }) })
   if (pills.length === 0) return null
 
   return (
@@ -146,6 +157,11 @@ export function Library() {
   }, [items, allItems, f, rows])
 
   const hidesPreRelease = f.release.length === 1 && f.release[0] === 'released'
+  // "20 of 28" while filters narrow the list. Showing archived titles isn't narrowing, so it isn't counted, and the
+  // total takes them in (it was "56 of 49").
+  const total = inType.length + (f.archived === 'include' ? archivedCount : 0)
+  const narrowing = activeCount(f) - (f.archived === 'include' ? 1 : 0)
+  const meta = narrowing > 0 && f.archived !== 'only' ? `${results.length} of ${total}` : `${results.length}`
 
   if (isLoading) return <PageSkeleton />
   // Only what's on screen counts (a filter change can hide something you'd picked).
@@ -161,7 +177,7 @@ export function Library() {
 
   return (
     <div>
-      <PageHeader title={title} meta={activeCount(f) ? `${results.length} of ${inType.length}` : `${inType.length}`}>
+      <PageHeader title={title} meta={meta}>
         {/* Only once something differs from the defaults (choosing a type alone doesn't count). */}
         {!isSample && !editing && (activeCount(f) > 0 || f.sort !== DEFAULT_SORT) && (
           <button
@@ -285,7 +301,7 @@ export function Library() {
           </button>
         </form>
       )}
-      <ActiveFilters f={f} set={set} />
+      <ActiveFilters f={f} set={set} covered={{ archived: archivedCount > 0, released: preReleaseCount > 0 && hidesPreRelease }} />
       {/* Quick show/hide switches for the two things people most often want out of the way. */}
       {(archivedCount > 0 || preReleaseCount > 0) && f.archived !== 'only' && (
         <div className="-mt-3 mb-4 flex flex-wrap gap-2">

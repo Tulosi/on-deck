@@ -10,7 +10,7 @@ import { plainError } from '../lib/errors'
 type Mode = 'sign-in' | 'sign-up' | 'forgot'
 
 const inputClass =
-  'h-11 w-full rounded-md border border-line bg-bg px-3 text-sm sm:h-10 text-fg outline-none placeholder:text-faint focus:border-accent'
+  'h-11 w-full rounded-md border border-line bg-bg px-3 text-sm sm:h-10 text-fg outline-none placeholder:text-faint focus:border-accent aria-invalid:border-bad'
 
 export function Login() {
   const { user, loading } = useAuth()
@@ -23,6 +23,8 @@ export function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // Field problems, shown under each field in the app's words (instead of the browser's popups).
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
 
   if (!loading && user) return <Navigate to="/" replace />
 
@@ -30,11 +32,31 @@ export function Login() {
     setMode(next)
     setError(null)
     setNotice(null)
+    setFieldErrors({})
+  }
+
+  /** What's wrong with the fields, if anything. The 8-character minimum is only for new passwords. */
+  function check(): { email?: string; password?: string } {
+    const problems: { email?: string; password?: string } = {}
+    const trimmed = email.trim()
+    if (!trimmed) problems.email = 'Enter your email address.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) problems.email = 'That doesn’t look like an email address.'
+    if (mode !== 'forgot') {
+      if (!password) problems.password = mode === 'sign-up' ? 'Choose a password.' : 'Enter your password.'
+      else if (mode === 'sign-up' && password.length < 8) problems.password = 'Use at least 8 characters.'
+    }
+    return problems
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
+    const problems = check()
+    setFieldErrors(problems)
+    if (problems.email || problems.password) {
+      document.getElementById(problems.email ? 'email' : 'password')?.focus()
+      return
+    }
     setBusy(true)
     setError(null)
     setNotice(null)
@@ -107,19 +129,30 @@ export function Login() {
             </div>
           )}
 
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} noValidate className="space-y-3">
             <label className="block space-y-1.5">
               <span className="text-xs text-muted">Email</span>
               <input
                 name="email"
+                id="email"
                 spellCheck={false}
                 type="email"
                 required
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={!!fieldErrors.email}
+                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setFieldErrors((f) => ({ ...f, email: undefined }))
+                }}
                 className={inputClass}
               />
+              {fieldErrors.email && (
+                <span id="email-error" className="block text-xs text-bad">
+                  {fieldErrors.email}
+                </span>
+              )}
             </label>
             {mode !== 'forgot' && (
               <div className="space-y-1.5">
@@ -142,18 +175,42 @@ export function Login() {
                   id="password"
                   type="password"
                   required
-                  minLength={8}
+                  minLength={mode === 'sign-up' ? 8 : undefined}
                   autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={!!fieldErrors.password}
+                  aria-describedby={fieldErrors.password ? 'password-error' : mode === 'sign-up' ? 'password-hint' : undefined}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    setFieldErrors((f) => ({ ...f, password: undefined }))
+                  }}
                   className={inputClass}
                 />
-                {mode === 'sign-up' && <span className="text-xs text-faint">At least 8 characters.</span>}
+                {fieldErrors.password ? (
+                  <span id="password-error" className="block text-xs text-bad">
+                    {fieldErrors.password}
+                  </span>
+                ) : (
+                  mode === 'sign-up' && (
+                    <span id="password-hint" className="text-xs text-faint">
+                      At least 8 characters.
+                    </span>
+                  )
+                )}
               </div>
             )}
 
-            {error && <p className="text-sm text-bad">{error}</p>}
-            {notice && <p className="text-sm text-good">{notice}</p>}
+            {/* Announced by screen readers as soon as they appear. */}
+            {error && (
+              <p role="alert" className="text-sm text-bad">
+                {error}
+              </p>
+            )}
+            {notice && (
+              <p role="status" className="text-sm text-good">
+                {notice}
+              </p>
+            )}
 
             <button
               type="submit"

@@ -309,3 +309,12 @@ The total is the same because each new reviewer looks somewhere new.
 | 26 | P3 | On phones, "Details" on Home clashes with the cards' own "Details" buttons. The Library filter's status words still differ from title pages. |
 
 **Taste or ceiling:** Library's desktop toolbar (about 10 controls in one row), three sample-mode notices, and no concept help page.
+
+**Fixed (same day):**
+- **#22:** Bulk status changes show "N titles set to X" with Undo. Undo puts each title's own status and dates back.
+- **#23:** Sign-in no longer enforces the 8-character minimum. Only Create account does.
+- **#24:** A bulk failure names the titles ("Couldn't update “Dune” and 2 more.") and offers Retry for just those.
+- **#25:**
+  - Sign-in errors are announced to screen readers (`role="alert"`).
+  - Missing or wrong fields get messages under the field and a red border, instead of browser popups. Focus goes to the first problem.
+- **#26:** The phone poster-details button says "Poster info", so it no longer reads like the cards' Details buttons.

@@ -756,11 +756,53 @@ export function useBulkItems() {
   const update = useUpdateItem()
   const plural = (n: number) => `${n} title${n === 1 ? '' : 's'}`
 
+  /** "“Dune”", "“Dune” and “Arrival”", "“Dune”, “Arrival” and 3 more". */
+  const names = (list: UserItem[]) => {
+    const q = list.slice(0, 2).map((i) => `“${i.title.title}”`)
+    const more = list.length - q.length
+    return more > 0 ? `${q.join(', ')} and ${more} more` : q.join(' and ')
+  }
+
+  // Undo puts each title's own status and dates back (Want to… clears dates, so they mustn't be lost).
+  // Failures name the titles and offer Retry for just those.
   const setStatus = async (items: UserItem[], progress: Progress) => {
-    const results = await Promise.allSettled(items.filter((i) => i.progress !== progress).map((i) => update(i, { progress })))
-    const failed = results.filter((r) => r.status === 'rejected').length
-    if (failed) toast({ message: `Couldn’t update ${plural(failed)}. Try again.`, tone: 'error' })
-    else toast({ message: `${plural(items.length)} set to ${statusLabel(progress, oneType(items))}` })
+    const changing = items.filter((i) => i.progress !== progress)
+    const results = await Promise.allSettled(changing.map((i) => update(i, { progress })))
+    const failed = changing.filter((_, k) => results[k].status === 'rejected')
+    const done = changing.filter((_, k) => results[k].status === 'fulfilled')
+    if (failed.length) {
+      toast({
+        message: `Couldn’t update ${names(failed)}.`,
+        tone: 'error',
+        duration: 10_000,
+        action: { label: 'Retry', onClick: () => void setStatus(failed, progress) },
+      })
+      if (!done.length) return
+    }
+    toast({
+      message: `${plural(items.length - failed.length)} set to ${statusLabel(progress, oneType(items))}`,
+      duration: 10_000,
+      action: done.length
+        ? {
+            label: 'Undo',
+            onClick: () =>
+              void Promise.allSettled(
+                done.map((i) =>
+                  update(
+                    { ...i, progress },
+                    {
+                      progress: i.progress,
+                      dates: { startedAt: i.startedAt ?? null, completedAt: i.completedAt ?? null, stalledAt: i.stalledAt ?? null },
+                    },
+                  ),
+                ),
+              ).then((r) => {
+                const missed = r.filter((x) => x.status === 'rejected').length
+                if (missed) toast({ message: `Couldn’t undo ${plural(missed)}. Try again.`, tone: 'error' })
+              }),
+          }
+        : undefined,
+    })
   }
 
   const archive = (items: UserItem[], archived: boolean) => {

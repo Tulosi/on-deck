@@ -5,10 +5,11 @@ import { currentStatusKeys, useKeys } from '../lib/shortcuts'
 import { useDialog } from '../lib/useDialog'
 
 const ROWS: { keys: string[]; what: string; where?: string }[] = [
-  { keys: ['/'], what: 'Search' },
+  { keys: ['/'], what: 'Search', where: 'Or ⌘K / Ctrl+K' },
   { keys: ['1', '–', '5'], what: 'Set the status, in the order shown', where: 'On a title' },
   { keys: ['W'], what: 'Mark the next episode watched', where: 'On a show' },
   { keys: ['Alt', '↑/↓'], what: 'Move a sidebar item', where: 'Or drag it' },
+  { keys: ['Esc'], what: 'Close a menu, panel or search' },
   { keys: ['?'], what: 'Show these shortcuts' },
 ]
 

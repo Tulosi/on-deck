@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, ViewTransition } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { backdropProps, coverProps } from '../lib/images'
 import { posterMorphName } from '../components/PosterCard'
 import { SteamButtons } from '../components/SteamButtons'
@@ -273,6 +274,7 @@ export function TitleDetail() {
   // Same name as the poster that was tapped, so it morphs into this one (and back on Back).
   const morph = (location.state as { morph?: string } | null)?.morph ?? posterMorphName(id ?? '')
   const removeItem = useRemoveItemWithUndo()
+  usePageTitle(isLoading ? null : (items.find((i) => i.title.id === id)?.title.title ?? 'Not in your library'))
 
   if (isLoading) return <TitleSkeleton />
 

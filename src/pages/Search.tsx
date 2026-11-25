@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { useDialog } from '../lib/useDialog'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
@@ -18,6 +19,7 @@ export function SearchPage() {
   // No ?type= means All types, so a shared link always shows the same thing.
   const type: SearchType = isSearchType(urlType) ? urlType : 'all'
   const [text, setText] = useState(params.get('q') ?? '')
+  usePageTitle(params.get('q') ? `Search: ${params.get('q')}` : 'Search')
   const query = useDebounced(text.trim(), 350)
   const [preview, setPreview] = useState<SearchResult | null>(null)
   const previewPanel = useDialog<HTMLDivElement>(!!preview, () => setPreview(null))

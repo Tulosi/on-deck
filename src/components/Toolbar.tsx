@@ -46,6 +46,8 @@ function LabelsButton() {
     >
       {on ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
       {/* Says what the chips on posters do now: always there, only on hover, or off (touch screens can't hover). */}
+      {/* Phones: a word, not just the icon. */}
+      <span className="sm:hidden">Details</span>
       <span className="hidden sm:inline">
         <span className="text-muted">Poster details:</span>{' '}
         {on ? (

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link } from 'react-router-dom'
 import { HomeSkeleton } from '../components/LazyPage'
 import { PosterRow } from '../components/PosterRow'
@@ -26,6 +27,7 @@ import { useSampleCardOpen } from '../lib/sampleCard'
 export function Home() {
   const { items: allItems, isLoading, isSample, error } = useItems()
   const profile = useProfile()
+  usePageTitle('Home')
   // Home takes only the type pills from the toolbar (?type=…), narrowing every row.
   const [filters] = useFilters()
   const items = filters.types.length ? allItems.filter((i) => filters.types.includes(i.title.mediaType)) : allItems

@@ -148,14 +148,14 @@ export function BottomNav() {
   // Close the sheet whenever the page changes.
   useEffect(() => setMore(false), [pathname, search])
 
-  // On a title page, keep the tab you came from lit (it isn't a place of its own). Otherwise "More" lights up
-  // when you're on a page that isn't one of your tabs.
+  // On a title page, keep the tab you came from lit (it isn't a place of its own), or none when you came from
+  // somewhere that isn't a tab. Otherwise "More" lights up when you're on a page that isn't one of your tabs.
   const current = tabs.find((k) => isActive(navItem(k))) ?? null
   const origin = useRef<NavKey | null>(current)
   const onTitle = pathname.startsWith('/title/')
   if (!onTitle) origin.current = current
   const litTab = onTitle ? origin.current : current
-  const moreActive = more || (!litTab && pathname !== '/login')
+  const moreActive = more || (!litTab && !onTitle && pathname !== '/login')
 
   return (
     <>

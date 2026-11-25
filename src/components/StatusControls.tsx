@@ -22,8 +22,11 @@ import { MovieProgressSection, AvailabilityBadge } from './MovieProgress'
  * Top right: "Owned" (games/books; every tracked title is already in the Library, so it isn't called that) or source availability (movies/TV).
  * Rating, priority and notes live further down, in <TrackingDetails>.
  */
+/** An item's status dates, as Undo needs them. */
+const datesOf = (i: UserItem) => ({ startedAt: i.startedAt ?? null, completedAt: i.completedAt ?? null, stalledAt: i.stalledAt ?? null })
+
 export function StatusControls({ item }: { item: UserItem }) {
-  const { save, pending, error } = useSaver(item)
+  const { save, pending, error, retry } = useSaver(item)
   const type = item.title.mediaType
 
   // Shows have one "done" option: Caught up while more episodes are coming, Watched once the show has ended.
@@ -92,9 +95,20 @@ export function StatusControls({ item }: { item: UserItem }) {
         : null
     const cur = item.tvProgress
     const moves = !!caughtUp && (!cur || cur.season !== caughtUp.season || cur.episode !== caughtUp.episode)
-    if (!moves) return void save({ progress })
-    // It moves your place, so say so and let it be undone (as Mark watched does).
-    const before = { tvProgress: cur ?? null, progress: item.progress }
+    if (progress === item.progress && !moves) return
+    // Every change says what it did, with Undo that puts back the status, place and dates exactly (Want to…
+    // clears the started and finished dates, so a stray key mustn't lose them).
+    const before = { progress: item.progress, tvProgress: cur ?? null, dates: datesOf(item) }
+    if (!moves)
+      return void save({ progress }).then(
+        (ok) =>
+          ok &&
+          toast({
+            message: `Set to ${statusLabel(progress, type)}`,
+            key: item.id,
+            action: { label: 'Undo', onClick: () => void save(before) },
+          }),
+      )
     save({ progress, tvProgress: caughtUp }).then(
       (ok) =>
         ok &&
@@ -110,7 +124,7 @@ export function StatusControls({ item }: { item: UserItem }) {
   }
   // Next episode watched, from the button or W. Undo puts back the episode (and status) from before.
   const markNext = (ep: { season: number; episode: number }) => {
-    const before = { tvProgress: item.tvProgress ?? null, progress: item.progress }
+    const before = { tvProgress: item.tvProgress ?? null, progress: item.progress, dates: datesOf(item) }
     save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) }).then((ok) =>
       ok && toast({ message: `Marked ${episodeCode(ep)} watched`, key: item.id, action: { label: 'Undo', onClick: () => void save(before) } }),
     )
@@ -134,7 +148,7 @@ export function StatusControls({ item }: { item: UserItem }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold tracking-tight text-fg">Tracking</h2>
-          <SaveState pending={pending} error={error} />
+          <SaveState pending={pending} error={error} onRetry={retry} />
         </div>
         {type === 'game' || type === 'book' ? (
           <Toggle
@@ -203,12 +217,12 @@ export function StatusControls({ item }: { item: UserItem }) {
 
 /** The rest of your tracking: rating, priority and notes. Below the overview on the title page. */
 export function TrackingDetails({ item }: { item: UserItem }) {
-  const { save, update, pending, error } = useSaver(item)
+  const { save, update, pending, error, retry } = useSaver(item)
   return (
     <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex items-center gap-3">
         <h2 className="text-lg font-semibold tracking-tight text-fg">Your take</h2>
-        <SaveState pending={pending} error={error} />
+        <SaveState pending={pending} error={error} onRetry={retry} />
       </div>
       <div className="space-y-1.5">
       <p className={labelClass}>Rating</p>

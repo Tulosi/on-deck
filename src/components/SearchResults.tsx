@@ -13,7 +13,7 @@ export type AddState = 'adding' | 'added' | { error: string }
 export const SEARCH_TYPES: { value: SearchType; label: string; icon: LucideIcon; placeholder: string }[] = [
   { value: 'all', label: 'All', icon: Layers, placeholder: 'Search…' },
   { value: 'movie', label: 'Movies', icon: Film, placeholder: 'Search movies…' },
-  { value: 'tv', label: 'TV', icon: Tv, placeholder: 'Search shows…' },
+  { value: 'tv', label: 'TV shows', icon: Tv, placeholder: 'Search shows…' },
   { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search games…' },
   { value: 'book', label: 'Books', icon: BookOpen, placeholder: 'Search books…' },
 ]
@@ -31,7 +31,7 @@ export function savedType(): SearchType {
 
 const typeIcon = (t: SearchResult['mediaType']): LucideIcon =>
   t === 'movie' ? Film : t === 'game' ? Gamepad2 : t === 'book' ? BookOpen : Tv
-const typeName = (t: SearchResult['mediaType']) => (t === 'movie' ? 'Movie' : t === 'game' ? 'Game' : t === 'book' ? 'Book' : 'TV')
+const typeName = (t: SearchResult['mediaType']) => (t === 'movie' ? 'Movie' : t === 'game' ? 'Game' : t === 'book' ? 'Book' : 'TV show')
 
 export function Cover({ result, className }: { result: SearchResult; className: string }) {
   const Icon = typeIcon(result.mediaType)

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
@@ -90,6 +91,7 @@ function Card({ r }: { r: SharedRow }) {
 export function SharedList() {
   const { token = '' } = useParams()
   const [type, setType] = useState<MediaType | null>(null)
+  usePageTitle('Shared list')
 
   const q = useQuery({
     queryKey: ['shared', token],

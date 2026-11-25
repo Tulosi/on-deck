@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Wordmark } from '../components/Logo'
@@ -26,6 +27,7 @@ function linkError(): string | null {
 export function ResetPassword() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
+  usePageTitle('Reset password')
   const [verifying, setVerifying] = useState(false)
   const [linkProblem, setLinkProblem] = useState<string | null>(linkError)
   const [password, setPassword] = useState('')

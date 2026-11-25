@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { Check, ChevronDown, Loader2 } from 'lucide-react'
@@ -314,6 +315,7 @@ function SignedOutSettings() {
 export function Settings() {
   const { user, loading } = useAuth()
   const { hash } = useLocation()
+  usePageTitle('Settings')
   // Links like /settings#navigation jump to that section once the page has rendered.
   useEffect(() => {
     if (!hash || loading) return

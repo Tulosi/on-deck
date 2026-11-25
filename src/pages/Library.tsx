@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { usePageTitle } from '../lib/usePageTitle'
 import { useCallback, useMemo, useState, ViewTransition } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckSquare, Eye, EyeOff, Layers, LayoutGrid, Loader2, Rows3, Sparkles, X } from 'lucide-react'
@@ -118,6 +119,9 @@ const ROW_ORDER = ['in_progress', 'caught_up', 'stalled', 'wanted', 'completed',
 export function Library() {
   const { items, allItems, isLoading, isSample } = useItems()
   const [f, set] = useFilters()
+  const pageTitle =
+    f.archived === 'only' ? (f.types.length ? `Archived ${typesLabel(f.types, true)}` : 'Archive') : (typesLabel(f.types) ?? 'Library')
+  usePageTitle(pageTitle)
   const [view, setView] = useLibraryView(f.type)
   const rows = view === 'rows'
   const [params] = useSearchParams()
@@ -175,7 +179,7 @@ export function Library() {
   )
 
   const shown = typesLabel(f.types)
-  const title = f.archived === 'only' ? (shown ? `Archived ${typesLabel(f.types, true)}` : 'Archive') : (shown ?? 'Library')
+  const title = pageTitle
 
   return (
     <div>

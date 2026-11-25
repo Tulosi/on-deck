@@ -1,4 +1,5 @@
 import { addTransitionType, startTransition, useMemo, useState, ViewTransition } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
@@ -329,6 +330,7 @@ export function Waitlist() {
   const { items, isLoading } = useItems()
   const [params, setParams] = useSearchParams()
   const [showFeed, setShowFeed] = useState(false)
+  usePageTitle('Calendar')
   // ?view=month (older links used ?view=calendar)
   const view = params.get('view') === 'month' || params.get('view') === 'calendar' ? 'month' : 'list'
   const typeParam = params.get('type')

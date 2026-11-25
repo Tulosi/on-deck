@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2 } from 'lucide-react'
@@ -16,6 +17,7 @@ export function Login() {
   // ?mode=sign-up opens on Create account (the sample library's welcome card links there).
   const [params] = useSearchParams()
   const [mode, setMode] = useState<Mode>(params.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in')
+  usePageTitle(mode === 'sign-up' ? 'Create account' : 'Sign in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)

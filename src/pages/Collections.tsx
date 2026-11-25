@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { ArrowLeft, ChevronLeft, ChevronRight, EyeOff, Layers, ListFilter, Loader2, Pencil, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react'
@@ -165,6 +166,7 @@ export function Collections() {
   const { list: collections, isLoading } = useCollectionList()
   const { create } = useCollectionActions()
   const [creating, setCreating] = useState(false)
+  usePageTitle('Collections')
   const navigate = useNavigate()
   const byId = new Map(items.map((i) => [i.id, i]))
   const dealPct = useProfile().data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
@@ -249,6 +251,7 @@ export function CollectionDetail() {
   const [editing, setEditing] = useState(false)
   const [arranging, setArranging] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  usePageTitle(collections.find((c) => c.id === id)?.name ?? 'Collection')
   const navigate = useNavigate()
   const dealPct = useProfile().data?.alert_settings?.deep_discount_pct ?? DEFAULT_DEAL_PCT
   const [layout, saveLayout] = useNavLayout()

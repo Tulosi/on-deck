@@ -53,6 +53,7 @@ interface ItemRow {
   stalled_at: string | null
   archived_at: string | null
   completed_at: string | null
+  started_at: string | null
   created_at: string
   updated_at: string
   last_activity_at: string | null
@@ -113,6 +114,7 @@ function toUserItem(row: ItemRow): UserItem {
     stalledAt: row.stalled_at ?? undefined,
     archivedAt: row.archived_at ?? undefined,
     completedAt: row.completed_at ?? undefined,
+    startedAt: row.started_at ?? undefined,
     addedAt: row.created_at,
     updatedAt: row.updated_at,
     lastActivityAt: row.last_activity_at ?? undefined,
@@ -235,7 +237,7 @@ export function useItems() {
       const itemsReq = supabase!
         .from('user_items')
         .select(
-          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, stalled_at, archived_at, completed_at, created_at, updated_at, last_activity_at, snoozed_until, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
+          'id, owned, progress, verdict, favourite, priority, notes, current_season, current_episode, plex_sync, notify, rating_skipped, stalled_at, archived_at, completed_at, started_at, created_at, updated_at, last_activity_at, snoozed_until, season_overrides, steam_playtime_minutes, steam_last_played, title:titles(*)',
         )
         .order('created_at', { ascending: false })
       const availReq = supabase!
@@ -513,6 +515,8 @@ export interface ItemPatch {
   archived?: boolean
   /** Hide from Home's "Pick it back up?" row until this time (ISO); null shows it again. */
   snoozedUntil?: string | null
+  /** Exact dates to set, after any a status change stamps (Undo puts the old ones back with this). */
+  dates?: { startedAt: string | null; completedAt: string | null; stalledAt: string | null }
   /** Written by Plex sync (not the user): stamps plex_checked_at, so last_activity_at keeps Plex's own watch time. */
   fromPlex?: boolean
 }
@@ -561,6 +565,15 @@ export function useUpdateItem() {
         row.completed_at = null
       }
     }
+    if (patch.dates) {
+      row.started_at = patch.dates.startedAt
+      row.completed_at = patch.dates.completedAt
+      row.stalled_at = patch.dates.stalledAt
+    }
+    const dateOf = (k: string) => (k in row ? { v: (row[k] as string | null) ?? undefined } : null)
+    const started = dateOf('started_at')
+    const completed = dateOf('completed_at')
+    const stalled = dateOf('stalled_at')
 
     // Optimistic update of the cached library. Cancel any in-flight refetch first so it can't land
     // afterwards with older data and overwrite this change.
@@ -582,7 +595,9 @@ export function useUpdateItem() {
               ...(patch.notify !== undefined && { notify: patch.notify }),
               ...(patch.ratingSkipped !== undefined && { ratingSkipped: patch.ratingSkipped }),
               ...(patch.archived !== undefined && { archivedAt: patch.archived ? new Date().toISOString() : undefined }),
-              ...(patch.progress === 'stalled' && { stalledAt: new Date().toISOString() }),
+              ...(started && { startedAt: started.v }),
+              ...(completed && { completedAt: completed.v }),
+              ...(stalled && { stalledAt: stalled.v }),
               ...(patch.seasonOverrides !== undefined && { seasonOverrides: patch.seasonOverrides }),
               ...(patch.snoozedUntil !== undefined && { snoozedUntil: patch.snoozedUntil ?? undefined }),
               ...(activity && { lastActivityAt: new Date().toISOString() }),

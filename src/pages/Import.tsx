@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { usePageTitle } from '../lib/usePageTitle'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import clsx from 'clsx'
@@ -82,6 +83,7 @@ function Row({ c, on, inLib, skipped, onToggle }: { c: Candidate; on: boolean; i
 export function ImportPage() {
   const { source: raw } = useParams()
   const source: ImportSource = raw === 'plex' ? 'plex' : 'steam'
+  usePageTitle(source === 'plex' ? 'Import from Plex' : 'Import from Steam')
   const { user, loading } = useAuth()
   const { allItems } = useItems()
   const queryClient = useQueryClient()

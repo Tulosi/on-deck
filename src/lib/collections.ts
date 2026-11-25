@@ -40,8 +40,9 @@ export const BUILTIN_COLLECTIONS: Collection[] = [
   {
     id: 'default-early-access',
     name: 'Early Access',
-    description: 'Games you want or are playing that are out in Early Access but haven’t hit 1.0 yet.',
-    rules: 'type=game&status=wanted,in_progress,stalled&access=early_access&release=released',
+    description: 'Games out in Early Access that haven’t hit 1.0 yet: ones you want, are playing, or are waiting on for 1.0.',
+    // caught_up is a game's "Waiting for 1.0".
+    rules: 'type=game&status=wanted,in_progress,stalled,caught_up&access=early_access&release=released',
     createdAt: '',
     itemIds: [],
     builtin: true,

@@ -235,3 +235,55 @@ A fresh reviewer did this pass. It didn't see the earlier reviews. It checked 20
 **Also, from feedback:**
 - **Home and Library filter by any mix of types** ("Games", or "Movies and games"). On desktop, each type is a chip you toggle on and off. On phones, the "Showing:" pill opens a checklist. The URL holds the list (`?type=movie,game`). Per-type filters (genres, Steam Deck…) still appear when exactly one type is picked. Calendar stays one type at a time.
 - **New for you sits closer to Pick it back up?** The first row is only as wide as it needs to be, up to 36rem. Rows with more titles still push the second one over.
+
+---
+
+## 7. Nielsen rescore after 32a9ee8, and why it isn't higher
+
+A fresh, independent reviewer scored **33 / 40** (Good):
+- **4 each:** Match with the real world, User control and freedom, Flexibility and efficiency.
+- **3 each:** the other seven heuristics.
+
+This run was up from 29 and 27.
+
+**Why the number moves, and where it tops out:**
+- **The rubric is strict by design.** "A 4 means genuinely excellent", and "most real interfaces score 20–32". A 3 is the default answer for anything good. 33 is already above that range.
+- **Each reviewer is new.** Each fresh reviewer explores differently and finds different things. Scores of 27, 29 and 33 across three runs show a spread of about ±3 points from the reviewer alone.
+- **About 3–4 points are real gaps that can be fixed.** The rest are taste or the ceiling for this kind of app. A realistic best is about 36–37 / 40.
+
+**Real gaps (each would earn its point):**
+
+| Heuristic | Gap |
+|---|---|
+| Error prevention | **Data loss:** choosing "Want to…" clears the started and finished dates ([library.ts](../src/lib/library.ts)), and a plain status change has no Undo. One stray `1` on a title page erases the dates. |
+| Visibility | Every route's browser tab says "On Deck". A plain status change shows no confirmation. |
+| Error recovery | A failed save rolls back with a message but no Retry. |
+| Consistency | "TV" (search, phone tab bar) vs "TV shows" (Library, sidebar). On phones, Library sits under More, and More lights up on Library and title pages. |
+| Recognition | The shortcuts sheet leaves out ⌘K and Esc. The phone "Poster details" button is an icon with no label. |
+
+**Taste or ceiling:**
+- **Aesthetic (8):** up to four badges per card and a dense Library toolbar.
+- **Help (10):** a personal tracker seldom needs a help centre. Short "How this works" notes in Settings → Connections would be the most to add.
+
+**Fixed (same day):**
+- **Error prevention:**
+  - Every status change shows "Set to …" with Undo.
+  - Undo puts back the old status, place and dates exactly. The app now loads `started_at`, so it can restore it.
+  - A stray `1` can still clear the dates, but one press of Undo brings them back.
+- **Visibility:**
+  - Every page sets its browser tab title ("Severance – On Deck", "Movies and games – On Deck", "Search: dune – On Deck", "Page not found – On Deck").
+  - Status changes confirm with a toast, as above.
+- **Error recovery:** a failed save says "It's been put back" and offers Retry, which sends the same change again.
+- **Consistency:**
+  - "TV shows" everywhere: the search tabs, the phone tab bar, and result rows ("TV show").
+  - On a title page reached from a page that isn't a tab, More no longer lights up.
+- **Recognition:**
+  - The shortcuts sheet lists ⌘K / Ctrl+K and Esc.
+  - The phone poster-details button says "Details".
+  - On narrow phones the type pill drops the word "Showing:"; its icon and arrow still mark it as a filter.
+
+**Also:** the Early Access collection includes games set to "Waiting for 1.0".
+
+**Not changed:**
+- Library is still under More in the default phone tab bar. The four type tabs cover it, and the tabs can be changed in Settings → Navigation.
+- Two-type combinations on a 390px phone lose a few letters in the pill. The checklist shows the full choice.

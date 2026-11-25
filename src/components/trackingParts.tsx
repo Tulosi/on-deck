@@ -275,24 +275,29 @@ export function useSaver(item: UserItem) {
   const update = useUpdateItem()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
+  // The change that failed, so Retry can send it again (the screen has already put the old value back).
+  const failed = useRef<ItemPatch | null>(null)
   /** Resolves true once saved; a failure shows beside the Tracking heading and resolves false. */
   async function save(patch: ItemPatch): Promise<boolean> {
     setError(null)
+    failed.current = null
     setPending((n) => n + 1)
     try {
       await update(item, patch)
       return true
     } catch (err) {
-      setError(plainError(err, 'Couldn’t save that change.'))
+      failed.current = patch
+      setError(`${plainError(err, 'Couldn’t save that change.')} It’s been put back.`)
       return false
     } finally {
       setPending((n) => n - 1)
     }
   }
-  return { save, update, pending, error }
+  const retry = () => failed.current && void save(failed.current)
+  return { save, update, pending, error, retry }
 }
 
-export function SaveState({ pending, error }: { pending: number; error: string | null }) {
+export function SaveState({ pending, error, onRetry }: { pending: number; error: string | null; onRetry?: () => void }) {
   return (
     <span className="flex items-center gap-1.5 text-xs text-faint" aria-live="polite">
       {pending > 0 ? (
@@ -300,7 +305,14 @@ export function SaveState({ pending, error }: { pending: number; error: string |
           <Loader2 className="size-3.5 animate-spin" /> Saving
         </>
       ) : error ? (
-        <span className="text-bad">{error}</span>
+        <>
+          <span className="text-bad">{error}</span>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="hit font-medium text-accent-ink hover:underline">
+              Retry
+            </button>
+          )}
+        </>
       ) : null}
     </span>
   )

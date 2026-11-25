@@ -3,13 +3,16 @@
 
 const enc = new TextEncoder()
 
+/** Bytes backed by a plain ArrayBuffer, the only kind WebCrypto and fetch bodies accept under TypeScript 5.7+. */
+type Bytes = Uint8Array<ArrayBuffer>
+
 export const b64url = {
   encode(bytes: Uint8Array): string {
     let s = ''
     for (const b of bytes) s += String.fromCharCode(b)
     return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
   },
-  decode(s: string): Uint8Array {
+  decode(s: string): Bytes {
     const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4))
     return Uint8Array.from(b, (c) => c.charCodeAt(0))
   },
@@ -25,7 +28,7 @@ const concat = (...parts: Uint8Array[]) => {
   return out
 }
 
-async function hmac(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+async function hmac(key: Bytes, data: Bytes): Promise<Bytes> {
   const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
   return new Uint8Array(await crypto.subtle.sign('HMAC', k, data))
 }
@@ -43,19 +46,19 @@ export interface Subscription {
 
 /** Optional fixed inputs, for the RFC 8291 test vector only. */
 export interface EncryptOverrides {
-  salt?: Uint8Array
+  salt?: Bytes
   serverPrivate?: string // base64url d
   serverPublic?: string // base64url raw
 }
 
 /** Encrypts a push payload for one subscription → the HTTP request body (aes128gcm, single record). */
-export async function encryptPayload(sub: Subscription, payload: Uint8Array, o: EncryptOverrides = {}): Promise<Uint8Array> {
+export async function encryptPayload(sub: Subscription, payload: Uint8Array, o: EncryptOverrides = {}): Promise<Bytes> {
   const uaPublic = b64url.decode(sub.p256dh)
   const authSecret = b64url.decode(sub.auth)
 
   // Application server's one-off ECDH key pair.
   let asPrivate: CryptoKey
-  let asPublic: Uint8Array
+  let asPublic: Bytes
   if (o.serverPrivate && o.serverPublic) {
     asPublic = b64url.decode(o.serverPublic)
     asPrivate = await crypto.subtle.importKey(

@@ -232,6 +232,17 @@ h1[tabindex='-1']:focus {
     transform: translateY(6px);
   }
 }
+/* A result coming into focus (Pick for me's details): rises and sharpens out of a slight blur. */
+.reveal {
+  animation: reveal 420ms var(--ease-out) both;
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
+}
 
 /* Swipe actions (useSwipe): the action behind a row shows as the row slides, fully once a release would commit. */
 .swipe-action {
@@ -276,7 +287,8 @@ details[open]::details-content {
   }
   .leave-x,
   .leave-y,
-  .arrive {
+  .arrive,
+  .reveal {
     animation-duration: 1ms;
   }
 }

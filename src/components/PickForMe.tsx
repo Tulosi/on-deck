@@ -20,13 +20,18 @@ const START_WORD: Record<MediaType, string> = { movie: 'Start watching', tv: 'St
 const CARD_W = 150
 const CARD_H = 225
 const STAGE_H = 260
-/** Spin: the long slow-down, how far it runs past the pick (in posters), and the settle back onto it. */
-const SPIN_MS = 1700
-const OVERSHOOT = 0.04
-const SETTLE_MS = 40
+/**
+ * The spin is physics rather than a fixed curve, the way Motion's `inertia` and GSAP's InertiaPlugin throw a wheel:
+ * a fling that loses speed to friction (exponential decay, `FRICTION_S` its time constant), then, once it's slow
+ * enough to read, a spring takes over and pulls it onto the pick (a touch past and back, as a real wheel's detent does).
+ */
+const FRICTION_S = 0.36
+/** Speed (posters a second) at which the spring takes over from the fling. */
+const HANDOFF = 1.5
+const SPRING = { stiffness: 210, damping: 19 }
 /** Wind-up before the spin: the reel pulls back a touch first, like a lever, so the launch reads as a push. */
-const WINDUP_MS = 150
-const WINDUP = 0.14
+const WINDUP_MS = 160
+const WINDUP = 0.18
 /** How far each poster turns away on the cylinder (degrees per step out), and the depth it's seen at. */
 const TILT = 18
 const PERSPECTIVE = 900
@@ -47,8 +52,39 @@ function placement(d: number, k: number) {
   return { x, scale, opacity, z: Math.round(100 - a * 20), brightness, tilt }
 }
 
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3.5)
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+
+/**
+ * A spring as a CSS `linear()` easing, for the pick's landing pop (WAAPI). Browsers without `linear()` get a strong
+ * ease-out instead.
+ */
+const POP_EASING = (() => {
+  if (typeof CSS === 'undefined' || !CSS.supports('animation-timing-function', 'linear(0, 1)')) return 'cubic-bezier(0.23, 1, 0.32, 1)'
+  // Displacement from rest, released from 1 away: sampled over half a second.
+  const { stiffness, damping } = { stiffness: 260, damping: 16 }
+  const dt = 1 / 960
+  let x = -1
+  let v = 0
+  const pts = ['0']
+  for (let i = 1; i <= 48; i++) {
+    for (let s = 0; s < 10; s++) {
+      v += (-stiffness * x - damping * v) * dt
+      x += v * dt
+    }
+    pts.push(i === 48 ? '1' : (1 + x).toFixed(3))
+  }
+  return `linear(${pts.join(', ')})`
+})()
+
+type Reel = { strip: UserItem[]; at: number; key: number; resting?: boolean }
+
+/** A still fan of seven posters from the pool, shown before the first spin. */
+function restingReel(pool: UserItem[]): Reel | null {
+  if (!pool.length) return null
+  const mixed = [...pool].sort(() => Math.random() - 0.5)
+  const strip = Array.from({ length: 7 }, (_, n) => mixed[n % mixed.length])
+  return { strip, at: 3, key: 0, resting: true }
+}
 
 const OPEN = 'ondeck:pick'
 /** Open the picker from a button. */
@@ -97,10 +133,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
   const [kind, setKind] = useState<PickKind | null>(null)
   // Everything picked so far in this sitting: Spin again never lands on one of these.
   const seen = useRef(new Set<string>())
-  const [reel, setReel] = useState<{ strip: UserItem[]; at: number; key: number } | null>(null)
+  // Before the first spin, a resting fan of your posters (dimmed) that the spin then sets off from.
+  const [reel, setReel] = useState<Reel | null>(() => restingReel(pools.any))
   const [spinning, setSpinning] = useState(false)
   const [exhausted, setExhausted] = useState(false)
-  const pick = reel ? reel.strip[reel.at] : null
+  const pick = reel && !reel.resting ? reel.strip[reel.at] : null
   const stageEl = useRef<HTMLDivElement>(null)
   const frontEl = useRef<HTMLDivElement>(null)
 
@@ -115,7 +152,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     }
     setExhausted(false)
     seen.current.add(next.id)
-    setReel({ ...reelOf(pool, next, 10), key: Date.now() })
+    const r = reelOf(pool, next, 10)
+    // The posters already showing stay put and set off from where they are, rather than swapping in new ones.
+    const showing = reel ? reel.strip.slice(reel.at - 3, reel.at + 4) : []
+    if (showing.length === 7) r.strip.splice(0, 7, ...showing)
+    setReel({ ...r, key: Date.now() })
     setSpinning(true)
   }
 
@@ -150,11 +191,15 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     }
     const done = () => {
       setSpinning(false)
-      // The pick lifts a touch and the posters either side step back into the dark, so it's clearly the one.
-      frontEl.current?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }, { transform: 'scale(1)' }], {
-        duration: 420,
-        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-      })
+      // The pick lifts a touch and springs back into place, and the posters either side step back into the dark.
+      frontEl.current?.animate(
+        [
+          { transform: 'scale(1)', easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+          { transform: 'scale(1.045)', offset: 0.2, easing: POP_EASING },
+          { transform: 'scale(1)' },
+        ],
+        { duration: 640 },
+      )
       cards.forEach((el, n) => {
         if (n === reel.at || el.style.visibility === 'hidden') return
         const p = placement(n - reel.at, k)
@@ -171,12 +216,18 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         navigator.vibrate?.(4)
       }
     }
+    if (reel.resting) {
+      place(reel.at, 0)
+      cards.forEach((el, n) => {
+        if (el.style.visibility !== 'hidden') el.style.filter = `brightness(${(placement(n - reel.at, k).brightness * 0.55).toFixed(3)})`
+      })
+      return
+    }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       place(reel.at, 0)
       done()
       return
     }
-    const target = reel.at + OVERSHOOT
     let raf = 0
     let finished = false
     const finish = () => {
@@ -199,29 +250,50 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         }
       }, 50)
     }
+
+    // The fling: from the wind-up's end it heads for the pick, losing speed to friction; its asymptote is the pick.
+    const from = FROM - WINDUP
+    const dist = reel.at - from
+    const v0 = dist / FRICTION_S
+    // When it has slowed to HANDOFF, the spring takes over from there with that speed.
+    const handT = FRICTION_S * Math.log(v0 / HANDOFF)
+    const flingAt = (t: number) => from + dist * (1 - Math.exp(-t / FRICTION_S))
+    let spring: { x: number; v: number; t: number } | null = null
     // Whatever happens, it lands.
-    const watchdog = setTimeout(finish, WINDUP_MS + SPIN_MS + SETTLE_MS + 600)
-    const startAt = FROM - WINDUP
+    const watchdog = setTimeout(finish, WINDUP_MS + handT * 1000 + 1500)
+
     const t0 = performance.now()
+    let last = FROM
+    let lastNow = t0
     const frame = (now: number) => {
       if (finished) return
-      const t = now - t0 - WINDUP_MS
+      const t = (now - t0 - WINDUP_MS) / 1000
       let pos: number
-      if (t < 0) pos = FROM - WINDUP * easeInOut(1 + t / WINDUP_MS)
-      else if (t < SPIN_MS) pos = startAt + easeOut(t / SPIN_MS) * (target - startAt)
-      else if (t < SPIN_MS + SETTLE_MS) pos = target - easeInOut((t - SPIN_MS) / SETTLE_MS) * OVERSHOOT
+      if (t < 0) pos = FROM - WINDUP * easeInOut(1 + (t * 1000) / WINDUP_MS)
+      else if (t < handT) pos = flingAt(t)
       else {
-        finish()
-        return
+        // Spring, stepped in small fixed steps so it's the same at any frame rate.
+        if (!spring) spring = { x: flingAt(handT) - reel.at, v: HANDOFF, t: handT }
+        while (spring.t < t) {
+          const dt = Math.min(1 / 240, t - spring.t)
+          spring.v += (-SPRING.stiffness * spring.x - SPRING.damping * spring.v) * dt
+          spring.x += spring.v * dt
+          spring.t += dt
+        }
+        if (Math.abs(spring.x) < 0.002 && Math.abs(spring.v) < 0.02) {
+          finish()
+          return
+        }
+        pos = reel.at + spring.x
       }
-      // Blur with speed (posters per frame), so it smears while fast and sharpens as it slows.
-      const speed = Math.abs(pos - last)
+      // Motion blur from the actual speed (posters a second): smeared while flung, sharp as it slows.
+      const speed = Math.abs(pos - last) / Math.max(0.001, (now - lastNow) / 1000)
       last = pos
-      place(pos, Math.min(3, speed * 8))
+      lastNow = now
+      place(pos, Math.min(3, speed * 0.13))
       tick(pos)
       next(frame)
     }
-    let last = FROM
     place(FROM, 0)
     next(frame)
     return () => {
@@ -275,7 +347,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                 onClick={() => spin(k)}
                 title={empty ? `Nothing ready to start in ${k === 'any' ? 'your list' : KIND_LABEL[k].toLowerCase()}` : undefined}
                 className={clsx(
-                  'flex flex-col items-center gap-1 rounded-lg border px-0.5 py-2.5 text-xs whitespace-nowrap transition-colors disabled:opacity-40 max-[24rem]:text-[11px]',
+                  'flex flex-col items-center gap-1 rounded-lg border px-0.5 py-2.5 text-xs whitespace-nowrap transition-[color,border-color,background-color,transform] duration-150 enabled:active:scale-[0.97] disabled:opacity-40 max-[24rem]:text-[11px]',
                   kind === k ? 'border-accent bg-accent/10 text-fg' : 'border-line text-muted enabled:hover:border-faint enabled:hover:text-fg',
                 )}
               >
@@ -296,7 +368,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           {reel ? (
             <div key={reel.key} className="absolute inset-0" style={{ perspective: PERSPECTIVE }}>
               {reel.strip.map((i, n) => (
-                <Card key={n} item={i} front={n === reel.at && !spinning} frontRef={n === reel.at ? frontEl : undefined} />
+                <Card key={n} item={i} front={n === reel.at && !spinning && !reel.resting} frontRef={n === reel.at ? frontEl : undefined} />
               ))}
             </div>
           ) : (
@@ -325,8 +397,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           ) : pick && !spinning ? (
             // Details come in just after it lands, top to bottom.
             <div key={reel?.key} className="text-center">
-              <p className="arrive text-base font-semibold text-fg">{pick.title.title}</p>
-              <p className="arrive mt-0.5 flex justify-center gap-3 text-xs text-muted" style={{ animationDelay: '40ms' }}>
+              <p className="reveal text-base font-semibold text-fg">{pick.title.title}</p>
+              <p className="reveal mt-0.5 flex justify-center gap-3 text-xs text-muted" style={{ animationDelay: '40ms' }}>
                 {[pick.title.year, pick.title.byline, pick.progress !== 'wanted' && statusLabel(pick.progress, pick.title.mediaType)]
                   .filter(Boolean)
                   .map((part) => (
@@ -334,11 +406,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                   ))}
               </p>
               {reasons.length > 0 && (
-                <p className="arrive mt-1 text-xs text-faint" style={{ animationDelay: '80ms' }}>
+                <p className="reveal mt-1 text-xs text-faint" style={{ animationDelay: '80ms' }}>
                   {reasons.join('. ')}.
                 </p>
               )}
-              <div className="arrive mt-3 flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: '120ms' }}>
+              <div className="reveal mt-3 flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: '120ms' }}>
                 {pick.progress === 'wanted' && (
                   <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110">
                     {START_WORD[pick.title.mediaType]}
@@ -369,7 +441,9 @@ function PickDialog({ onClose }: { onClose: () => void }) {
               {!left && <p className="mt-2 text-xs text-faint">That was the last one that fits. Start over brings them all back.</p>}
             </div>
           ) : spinning ? (
-            <p className="pt-3 text-center text-sm text-muted">Spinning…</p>
+            <p className="sr-only">Spinning…</p>
+          ) : reel?.resting ? (
+            <p className="pt-3 text-center text-sm text-muted">Choose what to pick from, and it spins.</p>
           ) : null}
         </div>
       </div>

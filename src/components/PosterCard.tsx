@@ -4,7 +4,7 @@ import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { BookOpen, CalendarClock, Film, Radio, Gamepad2, Star, ThumbsDown, ThumbsUp, Tv, type LucideIcon } from 'lucide-react'
-import { releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
+import { fullRelease, fullReleaseChip, releaseChip, releaseInfo, releaseLong, tvSchedule, tvScheduleChip, tvScheduleLong } from '../lib/release'
 import { chipVisibility, useChipMode, type ChipMode } from '../lib/chips'
 import type { MediaType, PlexStatus, UserItem } from '../types'
 import { coverProps } from '../lib/images'
@@ -89,6 +89,7 @@ export const PosterCard = memo(function PosterCard({
   subline,
   morphKey,
   showDeal,
+  showFullRelease,
 }: {
   item: UserItem
   className?: string
@@ -100,6 +101,8 @@ export const PosterCard = memo(function PosterCard({
   morphKey?: string
   /** A deals view (On sale / Historical low filter): show the price chip even on games you own. */
   showDeal?: boolean
+  /** Early Access collection: an announced 1.0 date takes the place of the "Early access" chip. */
+  showFullRelease?: boolean
 }) {
   const { title } = item
   const savedMode = useChipMode()
@@ -112,6 +115,7 @@ export const PosterCard = memo(function PosterCard({
   const showPrice = title.mediaType === 'game' && (!item.owned || showDeal) && (item.price || isFree)
   const showPlex = (title.mediaType === 'movie' || title.mediaType === 'tv') && item.plex
   const release = releaseInfo(title)
+  const full = showFullRelease ? fullRelease(title) : null
   const schedule = release.preRelease ? null : tvSchedule(title)
   const episode = subline ? undefined : episodeLine(item)
   const secondary = subline ?? (episode ? undefined : title.byline)
@@ -267,7 +271,18 @@ export const PosterCard = memo(function PosterCard({
               </div>
               <div className="ml-auto flex max-w-full min-w-0 flex-col items-end gap-1">
         {/* Early Access (games): bottom-right is free on game posters (Plex dots are movies/TV only). */}
-                {title.mediaType === 'game' && title.details?.early_access === true && (
+                {full ? (
+                  <span
+                    title={`Full release (1.0): ${releaseLong(full)}`}
+                    className={clsx(
+                      'flex items-center gap-1 rounded-md border border-orange-300/70 bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-orange-300',
+                      vis('release'),
+                    )}
+                  >
+                    <CalendarClock className="hidden size-3 @[8.5rem]/poster:block" />
+                    {fullReleaseChip(full)}
+                  </span>
+                ) : title.mediaType === 'game' && title.details?.early_access === true && (
                   <span
                     title="Early access: not at 1.0 yet"
                     className={clsx(

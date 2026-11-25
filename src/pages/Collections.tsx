@@ -14,6 +14,7 @@ import { useProfile } from '../lib/integrations'
 import { useNavLayout } from '../lib/navLayout'
 import { activeCount, LABELS, parseFilters, typesLabel } from '../lib/filters'
 import { useItems } from '../lib/library'
+import { fullRelease } from '../lib/release'
 import type { UserItem } from '../types'
 
 const grid =
@@ -131,6 +132,47 @@ const itemsOf = (c: Collection, byId: Map<string, UserItem>, all: UserItem[], sh
       : c.itemIds
           .map((id) => byId.get(id))
           .filter((i): i is UserItem => !!i && (showArchived || !i.archivedAt))
+
+/**
+ * Early Access collection: games with an announced 1.0 first, soonest first, each poster showing its 1.0 date;
+ * then the ones still waiting for a date.
+ */
+function EarlyAccessGroups({ items }: { items: UserItem[] }) {
+  const withDate = items
+    .map((item) => ({ item, full: fullRelease(item.title) }))
+    .filter((x) => x.full)
+    .sort((a, b) => a.full!.date!.localeCompare(b.full!.date!))
+    .map((x) => x.item)
+  const without = items.filter((i) => !withDate.includes(i))
+  const group = (title: string, list: UserItem[]) =>
+    list.length > 0 && (
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-semibold text-fg">
+          {title} <span className="ml-1 font-normal text-faint">{list.length}</span>
+        </h2>
+        <div className={grid}>
+          {list.map((item) => (
+            <PosterCard key={item.id} item={item} showFullRelease />
+          ))}
+        </div>
+      </section>
+    )
+  // Only one kind: no headings needed, just the posters (with their 1.0 dates).
+  if (!withDate.length || !without.length)
+    return (
+      <div className={grid}>
+        {items.map((item) => (
+          <PosterCard key={item.id} item={item} showFullRelease />
+        ))}
+      </div>
+    )
+  return (
+    <>
+      {group('1.0 date announced', withDate)}
+      {group('No 1.0 date yet', without)}
+    </>
+  )
+}
 
 /** "Games, 3 filters, sorted by Price" */
 function rulesSummary(rules: string): string {
@@ -275,6 +317,7 @@ export function CollectionDetail() {
   // A deals collection shows the price chip on every poster, owned games included.
   const dealView = smart && parseFilters(new URLSearchParams(c.rules!)).deal.length > 0
   const builtin = !!c.builtin
+  const earlyAccessView = c.id === 'default-early-access'
   const archivedHere = smart ? 0 : c.itemIds.filter((id) => byId.get(id)?.archivedAt).length
 
   return (
@@ -383,6 +426,8 @@ export function CollectionDetail() {
             ? 'Nothing in your library matches these rules right now. It’ll fill up as your library changes.'
             : <>Nothing here yet. Open any title in your library and use <b>Collections</b> on its page to add it.</>}
         </p>
+      ) : earlyAccessView ? (
+        <EarlyAccessGroups items={list} />
       ) : (
         <div className={grid}>
           {list.map((item, index) => (

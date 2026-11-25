@@ -46,6 +46,23 @@ export function releaseInfo(title: Title): ReleaseInfo {
   return { preRelease: unreleased, precision: 'tbd' }
 }
 
+/**
+ * An Early Access game's announced full release (1.0), when its date is known (exact, or rough like "Q2 2027")
+ * and still ahead. From the milestones the game functions store; null otherwise.
+ */
+export function fullRelease(title: Title): ReleaseInfo | null {
+  const ms = title.details?.release_milestones
+  if (title.details?.early_access !== true || !Array.isArray(ms)) return null
+  const m = (ms as { kind?: string; date?: string | null; precision?: Precision; label?: string | null }[]).find((x) => x?.kind === 'release')
+  if (!m?.date || !m.precision || m.precision === 'tbd') return null
+  const today = todayIso()
+  if (m.precision !== 'day') return { preRelease: true, date: m.date, precision: m.precision, fuzzyLabel: m.label ?? undefined }
+  return m.date < today ? null : { preRelease: true, date: m.date, daysUntil: daysBetween(today, m.date), precision: 'day' }
+}
+
+/** Poster chip for a 1.0 date: "1.0 in 38 days", "1.0 Q2 2027", "1.0 today". */
+export const fullReleaseChip = (info: ReleaseInfo) => `1.0 ${releaseChip(info).replace(/^(In|Today|Tomorrow)\b/, (w) => w.toLowerCase())}`
+
 const monthDay = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 

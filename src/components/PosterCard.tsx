@@ -326,7 +326,8 @@ export const PosterCard = memo(function PosterCard({
           {episode ? (
             <span className="shrink-0 font-mono text-fg">{episode}</span>
           ) : (
-            title.year != null && <span className="shrink-0 font-mono">{title.year}</span>
+            // A long status word ("Waiting for 1.0") needs the whole line, so the year gives way.
+            title.year != null && !(status && status.length > 12) && <span className="shrink-0 font-mono">{title.year}</span>
           )}
           {status && <span className="min-w-0 truncate">{status}</span>}
           {/* The author / studio needs more room than a 3-across phone grid has. */}

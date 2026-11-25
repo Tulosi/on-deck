@@ -22,7 +22,7 @@ import {
 import { useItems } from '../lib/library'
 import { useLibraryView } from '../lib/libraryView'
 import { releaseInfo } from '../lib/release'
-import { statusLabel } from '../lib/statusLabels'
+import { statusLabelFor } from '../lib/statusLabels'
 import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
 
@@ -46,7 +46,7 @@ function ActiveFilters({
   const without = <T,>(list: T[], v: T) => list.filter((x) => x !== v)
   // "Is not" groups read as "Not: …".
   const not = (key: 'status' | 'rating' | 'genre' | 'coop', label: string) => (f.neg[key] ? `Not: ${label}` : label)
-  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: not('status', statusLabel(v, f.type)), remove: () => set({ ...f, status: without(f.status, v) }) }))
+  f.status.forEach((v) => pills.push({ key: `s-${v}`, label: not('status', statusLabelFor(v, f.types)), remove: () => set({ ...f, status: without(f.status, v) }) }))
   f.priority.forEach((v) => pills.push({ key: `p-${v}`, label: `Priority: ${LABELS.priority[v]}`, remove: () => set({ ...f, priority: without(f.priority, v) }) }))
   f.rating.forEach((v) => pills.push({ key: `r-${v}`, label: not('rating', LABELS.rating[v]), remove: () => set({ ...f, rating: without(f.rating, v) }) }))
   f.availability.forEach((v) =>

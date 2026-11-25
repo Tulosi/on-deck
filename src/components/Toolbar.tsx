@@ -17,7 +17,7 @@ import {
   type SortKey,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
-import { statusFilterOptions, statusLabel } from '../lib/statusLabels'
+import { statusFilterOptionsFor, statusLabelFor, statusWords } from '../lib/statusLabels'
 import { useFilters } from '../lib/useFilters'
 import { TypesFilter } from './TypeFilter'
 import type { MediaType } from '../types'
@@ -73,14 +73,25 @@ const selectClass = 'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 t
 // selected type's own filters. Tapping an option always selects it. A few groups have an "is / is not" switch
 // instead of the old tap-twice-to-exclude chips. Each option shows how many titles it would leave.
 
-/** Explains the two statuses people ask about, for the ones this view has. */
-function statusHint(opts: readonly string[], type: MediaType | null): string | undefined {
+/** "Want to watch or play", "Watched it, Beat it or Read it". */
+const orList = (ws: string[]) => (ws.length < 2 ? ws.join('') : `${ws.slice(0, -1).join(', ')} or ${ws.at(-1)}`)
+
+/** Explains the statuses people ask about, for the ones this view has. */
+function statusHint(opts: readonly string[], types: readonly MediaType[]): string | undefined {
+  const wanted = statusWords('wanted', types)
+  const done = statusWords('completed', types)
+  const caughtUp = statusWords('caught_up', types)
   const parts = [
-    // Across types the words are general; say what they stand for on title pages.
-    !type && 'Wanted = Want to watch, play or read. Done = Watched, Beat or Read it.',
+    // Mixed types get general words; say what they stand for on title pages.
+    wanted.length > 1 && `Wanted = Want to ${orList(wanted.map((w) => w.replace('Want to ', '')))}.`,
+    done.length > 1 && `Done = ${orList(done)}.`,
     opts.includes('stalled') && 'Stalled: started, then set aside.',
     opts.includes('caught_up') &&
-      (type === 'game' ? 'Waiting for 1.0: played the Early Access so far.' : 'Caught up: seen everything out so far.'),
+      (caughtUp.length === 1 && caughtUp[0] === 'Waiting for 1.0'
+        ? 'Waiting for 1.0: played the Early Access so far.'
+        : caughtUp.length > 1
+          ? 'Caught up: seen everything out so far (for games, waiting for 1.0).'
+          : 'Caught up: seen everything out so far.'),
   ].filter(Boolean)
   return parts.length ? parts.join(' ') : undefined
 }
@@ -204,10 +215,10 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
       <Section title="Your list">
         <OptionGroup
           label="Status"
-          options={present('status', statusFilterOptions(f.type))}
+          options={present('status', statusFilterOptionsFor(f.types))}
           selected={f.status}
-          render={(v) => statusLabel(v, f.type)}
-          hint={statusHint(present('status', statusFilterOptions(f.type)), f.type)}
+          render={(v) => statusLabelFor(v, f.types)}
+          hint={statusHint(present('status', statusFilterOptionsFor(f.types)), f.types)}
           onToggle={tog('status')}
           count={count('status')}
           neg={negOf('status')}

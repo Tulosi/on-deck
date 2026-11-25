@@ -318,3 +318,9 @@ The total is the same because each new reviewer looks somewhere new.
   - Sign-in errors are announced to screen readers (`role="alert"`).
   - Missing or wrong fields get messages under the field and a red border, instead of browser popups. Focus goes to the first problem.
 - **#26:** The phone poster-details button says "Poster info", so it no longer reads like the cards' Details buttons.
+
+**Polish pass (same day):**
+- The Library status filter, its hint and the filter pills use the words your picked types share ("Want to watch" for movies and TV). Mixed words fall back to "Wanted" and "Done", and the hint spells out only the picked types' words. The status list holds only statuses the picked types can have.
+- Phone type pill: several types read "Games, books" or "TV, movies", with no "Showing:" prefix. Narrow phones count them ("2 types" below 24rem, "3 types" below 26rem), since the heading below names them. Nothing truncates from 360 to 600px.
+- Posters: a long status word ("Waiting for 1.0") takes the year's place, so it isn't cut off.
+- Links that repeat `type=` (`?type=movie&type=game`) keep every type, on the Library and in the search box.

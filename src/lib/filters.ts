@@ -131,7 +131,8 @@ function incList<T extends string>(v: string | null, allowed: readonly T[]): T[]
 }
 
 export function parseFilters(p: URLSearchParams): Filters {
-  const types = normTypes(list(p.get('type'), TYPES))
+  // Hand-made links may repeat it (?type=movie&type=game); read every one.
+  const types = normTypes(list(p.getAll('type').join(',') || null, TYPES))
   const type = types.length === 1 ? types[0] : null
   const hasGenres = type === 'movie' || type === 'tv' || type === 'game'
   const isGame = type === 'game'
@@ -228,6 +229,13 @@ export function typesLabel(ts: readonly MediaType[], midSentence = false): strin
   const lower = (t: MediaType) => LABELS.type[t].toLowerCase().replace('tv', 'TV')
   const names = ts.map((t, i) => (i || midSentence ? lower(t) : LABELS.type[t]))
   return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
+
+/** "Games, books", "TV, movies" for tight spots (the phone type pill); null for all types. */
+export function typesShortLabel(ts: readonly MediaType[]): string | null {
+  if (!ts.length) return null
+  if (ts.length === 1) return LABELS.type[ts[0]]
+  return ts.map((t, i) => (t === 'tv' ? 'TV' : i ? LABELS.type[t].toLowerCase() : LABELS.type[t])).join(', ')
 }
 
 /** Picking a set of types. Layer 3 filters stay while the one type stays the same. */

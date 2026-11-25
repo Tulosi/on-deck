@@ -36,6 +36,19 @@ export function statusLabel(progress: Progress, type?: MediaType | null): string
   return (type && WORDS[type][progress]) || MIXED[progress]
 }
 
+const ALL: MediaType[] = ['movie', 'tv', 'game', 'book']
+
+/** The word each picked type (none = all) uses for a status, without repeats. */
+export function statusWords(progress: Progress, types: readonly MediaType[]): string[] {
+  return [...new Set((types.length ? types : ALL).map((t) => WORDS[t][progress]).filter((w): w is string => !!w))]
+}
+
+/** A status named for a set of types: their shared word ("Want to watch" for movies and TV), else the neutral one. */
+export function statusLabelFor(progress: Progress, types: readonly MediaType[]): string {
+  const words = statusWords(progress, types)
+  return words.length === 1 ? words[0] : MIXED[progress]
+}
+
 /**
  * Statuses a type can have, in order. Shows get Caught Up (ongoing) or Watched It (ended), never both. Early Access
  * games also get Waiting for 1.0 (stored as caught_up, the same "seen all that's out" idea); a game already set to it
@@ -57,6 +70,13 @@ export function statusesFor(
     default:
       return ['wanted', 'in_progress', 'stalled', 'completed', 'dropped']
   }
+}
+
+/** Statuses that exist for any of the picked types (none = all), in order. */
+export function statusFilterOptionsFor(types: readonly MediaType[]): Progress[] {
+  if (types.length === 1) return statusFilterOptions(types[0])
+  const have = new Set(types.flatMap((t) => statusFilterOptions(t)))
+  return statusFilterOptions(null).filter((p) => !types.length || have.has(p))
 }
 
 /** Statuses that exist for a Library filter view (null = all types). */

@@ -33,7 +33,7 @@ export function SearchBox() {
   const { pathname, search } = useLocation()
   const filterPage = pathname === '/' || pathname === '/library' || pathname === '/calendar'
   // Several types picked on the page (?type=game,movie): search them all.
-  const rawType = new URLSearchParams(search).get('type')
+  const rawType = new URLSearchParams(search).getAll('type').join(',') || null
   const pageType = rawType?.includes(',') ? 'all' : (rawType ?? (filterPage ? 'all' : null))
   const [type, setTypeState] = useState<SearchType>(() => (isSearchType(pageType) ? pageType : savedType()))
   // Moving to a page with a different type switches to it, set during render so there's no frame with the old one.

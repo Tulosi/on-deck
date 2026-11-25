@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Check, ChevronDown, ListFilter } from 'lucide-react'
-import { LABELS, normTypes, typesLabel } from '../lib/filters'
+import { LABELS, normTypes, typesShortLabel } from '../lib/filters'
 import { useTypeOrder } from '../lib/navLayout'
 import type { MediaType } from '../types'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
@@ -119,13 +119,24 @@ export function TypesFilter({ value, onChange }: { value: MediaType[]; onChange:
           aria-expanded={open}
           aria-haspopup="true"
           onClick={() => setOpen((o) => !o)}
-          className="flex h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg aria-expanded:border-accent"
+          className="flex h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg aria-expanded:border-accent max-[26rem]:px-3"
         >
-          <ListFilter className="size-4 shrink-0 text-muted" aria-hidden="true" />
+          <ListFilter className="size-4 shrink-0 text-muted max-[26rem]:hidden" aria-hidden="true" />
           <span className="truncate">
-            {/* Narrow phones: the icon and arrow say it's a filter, so the choice gets the room. */}
-            <span className="text-muted max-[26rem]:hidden">Showing: </span>
-            {typesLabel(value) ?? 'All types'}
+            {/* Narrow phones, or several types: the arrow says it's a menu, so the choice gets the room. */}
+            {value.length < 2 && <span className="text-muted max-[26rem]:hidden">Showing: </span>}
+            {/* The page heading below spells the picks out, so narrow phones just count them: three or more below
+                26rem, two below 24rem. */}
+            {value.length > 1 ? (
+              <>
+                <span className={value.length > 2 ? 'max-[26rem]:hidden' : 'max-[24rem]:hidden'}>
+                  {typesShortLabel(order.filter((t) => value.includes(t)))}
+                </span>
+                <span className={value.length > 2 ? 'min-[26rem]:hidden' : 'min-[24rem]:hidden'}>{value.length} types</span>
+              </>
+            ) : (
+              (typesShortLabel(order.filter((t) => value.includes(t))) ?? 'All types')
+            )}
           </span>
           <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden="true" />
         </button>

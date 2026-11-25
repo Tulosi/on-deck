@@ -611,7 +611,11 @@ export function useUpdateItem() {
 
     const { error } = await supabase!.from('user_items').update(row).eq('id', item.id)
     if (error) {
-      queryClient.setQueryData(key, previous)
+      // Put back just this title: a whole-list snapshot would also undo (or redo) other saves running at the same
+      // time, e.g. a bulk change where every save fails.
+      const before = previous?.find((i) => i.id === item.id)
+      queryClient.setQueryData<UserItem[]>(key, (items) => items?.map((i) => (i.id === item.id && before ? before : i)))
+      void queryClient.invalidateQueries({ queryKey: key })
       throw error
     }
     // Re-sync with the database once the write has landed (no-op visually when it matches).

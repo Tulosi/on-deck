@@ -324,3 +324,11 @@ The total is the same because each new reviewer looks somewhere new.
 - Phone type pill: several types read "Games, books" or "TV, movies", with no "Showing:" prefix. Narrow phones count them ("2 types" below 24rem, "3 types" below 26rem), since the heading below names them. Nothing truncates from 360 to 600px.
 - Posters: a long status word ("Waiting for 1.0") takes the year's place, so it isn't cut off.
 - Links that repeat `type=` (`?type=movie&type=game`) keep every type, on the Library and in the search box.
+
+**Signed-in checks (live account, every change put back):**
+- Bulk status change and Undo: two games set to Beat it, then Undo. Both came back exactly, including Tiny Rogues' stalled date.
+- Single status Undo on a title page: back to Playing it with the earlier dates, not new ones.
+- Failed save on a title page: "Couldn't save that change. It's been put back." with Retry; Retry saved it.
+- Failed bulk change: the toast named both games with Retry. **Bug found and fixed:** the screen put back only one of them; the other vanished from the list until reload, because each failed save restored a whole-list snapshot. Now a failed save puts back only its own title and re-syncs.
+- **Fixed:** while the selection bar is open, toasts now sit above it instead of on top of it.
+- Waiting for 1.0 → Want to play: a released game left on Waiting for 1.0 moved on load, kept its start date, and said why; Undo put it back and it stayed there after reload.

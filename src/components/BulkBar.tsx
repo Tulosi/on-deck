@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { Archive, ArchiveRestore, Check, Layers, Trash2, X } from 'lucide-react'
 import { useBulkItems } from '../lib/library'
@@ -121,8 +121,23 @@ export function BulkBar({
     }
   }
 
+  // Toasts sit above the bar instead of on top of it (the Toaster reads --bulk-h).
+  const bar = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = bar.current
+    if (!el) return
+    const root = document.documentElement
+    const ro = new ResizeObserver(() => root.style.setProperty('--bulk-h', `${el.offsetHeight + 8}px`))
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      root.style.removeProperty('--bulk-h')
+    }
+  }, [])
+
   return (
     <div
+      ref={bar}
       role="toolbar"
       aria-label="Selected titles"
       className="toast-enter fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] z-40 flex justify-center px-3 md:bottom-6 md:left-56"

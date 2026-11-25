@@ -12,6 +12,8 @@ export interface Toast {
   action?: { label: string; onClick: () => void }
   /** Milliseconds before it goes away by itself. */
   duration: number
+  /** On its way out: fading for a moment before it's removed. */
+  leaving?: boolean
 }
 
 let toasts: Toast[] = []
@@ -20,18 +22,31 @@ const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 const timers = new Map<number, ReturnType<typeof setTimeout>>()
 
-export function dismiss(id: number) {
+/** How long a dismissed toast takes to fade out (matches .toast-leave). */
+const LEAVE_MS = 160
+
+function remove(id: number) {
   clearTimeout(timers.get(id))
   timers.delete(id)
   toasts = toasts.filter((t) => t.id !== id)
   emit()
 }
 
+/** Timed out, ×, swiped or acted on: it fades out the way it came, then goes. */
+export function dismiss(id: number) {
+  const t = toasts.find((x) => x.id === id)
+  if (!t || t.leaving) return
+  clearTimeout(timers.get(id))
+  toasts = toasts.map((x) => (x.id === id ? { ...x, leaving: true } : x))
+  emit()
+  timers.set(id, setTimeout(() => remove(id), LEAVE_MS))
+}
+
 export function toast(t: Omit<Toast, 'id' | 'duration'> & { duration?: number }): number {
   const id = nextId++
   const full: Toast = { duration: 5000, ...t, id }
   // One at a time: a new toast replaces the old one (each action's own commit timer keeps running).
-  for (const old of toasts) dismiss(old.id)
+  for (const old of toasts) remove(old.id)
   toasts = [full]
   timers.set(id, setTimeout(() => dismiss(id), full.duration))
   emit()

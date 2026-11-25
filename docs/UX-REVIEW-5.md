@@ -70,6 +70,11 @@ A re-run of [UX-REVIEW-4.md](UX-REVIEW-4.md) after all of its items shipped, plu
 - #1: on narrow posters "Low" is a small dot, so the tag stays inside the poster. Screen readers still hear "Historical low".
 - #2: the sample shows New for you (Saltmarsh Keepers, Early Access is out; Low Orbit, New season dated) until Clear.
 
+**Emil, finished the same day:**
+- Press feedback was applied twice: an old rule also set `transform: scale(0.97)`, so a pressed button shrank to about 94%, segmented options shrank too, and any button that already had a transform lost it while held. Now there's one rule: buttons shrink to 97% with `scale`, and segmented options and `.no-press` stay still.
+- The toast fades out the way it came (160ms) when it times out or on ×, swipe or Undo, instead of vanishing.
+- The toast's Undo and × have 44px tap areas on touch screens.
+
 ---
 
 ## 4. Suggested order

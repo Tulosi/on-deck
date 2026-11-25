@@ -25,7 +25,9 @@ function ToastView({ t }: { t: Toast }) {
     <div
       ref={swipe}
       role={t.tone === 'error' ? 'alert' : 'status'}
+      inert={t.leaving}
       className={clsx(
+        t.leaving && 'toast-leave',
         'toast-enter pointer-events-auto flex max-w-md items-center gap-3 rounded-xl border bg-raised py-2 pr-2 pl-4 text-sm shadow-2xl shadow-black/40',
         t.tone === 'error' ? 'border-bad/60 text-fg' : 'border-line text-fg',
       )}
@@ -35,12 +37,12 @@ function ToastView({ t }: { t: Toast }) {
         <button
           type="button"
           onClick={t.action.onClick}
-          className="rounded-md px-2.5 py-1 font-medium text-accent-ink hover:bg-accent/10"
+          className="hit rounded-md px-2.5 py-1 font-medium text-accent-ink hover:bg-accent/10"
         >
           {t.action.label}
         </button>
       )}
-      <button type="button" aria-label="Dismiss" onClick={() => dismiss(t.id)} className="grid size-7 place-items-center rounded-md text-muted hover:text-fg">
+      <button type="button" aria-label="Dismiss" onClick={() => dismiss(t.id)} className="hit grid size-7 place-items-center rounded-md text-muted hover:text-fg">
         <X className="size-4" />
       </button>
     </div>

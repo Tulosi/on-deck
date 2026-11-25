@@ -649,13 +649,20 @@ export function useRenewalCheck() {
  * Remove a title with Undo: it disappears now, and is only deleted after a few seconds unless Undo is pressed.
  * `after` runs straight away (e.g. leaving the title page).
  */
+/** ", with your rating and notes" (whichever it has), for the Remove toast. */
+function lostWith(item: UserItem): string {
+  const parts = [(item.verdict || item.favourite) && 'rating', item.notes?.trim() && 'notes'].filter(Boolean)
+  return parts.length ? `, with your ${parts.join(' and ')}` : ''
+}
+
 export function useRemoveItemWithUndo() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const key = libraryKey(user?.id)
   return (item: UserItem, after?: () => void) =>
     undoable({
-      message: `Removed “${item.title.title}”`,
+      // Say what goes with it, since Remove (unlike Archive) doesn't keep them.
+      message: `Removed “${item.title.title}”${lostWith(item)}`,
       hide: () => {
         queryClient.setQueryData<UserItem[]>(key, (l) => (l ?? []).filter((i) => i.id !== item.id))
         after?.()

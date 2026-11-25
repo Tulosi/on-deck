@@ -9,6 +9,8 @@ import { plainError } from '../lib/errors'
 
 const btn = 'flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm text-fg hover:border-accent disabled:opacity-60'
 const primary = 'flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95 disabled:opacity-60'
+/** Replace removes titles, so it looks like a warning rather than the usual go-ahead. */
+const danger = 'flex h-9 items-center gap-2 rounded-md border border-bad/70 bg-bad/10 px-3 text-sm font-medium text-bad hover:bg-bad/15 disabled:opacity-60'
 
 /** Settings → Backup: export the library + settings as JSON, or bring an export in (added to, or replacing, the library). */
 export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }) {
@@ -171,7 +173,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
               </span>
             </label>
             <div className="flex gap-2">
-              <button type="button" onClick={() => void doImport()} className={primary}>
+              <button type="button" onClick={() => void doImport()} className={mode === 'overwrite' ? danger : primary}>
                 <Upload className="size-4" /> {mode === 'overwrite' ? 'Replace my library' : 'Import'}
               </button>
               <button type="button" onClick={() => setPending(null)} className={btn}>

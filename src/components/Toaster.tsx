@@ -1,15 +1,15 @@
 import clsx from 'clsx'
 import { X } from 'lucide-react'
-import { dismiss, useToasts, type Toast } from '../lib/toast'
+import { dismiss, pauseToast, resumeToast, useToasts, type Toast } from '../lib/toast'
 import { useSwipe } from '../lib/useSwipe'
 
-/** Bottom of the screen, above the phone tab bar. One toast at a time. */
+/** Bottom of the screen, above the phone tab bar. Up to three, newest at the bottom. */
 export function Toaster() {
   const toasts = useToasts()
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-50 flex justify-center px-4 md:bottom-6 md:left-56"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-50 flex flex-col items-center gap-2 px-4 md:bottom-6 md:left-56"
     >
       {toasts.map((t) => (
         <ToastView key={t.id} t={t} />
@@ -26,6 +26,11 @@ function ToastView({ t }: { t: Toast }) {
       ref={swipe}
       role={t.tone === 'error' ? 'alert' : 'status'}
       inert={t.leaving}
+      // Reading it, or about to press Undo: the clock stops.
+      onPointerEnter={() => pauseToast(t.id)}
+      onPointerLeave={() => resumeToast(t.id)}
+      onFocus={() => pauseToast(t.id)}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && resumeToast(t.id)}
       className={clsx(
         t.leaving && 'toast-leave',
         'toast-enter pointer-events-auto flex max-w-md items-center gap-3 rounded-xl border bg-raised py-2 pr-2 pl-4 text-sm shadow-2xl shadow-black/40',

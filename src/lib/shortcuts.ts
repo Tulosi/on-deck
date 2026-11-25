@@ -24,3 +24,19 @@ export function useKeys(handler: (key: string, e: KeyboardEvent) => boolean | vo
     return () => document.removeEventListener('keydown', onKey)
   }, [enabled])
 }
+
+/**
+ * The number keys' statuses on the title page you're on ("Want to play", "Playing it"…), so the shortcuts sheet can
+ * list them. Set by the title page's tracking card while it's on screen; null elsewhere.
+ */
+let statusKeys: string[] | null = null
+export const currentStatusKeys = () => statusKeys
+export function useStatusKeys(labels: string[]) {
+  const joined = labels.join('\n')
+  useEffect(() => {
+    statusKeys = joined.split('\n')
+    return () => {
+      statusKeys = null
+    }
+  }, [joined])
+}

@@ -5,9 +5,6 @@ import { LABELS, TYPES } from '../lib/filters'
 import type { MediaType } from '../types'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
 
-const selectClass =
-  'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
-
 /**
  * The one media-type picker (All · Movies · TV Shows · Games · Books), used by the toolbar and Calendar so the
  * labels and options match everywhere: the same pills at every width (they scroll sideways if they don't fit).
@@ -15,9 +12,8 @@ const selectClass =
  * Phones (below md, where the bottom bar also says Movies, TV, Games…): the pills become one "Showing: All types"
  * dropdown, so this reads as a filter on the page rather than a second set of tabs.
  *
- * `navOwned`: the page's type is already set by the navigation (Library: sidebar on desktop). Then only a
- * compact dropdown shows, and only below the width where the sidebar appears, since the Library's phone toolbar
- * also holds Filters and sorting.
+ * `navOwned`: the page's type is already set by the navigation (Library: the sidebar on desktop), so the pills
+ * are left out at md+. Phones still get the same "Showing:" dropdown as everywhere else.
  */
 export function TypeFilter({
   value,
@@ -49,42 +45,27 @@ export function TypeFilter({
   }, [value])
   return (
     <>
-      {navOwned && (
+      {/* Phones, on every page that has it (Library included), so it looks the same everywhere. */}
+      <label className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg focus-within:border-accent md:hidden">
+        <ListFilter className="size-4 text-muted" aria-hidden="true" />
+        <span>
+          <span className="text-muted">Showing:</span> {value ? LABELS.type[value] : 'All types'}
+        </span>
+        <ChevronDown className="size-4 text-muted" aria-hidden="true" />
+        {/* The real control: invisible over the pill, so phones get their native picker. */}
         <select
-          aria-label="Media type"
+          aria-label="Show only"
           value={value ?? ''}
           onChange={(e) => onChange((e.target.value || null) as MediaType | null)}
-          className={clsx(selectClass, 'shrink-0 md:hidden')}
+          className="absolute inset-0 cursor-pointer opacity-0"
         >
           {options.map((o) => (
             <option key={o.label} value={o.value ?? ''}>
-              {o.label}
+              {o.value ? o.label : 'All types'}
             </option>
           ))}
         </select>
-      )}
-      {!navOwned && (
-        <label className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg focus-within:border-accent md:hidden">
-          <ListFilter className="size-4 text-muted" aria-hidden="true" />
-          <span>
-            <span className="text-muted">Showing:</span> {value ? LABELS.type[value] : 'All types'}
-          </span>
-          <ChevronDown className="size-4 text-muted" aria-hidden="true" />
-          {/* The real control: invisible over the pill, so phones get their native picker. */}
-          <select
-            aria-label="Show only"
-            value={value ?? ''}
-            onChange={(e) => onChange((e.target.value || null) as MediaType | null)}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          >
-            {options.map((o) => (
-              <option key={o.label} value={o.value ?? ''}>
-                {o.value ? o.label : 'All types'}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      </label>
       {!navOwned && (
         <div
           ref={setPills}

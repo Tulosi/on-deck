@@ -10,7 +10,7 @@ import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType,
 
 /** Full search page URL for a query and type. */
 export const fullSearchHref = (q: string, type: SearchType) =>
-  `/search?q=${encodeURIComponent(q)}${type !== 'movie' ? `&type=${type}` : ''}`
+  `/search?q=${encodeURIComponent(q)}${type !== 'all' ? `&type=${type}` : ''}`
 
 /**
  * Top-bar search with a type picker (Movies · TV · Games · Books · All). Only the chosen type's source is
@@ -28,9 +28,11 @@ export function SearchBox() {
   const input = useRef<HTMLInputElement>(null)
   const { addStates, add, onDeck, libraryIdOf } = useAdder()
 
-  // Type: the page's type when it has one (Home, Library and Calendar all use ?type=), otherwise your last pick.
+  // Type: the page's type filter when it has one (Home, Library and Calendar use ?type=; no ?type there means All
+  // types, so search covers everything too), otherwise your last pick.
   const { pathname, search } = useLocation()
-  const pageType = new URLSearchParams(search).get('type')
+  const filterPage = pathname === '/' || pathname === '/library' || pathname === '/calendar'
+  const pageType = new URLSearchParams(search).get('type') ?? (filterPage ? 'all' : null)
   const [type, setTypeState] = useState<SearchType>(() => (isSearchType(pageType) ? pageType : savedType()))
   // Moving to a page with a different type switches to it, set during render so there's no frame with the old one.
   const [seenPageType, setSeenPageType] = useState(pageType)
@@ -105,7 +107,17 @@ export function SearchBox() {
   )
 
   return (
-    <div ref={wrapper} className="relative max-w-md flex-1">
+    <div
+      ref={wrapper}
+      className="relative max-w-md flex-1"
+      // Focus moving elsewhere (Tab past the end, a shortcut opening a dialog) closes the results; the text stays.
+      onBlur={(e) => {
+        if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) {
+          setOpen(false)
+          setPreview(null)
+        }
+      }}
+    >
       <label className="flex h-11 items-center gap-2 rounded-md sm:h-9 border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
         {s.fetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
         <input
@@ -201,7 +213,7 @@ export function SearchBox() {
           </div>
 
           {!user ? (
-            <SampleSearch text={text} type={type} onOpen={close} />
+            <SampleSearch text={text} type={type} onOpen={close} onAll={() => setType('all')} />
           ) : preview ? (
             <Preview
               result={preview}
@@ -218,7 +230,7 @@ export function SearchBox() {
               (“dune 2021”) to see that year first.
             </p>
           ) : (
-            <SearchResultsBody s={s} row={row} onSuggest={(t) => setText(t)} />
+            <SearchResultsBody s={s} row={row} onSuggest={(t) => setText(t)} onAll={type !== 'all' ? () => setType('all') : undefined} />
           )}
 
           {user && (

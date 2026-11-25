@@ -22,7 +22,7 @@ import { useFilters } from '../lib/useFilters'
 import { TypeFilter } from './TypeFilter'
 import type { MediaType } from '../types'
 
-// ─── Poster labels button ──────────────────────────────────────────────────
+// ─── Poster details button ──────────────────────────────────────────────────
 
 /**
  * One on/off button for the chips on posters (scores, Plex, prices, dates). Off hides them, but on a computer
@@ -36,8 +36,8 @@ function LabelsButton() {
     <button
       type="button"
       aria-pressed={on}
-      aria-label="Poster labels"
-      title={on ? 'Hide poster labels (on a computer they still show when you hover a poster)' : 'Always show poster labels'}
+      aria-label="Poster details always shown"
+      title={on ? 'Show poster details only on hover (scores, prices, dates)' : 'Always show poster details (scores, prices, dates)'}
       onClick={() => setMode(on ? 'hide' : 'show')}
       className={clsx(
         'hit flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
@@ -45,15 +45,18 @@ function LabelsButton() {
       )}
     >
       {on ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
-      {on ? (
-        <span className="hidden sm:inline">Labels on</span>
-      ) : (
-        <>
-          {/* Devices that can hover get the chips back on hover; touch screens don't. */}
-          <span className="hidden sm:inline [@media(hover:hover)]:sm:hidden">Labels off</span>
-          <span className="hidden [@media(hover:hover)]:sm:inline">Hover only</span>
-        </>
-      )}
+      {/* Says what the chips on posters do now: always there, only on hover, or off (touch screens can't hover). */}
+      <span className="hidden sm:inline">
+        <span className="text-muted">Poster details:</span>{' '}
+        {on ? (
+          'Always'
+        ) : (
+          <>
+            <span className="[@media(hover:hover)]:hidden">Off</span>
+            <span className="hidden [@media(hover:hover)]:inline">On hover</span>
+          </>
+        )}
+      </span>
     </button>
   )
 }
@@ -220,7 +223,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
       <Section title="Out and available">
         <OptionGroup label="Release" options={present('release', LABELS.options.RELEASE)} selected={f.release} render={(v) => LABELS.release[v]} onToggle={tog('release')} count={count('release')} />
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted">{owns ? 'In your library' : 'Availability'}</p>
+          <p className="text-xs font-medium text-muted">{owns ? 'Owned' : 'Availability'}</p>
           <div className="flex flex-wrap gap-1.5">
             <AvailButton
               on={avail('available')}

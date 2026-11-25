@@ -67,10 +67,10 @@ function lineFor(item: UserItem): Line {
     const played = item.steamPlaytimeMinutes ? item.steamPlaytimeMinutes / 60 : 0
     if (played) return { where: h(played), next: beat ? `of about ${h(beat)}` : 'played', bar: beat ? { done: Math.min(played, beat), total: beat, label: `${h(played)} of about ${h(beat)}` } : undefined }
     const price = !item.owned && item.price ? `${item.price.amount}${item.price.discountPct ? `, ${item.price.discountPct}% off` : ''}` : undefined
-    return { where: beat ? `~${h(beat)}` : undefined, next: item.owned ? 'In your library' : price, ready: item.owned || !!item.price?.atLow }
+    return { where: beat ? `~${h(beat)}` : undefined, next: item.owned ? 'Owned' : price, ready: item.owned || !!item.price?.atLow }
   }
   // Books: progress is the status itself ("Reading it", "Read it").
-  return { where: statusLabel(progress, 'book'), words: true, next: item.owned ? 'In your library' : undefined, ready: item.owned }
+  return { where: statusLabel(progress, 'book'), words: true, next: item.owned ? 'Owned' : undefined, ready: item.owned }
 }
 
 function plexLine(item: UserItem): string | undefined {

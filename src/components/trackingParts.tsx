@@ -1,9 +1,8 @@
 // Small pieces shared by the title page's tracking controls (StatusControls, TvProgress, MovieProgress).
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { useDialog } from '../lib/useDialog'
 import clsx from 'clsx'
+import { toast } from '../lib/toast'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
-import { createPortal } from 'react-dom'
 import { Archive, ArchiveRestore, Loader2, RefreshCw } from 'lucide-react'
 import { useUpdateItem, type ItemPatch } from '../lib/library'
 import { type UserItem } from '../types'
@@ -34,22 +33,25 @@ export function Segmented<T extends string>({
 }) {
   // Laid out by the space the control actually has (a container query), not the window width: on desktop the
   // card sits in a narrower column. Narrow: 2 per row for 4 options, 3 + 2 for 5 (never a lone option on its
-  // own line), with `aside` (Archive) on its own line. Wide enough: one row, with `aside` beside it.
+  // own line), and `aside` (Archive) moves up beside the label rather than sitting alone under the options.
+  // Wide enough: one row, with `aside` beside it.
   const five = options.length === 5
   const cols = five ? 'grid-cols-3 @[36rem]/status:grid-cols-5' : 'grid-cols-2 @[30rem]/status:grid-cols-4'
-  const row = five
-    ? 'basis-full @[36rem]/status:basis-auto @[36rem]/status:flex-1'
-    : 'basis-full @[30rem]/status:basis-auto @[30rem]/status:flex-1'
+  const wide = five
+    ? { group: '@[36rem]/status:col-span-1', aside: '@[36rem]/status:row-start-2 @[36rem]/status:[&>*]:h-full' }
+    : { group: '@[30rem]/status:col-span-1', aside: '@[30rem]/status:row-start-2 @[30rem]/status:[&>*]:h-full' }
   const group = useSlidingIndicator<HTMLDivElement>(value)
   return (
-    <div className="space-y-1.5">
-      <p className={labelClass}>{label}</p>
-      <div className="@container/status flex flex-wrap items-stretch gap-2">
+    <div className="@container/status grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5">
+      <p className={clsx(labelClass, 'col-start-1 row-start-1')}>{label}</p>
       <div
         ref={group}
         role="radiogroup"
         aria-label={label}
-        className={clsx('relative grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1', fit ? 'w-fit grid-flow-col auto-cols-fr' : [row, cols])}
+        className={clsx(
+          'relative col-span-2 col-start-1 row-start-2 grid min-w-0 gap-1 rounded-lg border border-line bg-bg p-1',
+          fit ? 'w-fit grid-flow-col auto-cols-fr' : [cols, aside && wide.group],
+        )}
       >
         <span aria-hidden="true" className="slide-ind rounded-md bg-raised shadow-[inset_0_0_0_1px_var(--color-line)]" />
         {options.map((o, i) => (
@@ -71,16 +73,31 @@ export function Segmented<T extends string>({
           </button>
         ))}
       </div>
-      {aside}
-      </div>
+      {/* Narrow: a quiet text action at the end of the label row ("Status … Archive"). Wide: a full button beside the
+          options. */}
+      {aside && (
+        <div
+          className={clsx(
+            'col-start-2 row-start-1 flex',
+            '[&>button]:-my-3 [&>button]:border-transparent [&>button]:px-1 [&>button]:text-xs [&>button]:hover:border-transparent',
+            wide.aside,
+            five
+              ? '@[36rem]/status:[&>button]:my-0 @[36rem]/status:[&>button]:border-line @[36rem]/status:[&>button]:px-3 @[36rem]/status:[&>button]:text-sm'
+              : '@[30rem]/status:[&>button]:my-0 @[30rem]/status:[&>button]:border-line @[30rem]/status:[&>button]:px-3 @[30rem]/status:[&>button]:text-sm',
+          )}
+        >
+          {aside}
+        </div>
+      )}
     </div>
   )
 }
 
-/** Archive: confirm, then hide the title everywhere by default. Archived titles show a notice to bring them back. */
+/**
+ * Archive: straight away, with Undo (it's reversible, so no "Are you sure?"). The toast says what it does and where
+ * to find the title again. Archived titles show a notice on their page to bring them back.
+ */
 export function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<unknown> }) {
-  const [confirming, setConfirming] = useState(false)
-  const panel = useDialog<HTMLDivElement>(confirming, () => setConfirming(false))
   if (item.archivedAt) {
     return (
       <button
@@ -93,53 +110,25 @@ export function ArchiveButton({ item, save }: { item: UserItem; save: (patch: It
       </button>
     )
   }
+  const archive = () =>
+    void save({ archived: true }).then(
+      (ok) =>
+        ok !== false &&
+        toast({
+          message: `Archived “${item.title.title}”. It’s off Home, the Library and alerts, and kept under Archive.`,
+          action: { label: 'Undo', onClick: () => void save({ archived: false }) },
+          duration: 10_000,
+        }),
+    )
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        className="flex h-11 items-center gap-1.5 self-start rounded-lg border sm:h-9 border-line px-3 text-sm text-muted hover:border-faint hover:text-fg @[30rem]/status:h-auto @[30rem]/status:self-stretch"
-        title="Archive this title"
-      >
-        <Archive className="size-4" /> Archive
-      </button>
-      {confirming &&
-        createPortal(
-          <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="archive-title">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setConfirming(false)} aria-hidden="true" />
-            <div ref={panel} tabIndex={-1} className="relative w-full max-w-sm space-y-3 rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
-              <p id="archive-title" className="text-base font-semibold text-fg">
-                Archive “{item.title.title}”?
-              </p>
-              <p className="text-sm text-muted">For things you're done with but want a record of. Archiving:</p>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-                <li>Hides it from Home, the Library, the Calendar and collections</li>
-                <li>Stops its alerts and leaves it out of share links and calendar feeds</li>
-                <li>Keeps its status, rating and notes exactly as they are</li>
-              </ul>
-              <p className="text-xs text-faint">
-                Find it again any time with the <b>Archived</b> filter in the Library, and unarchive it from its page.
-              </p>
-              <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setConfirming(false)} className="h-9 rounded-md border border-line px-3 text-sm text-fg hover:border-accent">
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirming(false)
-                    void save({ archived: true })
-                  }}
-                  className="flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:brightness-95"
-                >
-                  <Archive className="size-4" /> Archive
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-    </>
+    <button
+      type="button"
+      onClick={archive}
+      className="flex h-11 items-center gap-1.5 self-start rounded-lg border sm:h-9 border-line px-3 text-sm text-muted hover:border-faint hover:text-fg @[30rem]/status:h-auto @[30rem]/status:self-stretch"
+      title="Archive: hide it everywhere but Archive, keeping its status, rating and notes"
+    >
+      <Archive className="size-4" /> Archive
+    </button>
   )
 }
 

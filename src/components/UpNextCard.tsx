@@ -277,7 +277,7 @@ function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
             <>
               <p className="text-3xl leading-tight font-semibold tracking-tight text-fg">{book.where}</p>
               {book.about && <p className="text-sm text-muted">{book.about}</p>}
-              {book.owned && <p className="text-sm text-good">In your library</p>}
+              {book.owned && <p className="text-sm text-good">Owned</p>}
             </>
           ) : movie ? (
             <>

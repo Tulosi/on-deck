@@ -66,7 +66,7 @@ in, and the Archive page lists only them.
 
 ## 4. UI
 ```
-[ All · Movies · TV · Games · Books ]  [ ⚙ Filters (3) ]  [ Sort: Priority ▾ ]  [ Group: none ▾ ]   [ 🏷 Labels on ]
+[ All · Movies · TV · Games · Books ]  [ ⚙ Filters (3) ]  [ Sort: Priority ▾ ]  [ Group: none ▾ ]   [ 🏷 Poster details: Always ]
   active: [Status: Wanted ×] [Co-op ×] [Steam ≥ 85% ×]                                                   Clear all · Save view
 ```
 - **Toolbar row** (already in place), left to right: type pills · **Filters** button (active-count badge) ·

@@ -8,7 +8,7 @@ import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
 import { plexStateOf } from '../lib/plexSync'
 import { episodeCode } from '../lib/release'
 import { upNext } from '../lib/home'
-import { useKeys } from '../lib/shortcuts'
+import { useKeys, useStatusKeys } from '../lib/shortcuts'
 import { toast } from '../lib/toast'
 import { isOngoing, seasonsOf } from '../lib/seasons'
 import { type Progress, type UserItem } from '../types'
@@ -19,7 +19,7 @@ import { MovieProgressSection, AvailabilityBadge } from './MovieProgress'
 /**
  * The main action on a title page, placed right under the title: Status, plus how far along you are
  * (episode for TV, watched state for movies, Steam playtime for games).
- * Top right: "In your library" (games/books) or source availability (movies/TV).
+ * Top right: "Owned" (games/books; every tracked title is already in the Library, so it isn't called that) or source availability (movies/TV).
  * Rating, priority and notes live further down, in <TrackingDetails>.
  */
 export function StatusControls({ item }: { item: UserItem }) {
@@ -90,7 +90,19 @@ export function StatusControls({ item }: { item: UserItem }) {
       type === 'tv' && (progress === 'completed' || progress === 'caught_up') && !plexSyncActive
         ? latestAired(item, seasons)
         : null
-    void save(caughtUp ? { progress, tvProgress: caughtUp } : { progress })
+    const cur = item.tvProgress
+    const moves = !!caughtUp && (!cur || cur.season !== caughtUp.season || cur.episode !== caughtUp.episode)
+    if (!moves) return void save({ progress })
+    // It moves your place, so say so and let it be undone (as Mark watched does).
+    const before = { tvProgress: cur ?? null, progress: item.progress }
+    save({ progress, tvProgress: caughtUp }).then(
+      (ok) =>
+        ok &&
+        toast({
+          message: `Marked watched up to ${episodeCode(caughtUp!)}`,
+          action: { label: 'Undo', onClick: () => void save(before) },
+        }),
+    )
   }
   // Next episode watched, from the button or W. Undo puts back the episode (and status) from before.
   const markNext = (ep: { season: number; episode: number }) => {
@@ -99,6 +111,7 @@ export function StatusControls({ item }: { item: UserItem }) {
       ok && toast({ message: `Marked ${episodeCode(ep)} watched`, action: { label: 'Undo', onClick: () => void save(before) } }),
     )
   }
+  useStatusKeys(progressOptions.map((o) => o.label))
   useKeys((key) => {
     const n = Number(key)
     if (Number.isInteger(n) && n >= 1 && n <= progressOptions.length) {
@@ -125,7 +138,7 @@ export function StatusControls({ item }: { item: UserItem }) {
             onClick={() => save({ owned: !item.owned })}
             activeClass="border-good/60 bg-good/10 text-good"
           >
-            <Library className="size-4" /> In your library
+            <Library className="size-4" /> Owned
             {item.owned && <Check className="size-3.5" />}
           </Toggle>
         ) : (

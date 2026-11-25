@@ -63,6 +63,12 @@ export function Login() {
 
   return (
     <div className="mx-auto mt-6 max-w-sm md:mt-12">
+    {/* One line on what this is, for anyone arriving here first. */}
+    {mode !== 'forgot' && (
+      <p className="mb-4 text-center text-sm text-pretty text-muted">
+        Keep track of the movies, shows, games and books you’re watching, playing and reading.
+      </p>
+    )}
     <div className="space-y-6 rounded-lg border border-line bg-surface p-6">
       {/* The logo is in the top bar already; the heading is for screen readers. */}
       {mode !== 'forgot' && <h1 className="sr-only">{mode === 'sign-up' ? 'Create an On Deck account' : 'Sign in to On Deck'}</h1>}
@@ -79,11 +85,14 @@ export function Login() {
               <p className="text-sm text-muted">We’ll email you a link to set a new one.</p>
             </div>
           ) : (
-            <div className="flex gap-1 rounded-lg border border-line bg-bg p-1">
+            // A two-way switch: screen readers hear which one is picked, not just see the shading.
+            <div role="radiogroup" aria-label="Sign in or create an account" className="flex gap-1 rounded-lg border border-line bg-bg p-1">
               {(['sign-in', 'sign-up'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
+                  role="radio"
+                  aria-checked={mode === m}
                   onClick={() => switchMode(m)}
                   className={clsx(
                     'flex-1 rounded-md py-3 text-sm transition-colors sm:py-1.5',

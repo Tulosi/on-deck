@@ -292,7 +292,7 @@ function SignedOutSettings() {
         {PREVIEW.map(([title, what]) => (
           <div key={title} className="px-4 py-3">
             <dt className="text-sm font-medium text-fg">{title}</dt>
-            <dd className="mt-0.5 text-sm text-muted">{what}</dd>
+            <dd className="mt-0.5 text-sm text-pretty text-muted">{what}</dd>
           </div>
         ))}
       </dl>

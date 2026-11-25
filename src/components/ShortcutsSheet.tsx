@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { useKeys } from '../lib/shortcuts'
+import { currentStatusKeys, useKeys } from '../lib/shortcuts'
 import { useDialog } from '../lib/useDialog'
 
 const ROWS: { keys: string[]; what: string; where?: string }[] = [
   { keys: ['/'], what: 'Search' },
-  { keys: ['1', '–', '5'], what: 'Set the status', where: 'On a title' },
+  { keys: ['1', '–', '5'], what: 'Set the status, in the order shown', where: 'On a title' },
   { keys: ['W'], what: 'Mark the next episode watched', where: 'On a show' },
   { keys: ['?'], what: 'Show these shortcuts' },
 ]
@@ -23,6 +23,13 @@ export function ShortcutsSheet() {
     return true
   })
   if (!open) return null
+  // On a title page: which number sets which status for this title, instead of just "1 to 5".
+  const statuses = currentStatusKeys()
+  const rows = statuses
+    ? ROWS.flatMap((r) =>
+        r.keys[0] === '1' ? statuses.map((label, i) => ({ keys: [String(i + 1)], what: label, where: i === 0 ? 'Status, on this title' : undefined })) : [r],
+      )
+    : ROWS
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
       <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} aria-hidden="true" />
@@ -36,7 +43,7 @@ export function ShortcutsSheet() {
           </button>
         </div>
         <dl className="divide-y divide-line">
-          {ROWS.map((r) => (
+          {rows.map((r) => (
             <div key={r.what} className="flex items-center justify-between gap-4 py-2.5">
               <dt className="text-sm text-fg">
                 {r.what}

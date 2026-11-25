@@ -11,7 +11,7 @@ export type AddState = 'adding' | 'added' | { error: string }
 
 /** What the search looks for. One type at a time keeps results relevant; "All" leads so it's never off the edge on phones. */
 export const SEARCH_TYPES: { value: SearchType; label: string; icon: LucideIcon; placeholder: string }[] = [
-  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search everything…' },
+  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search…' },
   { value: 'movie', label: 'Movies', icon: Film, placeholder: 'Search movies…' },
   { value: 'tv', label: 'TV', icon: Tv, placeholder: 'Search shows…' },
   { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search games…' },
@@ -23,9 +23,9 @@ export const isSearchType = (v: unknown): v is SearchType => SEARCH_TYPES.some((
 export function savedType(): SearchType {
   try {
     const v = localStorage.getItem(TYPE_KEY)
-    return isSearchType(v) ? v : 'movie'
+    return isSearchType(v) ? v : 'all'
   } catch {
-    return 'movie'
+    return 'all'
   }
 }
 
@@ -248,6 +248,16 @@ function ResultSection({ section, empty, render }: { section: SearchSection; emp
 }
 
 const EMPTY: Record<SearchSection['key'], string> = { screen: 'movies or shows', games: 'PC games', books: 'books' }
+const PLURAL = { movie: 'movies', tv: 'shows', game: 'games', book: 'books' } as const
+
+/** "Search all types" (with how many it would find, when known), for a one-type search that came back empty. */
+function AllTypesButton({ count, onClick }: { count?: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="hit ml-1 font-medium text-accent-ink hover:underline">
+      {count ? `${count} match${count === 1 ? '' : 'es'} in other types` : 'Search all types'}
+    </button>
+  )
+}
 
 /**
  * Everything under the search box: a note when a year is ranked first, "Did you mean …?", each source's
@@ -257,12 +267,16 @@ export function SearchResultsBody({
   s,
   row,
   onSuggest,
+  onAll,
 }: {
   s: ReturnType<typeof useSearch>
   row: (r: SearchResult) => ReactNode
   /** Search again for a suggested title. */
   onSuggest: (title: string) => void
+  /** Search every type instead; offered when a one-type search finds nothing. */
+  onAll?: () => void
 }) {
+  const nothing = !!onAll && s.sections.every((sec) => !sec.isLoading && !sec.error) && s.total === 0 && !s.nearLoading && s.near.length === 0
   return (
     <>
       {s.year && (
@@ -282,6 +296,11 @@ export function SearchResultsBody({
       {s.sections.map((sec) => (
         <ResultSection key={sec.key} section={sec} empty={`No ${EMPTY[sec.key]} match “${s.text}”.`} render={row} />
       ))}
+      {nothing && (
+        <p className="px-4 pb-3 text-sm text-muted">
+          <AllTypesButton onClick={onAll!} />
+        </p>
+      )}
       {(s.near.length > 0 || s.nearLoading) && (
         <section className="border-t border-line">
           <p className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-xs font-medium text-muted">
@@ -309,7 +328,18 @@ const TYPE_ICON = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen } as con
  * Signed out: search looks through the sample library (and whatever you've changed in it), so it can be tried
  * without an account. Every word you type has to start a word of the title ("sev", "gate bald").
  */
-export function SampleSearch({ text, type, onOpen }: { text: string; type: SearchType; onOpen?: () => void }) {
+export function SampleSearch({
+  text,
+  type,
+  onOpen,
+  onAll,
+}: {
+  text: string
+  type: SearchType
+  onOpen?: () => void
+  /** Switch the search to every type (offered when the chosen type finds nothing but others would). */
+  onAll?: () => void
+}) {
   const { allItems } = useItems()
   const words = fold(text).split(/\s+/).filter(Boolean)
   const hits =
@@ -320,12 +350,22 @@ export function SampleSearch({ text, type, onOpen }: { text: string; type: Searc
           const titleWords = fold(i.title.title).split(/[^a-z0-9]+/)
           return words.every((w) => titleWords.some((t) => t.startsWith(w)))
         })
+  const elsewhere =
+    hits.length === 0 && type !== 'all' && words.length > 0
+      ? allItems.filter((i) => {
+          const titleWords = fold(i.title.title).split(/[^a-z0-9]+/)
+          return words.every((w) => titleWords.some((t) => t.startsWith(w)))
+        }).length
+      : 0
   return (
     <div>
       {words.length === 0 ? (
         <p className="px-4 py-5 text-sm text-faint">Type a title from the sample library, like “sev” or “hades”.</p>
       ) : hits.length === 0 ? (
-        <p className="px-4 py-5 text-sm text-muted">Nothing in the sample library matches “{text.trim()}”.</p>
+        <p className="px-4 py-5 text-sm text-muted">
+          Nothing in {type === 'all' ? 'the sample library' : `the sample's ${PLURAL[type]}`} matches “{text.trim()}”.
+          {elsewhere > 0 && onAll && <AllTypesButton count={elsewhere} onClick={onAll} />}
+        </p>
       ) : (
         <ul>
           {hits.map((i) => {

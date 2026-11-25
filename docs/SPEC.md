@@ -546,7 +546,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
 Browsing pages (Home, Movies, TV, Games, Books, Collections) have a toolbar row under the search bar. It holds
 view options now; filtering and sorting will move there too.
 - **Poster labels** (the badges on posters: score, status, rating, price, Plex, release …): one on/off button
-  with a tag icon (crossed-out tag when off; "Labels on" / "Labels off" beside it on wider screens). Default on.
+  with a tag icon (crossed-out tag when off; "Poster details: Always" / "On hover" / "Off" beside it on wider screens). Default on.
   (Replaced the old three-way switch on 2026-11-23. A saved "on hover" mode still works and counts as on; the
   button only switches between shown and hidden.)
 - Saved to the profile (`profiles.card_chips = {"all": mode}`) when signed in, or kept in the browser when

@@ -49,8 +49,9 @@ export function SeasonOptions({
   }
 
   return (
-    <details className="group rounded-lg border border-line bg-bg">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs sm:min-h-0 text-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden">
+    // A section of the Tracking card (a rule above it), not a box inside the box.
+    <details className="group border-t border-line">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs sm:min-h-0 text-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-1.5">
           <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
           Per-season tracking
@@ -63,7 +64,7 @@ export function SeasonOptions({
           const value = overrideOf(item, s.season_number)
           const w = value === 'ignored' ? null : watchedIn(item, s, aired)
           return (
-            <li key={s.season_number} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
+            <li key={s.season_number} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
               <div className="min-w-[8rem] flex-1">
                 <p className={clsx('text-sm', value === 'ignored' ? 'text-faint line-through' : 'text-fg')}>
                   Season {s.season_number}
@@ -97,7 +98,7 @@ export function SeasonOptions({
           )
         })}
       </ul>
-      <p className="border-t border-line px-3 py-2 text-[11px] text-faint">
+      <p className="border-t border-line py-2 text-[11px] text-faint">
         Auto follows Progress{item.plexSync !== false ? ' (and Plex sync)' : ''}. Ignored seasons count as done
         and show in pale orange on the progress bar.
       </p>

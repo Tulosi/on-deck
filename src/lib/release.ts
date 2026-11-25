@@ -110,7 +110,7 @@ const weekday = (iso: string, style: 'short' | 'long' = 'short') =>
 
 /** Poster chip: "NEW EP TODAY", "NEXT EP WED", "NEXT EP DEC 3"; "S3 IN 12 DAYS", "S3 · MAR 14". */
 /**
- * Poster chip text. `short` fits one line on a narrow poster (3 across on a phone): "S6 in 15d", "S1 today".
+ * Poster chip text. `short` fits one line on a narrow poster (3 across on a phone): "S6 in 15 days", "S1 today".
  * The long form is for wider posters: "Season 6 in 15 days".
  */
 export function tvScheduleChip(s: TvSchedule, short = false): string {
@@ -121,7 +121,7 @@ export function tvScheduleChip(s: TvSchedule, short = false): string {
   }
   const season = short ? `S${s.season}` : `Season ${s.season}`
   if (s.daysUntil === 0) return `${season} today`
-  if (s.daysUntil <= 30) return short ? `${season} in ${s.daysUntil}d` : `${season} in ${s.daysUntil} days`
+  if (s.daysUntil <= 30) return `${season} in ${s.daysUntil} day${s.daysUntil === 1 ? '' : 's'}`
   const sameYear = s.date.slice(0, 4) === todayIso().slice(0, 4)
   const when = sameYear ? monthDay(s.date) : `${monthDay(s.date)} '${s.date.slice(2, 4)}`
   return short ? `${season} ${when}` : `${season}, ${when}`

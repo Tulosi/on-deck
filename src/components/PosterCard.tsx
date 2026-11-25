@@ -35,13 +35,15 @@ function Badge({ icon: Icon, label, className }: { icon: LucideIcon; label: stri
   )
 }
 
-/** Placeholder art until real covers are wired up: warm-grey gradient + type icon + title. */
+/**
+ * No cover yet: a warm-grey panel with the type's icon. The title isn't repeated here, since the caption under the
+ * poster shows it (in full, on two lines, when there's no cover).
+ */
 function CoverPlaceholder({ item }: { item: UserItem }) {
   const Icon = typeIcon[item.title.mediaType]
   return (
-    <div className="flex size-full flex-col justify-between bg-gradient-to-br from-raised to-surface p-3 pb-9">
-      <Icon className="size-5 text-faint" strokeWidth={1.5} />
-      <span className="line-clamp-3 text-sm leading-snug font-semibold text-muted">{item.title.title}</span>
+    <div className="grid size-full place-items-center bg-gradient-to-br from-raised to-surface pb-6">
+      <Icon className="size-8 text-faint" strokeWidth={1.25} aria-hidden="true" />
     </div>
   )
 }
@@ -177,7 +179,10 @@ export const PosterCard = memo(function PosterCard({
         {anyBottom && (
           <>
             {/* Soft gradient behind bottom chips, for readability (follows the labels setting). */}
-            <div className={clsx('pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent', vis('release'))} />
+            {/* Only over real art: on a blank placeholder it just reads as a grey smudge (light theme especially). */}
+            {title.coverUrl && (
+              <div className={clsx('pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent', vis('release'))} />
+            )}
             <div className="@container/chips absolute inset-x-1.5 bottom-1.5 flex flex-wrap-reverse items-end justify-between gap-1">
               <div className="flex min-w-0 flex-col items-start gap-1">
         {/* Price — games the user doesn't own yet */}
@@ -261,9 +266,8 @@ export const PosterCard = memo(function PosterCard({
                       vis('release'),
                     )}
                   >
-                    {/* Very narrow posters (phone rows): the short form. */}
-                    <span className="@[8.5rem]/poster:hidden">EA</span>
-                    <span className="hidden @[8.5rem]/poster:inline">Early access</span>
+                    {/* Spelled out at every size ("EA" was a puzzle); if the row is full, the chips wrap upward. */}
+                    Early access
                   </span>
                 )}
 
@@ -289,7 +293,8 @@ export const PosterCard = memo(function PosterCard({
       </ViewTransition>
 
       <div className="mt-2 px-0.5">
-        <p className="truncate text-sm font-medium text-fg">{title.title}</p>
+        {/* With no cover the caption is the only place the name shows, so it gets two lines instead of one. */}
+        <p className={clsx('text-sm font-medium text-fg', title.coverUrl ? 'truncate' : 'line-clamp-2 break-words')}>{title.title}</p>
         {/* Numbers in mono, words in the text face; spacing instead of separator dots. */}
         {/* At most three short pieces, so nothing gets squeezed to a sliver: the status word takes the place of the
             author / studio, and when room runs out it ends in "…" instead of being cut. */}

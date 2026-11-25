@@ -31,15 +31,8 @@ export function TopBar() {
         <Logo />
       </Link>
 
-      {/* The Search page has its own box; on phones a second one in the bar is just in the way. */}
-      {!bare &&
-        (pathname === '/search' ? (
-          <div className="hidden sm:contents">
-            <SearchBox />
-          </div>
-        ) : (
-          <SearchBox />
-        ))}
+      {/* The Search page has its own box, so the bar doesn't show a second one there. */}
+      {!bare && pathname !== '/search' && <SearchBox />}
 
       <div className="ml-auto flex items-center gap-1">
         <Link to="/settings" className={`${iconButton} md:hidden`} aria-label="Settings" hidden={bare}>

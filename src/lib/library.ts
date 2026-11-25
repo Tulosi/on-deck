@@ -619,6 +619,23 @@ export function useUpdateItem() {
   }
 }
 
+/** Games whose move to Want to play was undone: left on Waiting for 1.0 from then on (in this browser). */
+const KEEP_WAITING = 'ondeck.keepWaiting'
+function keptWaiting(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(KEEP_WAITING) ?? '[]') as string[]
+  } catch {
+    return []
+  }
+}
+function keepWaiting(id: string) {
+  try {
+    localStorage.setItem(KEEP_WAITING, JSON.stringify([...new Set([...keptWaiting(), id])]))
+  } catch {
+    // Storage blocked: it may be moved again next visit.
+  }
+}
+
 /** Status moves already attempted this session (item:from→to), so a failing save can't loop. */
 const statusMovesTried = new Set<string>()
 
@@ -630,6 +647,9 @@ const statusMovesTried = new Set<string>()
  *  - Watched → Caught up: an ongoing show marked Watched (shows only use Watched once they've ended).
  *  - Watched → In Progress: a show you'd finished got new episodes (renewal).
  * Dropped and Wanted shows are never touched.
+ *
+ * Games: Waiting for 1.0 → Want to play once the game is out of Early Access (its 1.0 is out), with Undo. The
+ * dates from playing it in Early Access are kept.
  */
 export function useRenewalCheck() {
   const { items, isSample } = useItems()
@@ -638,6 +658,30 @@ export function useRenewalCheck() {
   useEffect(() => {
     if (isSample || !supabase) return
     for (const item of items) {
+      // Only when the stored data says so: older titles that never had the flag recorded are left alone.
+      if (item.title.mediaType === 'game' && item.progress === 'caught_up' && item.title.details?.early_access === false) {
+        const key = `${item.id}:caught_up->wanted`
+        if (statusMovesTried.has(key) || keptWaiting().includes(item.id)) continue
+        statusMovesTried.add(key)
+        const dates = { startedAt: item.startedAt ?? null, completedAt: item.completedAt ?? null, stalledAt: item.stalledAt ?? null }
+        void update(item, { progress: 'wanted', dates })
+          .then(() =>
+            toast({
+              message: `${item.title.title} is out of Early Access, so it’s back on Want to play`,
+              key: item.id,
+              duration: 10_000,
+              action: {
+                label: 'Undo',
+                onClick: () => {
+                  keepWaiting(item.id)
+                  void update({ ...item, progress: 'wanted' }, { progress: 'caught_up', dates }).catch(() => undefined)
+                },
+              },
+            }),
+          )
+          .catch(() => undefined)
+        continue
+      }
       if (item.title.mediaType !== 'tv') continue
       const done = allAiredWatched(item)
       const ongoing = isOngoing(item)

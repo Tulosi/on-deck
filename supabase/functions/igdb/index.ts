@@ -19,6 +19,9 @@ const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (
  * `fuzzy`: for near matches when a search found little. IGDB's text search needs whole words, so this looks up
  * names *containing* the start of the longest word ("hollow knigth" → "holl"), most-rated first; the app then ranks
  * them by how similar they are to what was typed.
+ *
+ * PC games, plus games with no platform listed yet: IGDB often adds a new or unreleased game (AetherCycle, in Early
+ * Access) before anyone fills in its releases, and those would otherwise never show up.
  */
 async function search(query: string, limit = 12, fuzzy = false) {
   const q = query.trim().replace(/"/g, '')
@@ -26,8 +29,8 @@ async function search(query: string, limit = 12, fuzzy = false) {
   const games = await igdb(
     'games',
     fuzzy
-      ? `fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where name ~ *"${fuzzyStem(q)}"* & platforms = (${PC}) & version_parent = null; sort total_rating_count desc; limit ${limit};`
-      : `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where platforms = (${PC}) & version_parent = null; limit ${limit};`,
+      ? `fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where name ~ *"${fuzzyStem(q)}"* & (platforms = (${PC}) | platforms = null) & version_parent = null; sort total_rating_count desc; limit ${limit};`
+      : `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where (platforms = (${PC}) | platforms = null) & version_parent = null; limit ${limit};`,
   )
   const results = games.map((g) => ({
     igdbId: g.id as number,

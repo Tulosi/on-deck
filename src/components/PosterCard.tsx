@@ -66,7 +66,11 @@ function episodeLine(item: UserItem): string | undefined {
  * Status in words under the poster (not as an icon on it): only the states worth a glance. Want-to and Dropped
  * stay quiet, since most of a library is waiting to be started.
  */
+const AGAIN_WORD = { movie: 'Rewatching', tv: 'Rewatching', game: 'Replaying', book: 'Rereading' } as const
+
 function statusWord(item: UserItem): string | null {
+  // Second time through (or more): say so instead of "Playing it".
+  if (item.progress === 'in_progress' && item.pastCompletions?.length) return AGAIN_WORD[item.title.mediaType]
   switch (item.progress) {
     case 'in_progress':
     case 'caught_up':

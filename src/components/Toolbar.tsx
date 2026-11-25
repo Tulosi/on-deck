@@ -20,6 +20,7 @@ import { useItems } from '../lib/library'
 import { statusFilterOptionsFor, statusLabelFor, statusWords } from '../lib/statusLabels'
 import { useFilters } from '../lib/useFilters'
 import { TypesFilter } from './TypeFilter'
+import { PickButton } from './PickForMe'
 import type { MediaType } from '../types'
 
 // ─── Poster details button ──────────────────────────────────────────────────
@@ -517,6 +518,7 @@ export function Toolbar() {
           </>
         )}
       </div>
+      {pathname === '/' && <PickButton />}
       <LabelsButton />
     </div>
   )

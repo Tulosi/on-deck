@@ -1,0 +1,371 @@
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
+import clsx from 'clsx'
+import { BookOpen, Clapperboard, Dices, Film, Gamepad2, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
+import { useItems, useUpdateItem } from '../lib/library'
+import { useTypeOrder } from '../lib/navLayout'
+import { candidates, pickOne, reelOf, weigh, type PickKind } from '../lib/picker'
+import { statusLabel } from '../lib/statusLabels'
+import { coverProps } from '../lib/images'
+import { toast } from '../lib/toast'
+import { useDialog } from '../lib/useDialog'
+import type { MediaType, UserItem } from '../types'
+
+const KIND_LABEL: Record<PickKind, string> = { any: 'Anything', game: 'A game', movie: 'A movie', tv: 'A show', book: 'A book' }
+const KIND_ICON = { any: Shuffle, game: Gamepad2, movie: Film, tv: Tv, book: BookOpen } as const
+const START_WORD: Record<MediaType, string> = { movie: 'Start watching', tv: 'Start watching', game: 'Start playing', book: 'Start reading' }
+
+// Carousel geometry: the front poster's size (px) and the window's height. Posters sit round a faux cylinder.
+const CARD_W = 150
+const CARD_H = 225
+const STAGE_H = 260
+/** Spin: the long slow-down, how far it runs past the pick (in posters), and the settle back onto it. */
+const SPIN_MS = 1700
+const OVERSHOOT = 0.04
+const SETTLE_MS = 40
+
+/**
+ * Where a poster sits for its distance `d` from the front (in posters, fractional mid-spin): round a faux cylinder,
+ * each step out 10 % smaller (down to 54 %) and noticeably darker, bunched closer the further round it goes, and
+ * anything further fades out round the back. `k` shrinks the whole arrangement to fit a narrow stage.
+ */
+function placement(d: number, k: number) {
+  const a = Math.abs(d)
+  const x = Math.sign(d) * CARD_W * 0.74 * Math.sin(Math.min(a, 3) * 0.69) * k
+  const scale = Math.max(0.54, 1 - 0.1 * a) * k
+  const opacity = Math.max(0, Math.min(1, (2.9 - a) / 0.7))
+  const brightness = Math.max(0.15, 1 - 0.46 * a)
+  return { x, scale, opacity, z: Math.round(100 - a * 20), brightness }
+}
+
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3.5)
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+
+const OPEN = 'ondeck:pick'
+/** Open the picker from a button. */
+export const openPicker = () => window.dispatchEvent(new Event(OPEN))
+
+/** The Home toolbar's button. */
+export function PickButton() {
+  return (
+    <button
+      type="button"
+      onClick={openPicker}
+      aria-label="Pick for me"
+      className="hit flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-fg hover:border-faint sm:h-7"
+    >
+      <Dices className="size-3.5 text-accent-ink" aria-hidden="true" />
+      {/* Narrow phones: "Pick", so the type pill keeps its room. */}
+      Pick<span className="max-[26rem]:hidden"> for me</span>
+    </button>
+  )
+}
+
+/**
+ * "Pick for me": choose a type (or anything) and a reel of your titles spins, slows and stops on one, chosen at
+ * random but leaning towards high priority, already started, ready to watch / owned, and waiting longest. Spin
+ * again never lands on an earlier pick. Mounted once (AppShell).
+ */
+export function PickForMe() {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const show = () => setOpen(true)
+    window.addEventListener(OPEN, show)
+    return () => window.removeEventListener(OPEN, show)
+  }, [])
+  if (!open) return null
+  return <PickDialog onClose={() => setOpen(false)} />
+}
+
+function PickDialog({ onClose }: { onClose: () => void }) {
+  const panel = useDialog<HTMLDivElement>(true, onClose)
+  const { items } = useItems()
+  const update = useUpdateItem()
+  const order = useTypeOrder()
+  const kinds: PickKind[] = ['any', ...order]
+  const pools = useMemo(() => Object.fromEntries(kinds.map((k) => [k, candidates(items, k)])) as Record<PickKind, UserItem[]>, [items, order.join()])
+
+  const [kind, setKind] = useState<PickKind | null>(null)
+  // Everything picked so far in this sitting: Spin again never lands on one of these.
+  const seen = useRef(new Set<string>())
+  const [reel, setReel] = useState<{ strip: UserItem[]; at: number; key: number } | null>(null)
+  const [spinning, setSpinning] = useState(false)
+  const [exhausted, setExhausted] = useState(false)
+  const pick = reel ? reel.strip[reel.at] : null
+  const stageEl = useRef<HTMLDivElement>(null)
+  const frontEl = useRef<HTMLDivElement>(null)
+
+  const spin = (k: PickKind) => {
+    if (spinning) return
+    setKind(k)
+    const pool = pools[k]
+    const next = pickOne(pool, seen.current)
+    if (!next) {
+      setExhausted(true)
+      return
+    }
+    setExhausted(false)
+    seen.current.add(next.id)
+    setReel({ ...reelOf(pool, next, 10), key: Date.now() })
+    setSpinning(true)
+  }
+
+  // Run the carousel: fast with a little motion blur, slowing like a wheel running out of speed, just past the pick,
+  // then easing back onto it. Positions are set straight on the elements each frame (no re-render).
+  // Reduced motion: it simply appears at the pick.
+  useLayoutEffect(() => {
+    const stage = stageEl.current
+    if (!reel || !stage) return
+    const cards = [...stage.querySelectorAll<HTMLElement>('[data-card]')]
+    // Fits about 2¾ front posters across; narrower stages (phones) shrink it all.
+    const k = Math.min(1, stage.clientWidth / (CARD_W * 2.75))
+    // Start a few posters in, so both sides are full from the first frame.
+    const FROM = 3
+    const place = (pos: number, blur: number) => {
+      cards.forEach((el, n) => {
+        const d = n - pos
+        if (Math.abs(d) > 3) {
+          el.style.visibility = 'hidden'
+          return
+        }
+        const p = placement(d, k)
+        el.style.visibility = 'visible'
+        el.style.transform = `translate(-50%, -50%) translateX(${p.x.toFixed(1)}px) scale(${p.scale.toFixed(3)})`
+        el.style.opacity = p.opacity.toFixed(3)
+        el.style.zIndex = String(p.z)
+        // Cards are scaled, so the corner is drawn larger to come out at the library posters' 6px at any size.
+        el.style.setProperty('--r', `${(6 / p.scale).toFixed(2)}px`)
+        el.style.filter = `brightness(${p.brightness.toFixed(3)})${blur > 0.2 ? ` blur(${blur.toFixed(1)}px)` : ''}`
+      })
+    }
+    const done = () => {
+      setSpinning(false)
+      frontEl.current?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }], {
+        duration: 360,
+        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+      })
+    }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      place(reel.at, 0)
+      done()
+      return
+    }
+    const target = reel.at + OVERSHOOT
+    let raf = 0
+    let finished = false
+    const finish = () => {
+      if (finished) return
+      finished = true
+      place(reel.at, 0)
+      done()
+    }
+    // Next frame, even where the browser holds back animation frames (a background tab): falls back to a timer.
+    const next = (f: (now: number) => void) => {
+      let fired = false
+      raf = requestAnimationFrame((now) => {
+        fired = true
+        f(now)
+      })
+      setTimeout(() => {
+        if (!fired && !finished) {
+          cancelAnimationFrame(raf)
+          f(performance.now())
+        }
+      }, 50)
+    }
+    // Whatever happens, it lands.
+    const watchdog = setTimeout(finish, SPIN_MS + SETTLE_MS + 600)
+    const t0 = performance.now()
+    const frame = (now: number) => {
+      if (finished) return
+      const t = now - t0
+      let pos: number
+      if (t < SPIN_MS) pos = FROM + easeOut(t / SPIN_MS) * (target - FROM)
+      else if (t < SPIN_MS + SETTLE_MS) pos = target - easeInOut((t - SPIN_MS) / SETTLE_MS) * OVERSHOOT
+      else {
+        finish()
+        return
+      }
+      // Blur with speed (posters per frame), so it smears while fast and sharpens as it slows.
+      const speed = Math.abs(pos - last)
+      last = pos
+      place(pos, Math.min(3, speed * 8))
+      next(frame)
+    }
+    let last = FROM
+    place(FROM, 0)
+    next(frame)
+    return () => {
+      finished = true
+      cancelAnimationFrame(raf)
+      clearTimeout(watchdog)
+    }
+  }, [reel?.key])
+
+  const start = (item: UserItem) => {
+    const before = { progress: item.progress, dates: { startedAt: item.startedAt ?? null, completedAt: item.completedAt ?? null, stalledAt: item.stalledAt ?? null } }
+    void update(item, { progress: 'in_progress' })
+      .then(() =>
+        toast({
+          message: `Set to ${statusLabel('in_progress', item.title.mediaType)}`,
+          key: item.id,
+          action: { label: 'Undo', onClick: () => void update({ ...item, progress: 'in_progress' }, before).catch(() => undefined) },
+        }),
+      )
+      .catch(() => toast({ message: 'Couldn’t save that. Try again.', tone: 'error' }))
+    onClose()
+  }
+
+  const reasons = pick ? weigh(pick).reasons : []
+  const left = kind ? pools[kind].filter((i) => !seen.current.has(i.id)).length : 0
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div ref={panel} tabIndex={-1} className="pop-in relative w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 id="pick-title" className="flex items-center gap-2 text-base font-semibold text-fg">
+            <Dices className="size-4 text-accent-ink" aria-hidden="true" /> Pick for me
+          </h2>
+          <button type="button" aria-label="Close" onClick={onClose} className="hit text-muted hover:text-fg">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* What to pick from. Choosing one spins straight away. */}
+        <div role="group" aria-label="Pick from" className="grid grid-cols-5 gap-1.5">
+          {kinds.map((k) => {
+            const Icon = KIND_ICON[k]
+            const empty = pools[k].length === 0
+            return (
+              <button
+                key={k}
+                type="button"
+                disabled={empty || spinning}
+                aria-pressed={kind === k}
+                onClick={() => spin(k)}
+                title={empty ? `Nothing ready to start in ${k === 'any' ? 'your list' : KIND_LABEL[k].toLowerCase()}` : undefined}
+                className={clsx(
+                  'flex flex-col items-center gap-1 rounded-lg border px-0.5 py-2.5 text-xs whitespace-nowrap transition-colors disabled:opacity-40 max-[24rem]:text-[11px]',
+                  kind === k ? 'border-accent bg-accent/10 text-fg' : 'border-line text-muted enabled:hover:border-faint enabled:hover:text-fg',
+                )}
+              >
+                <Icon className="size-4" aria-hidden="true" />
+                {KIND_LABEL[k]}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* The carousel: posters round a faux cylinder, the pick stopping at the front. Edges fade out. */}
+        <div
+          ref={stageEl}
+          className="relative mt-5 overflow-hidden"
+          style={{ aspectRatio: `${CARD_W * 2.75} / ${STAGE_H}`, maxHeight: STAGE_H, maskImage: 'linear-gradient(90deg, transparent, #000 19%, #000 81%, transparent)' }}
+          aria-hidden="true"
+        >
+          {reel ? (
+            <div key={reel.key} className="absolute inset-0">
+              {reel.strip.map((i, n) => (
+                <Card key={n} item={i} front={n === reel.at && !spinning} frontRef={n === reel.at ? frontEl : undefined} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid h-full place-items-center px-6 text-center text-sm text-muted">
+              {items.length ? 'Choose what to pick from, and it spins.' : 'Add a few titles first, then let it choose.'}
+            </div>
+          )}
+        </div>
+
+        {/* The result, once it stops. */}
+        <div className="mt-4 min-h-28" aria-live="polite">
+          {exhausted ? (
+            <div className="text-center">
+              <p className="text-sm text-fg">That’s everything that fits.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  seen.current.clear()
+                  if (kind) spin(kind)
+                }}
+                className="hit mt-2 text-sm font-medium text-accent-ink hover:underline"
+              >
+                Start over
+              </button>
+            </div>
+          ) : pick && !spinning ? (
+            <div className="text-center">
+              <p className="text-base font-semibold text-fg">{pick.title.title}</p>
+              <p className="mt-0.5 flex justify-center gap-3 text-xs text-muted">
+                {[pick.title.year, pick.title.byline, pick.progress !== 'wanted' && statusLabel(pick.progress, pick.title.mediaType)]
+                  .filter(Boolean)
+                  .map((part) => (
+                    <span key={String(part)}>{part}</span>
+                  ))}
+              </p>
+              {reasons.length > 0 && <p className="mt-1 text-xs text-faint">{reasons.join('. ')}.</p>}
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {pick.progress === 'wanted' && (
+                  <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110">
+                    {START_WORD[pick.title.mediaType]}
+                  </button>
+                )}
+                <Link
+                  to={`/title/${pick.title.id}`}
+                  onClick={onClose}
+                  className={clsx(
+                    'hit flex h-9 items-center rounded-lg px-3.5 text-sm font-medium',
+                    pick.progress === 'wanted' ? 'border border-line text-fg hover:border-faint' : 'bg-accent text-accent-fg hover:brightness-110',
+                  )}
+                >
+                  Open
+                </Link>
+                {/* Never the same one twice; once everything has come up, it offers to start over instead. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!left) seen.current.clear()
+                    if (kind) spin(kind)
+                  }}
+                  className="hit flex h-9 items-center gap-1.5 rounded-lg border border-line px-3.5 text-sm text-fg hover:border-faint"
+                >
+                  <RotateCcw className="size-3.5" aria-hidden="true" /> {left ? 'Spin again' : 'Start over'}
+                </button>
+              </div>
+              {!left && <p className="mt-2 text-xs text-faint">That was the last one that fits. Start over brings them all back.</p>}
+            </div>
+          ) : spinning ? (
+            <p className="pt-3 text-center text-sm text-muted">Spinning…</p>
+          ) : null}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+/** One poster on the carousel (a plain tile with the name when there's no cover). Placed by the spin each frame. */
+function Card({ item, front, frontRef }: { item: UserItem; front: boolean; frontRef?: React.Ref<HTMLDivElement> }) {
+  const t = item.title
+  return (
+    <div data-card className="absolute top-1/2 left-1/2 will-change-transform" style={{ width: CARD_W, height: CARD_H, visibility: 'hidden' }}>
+      <div
+        ref={frontRef}
+        className={clsx(
+          'size-full overflow-hidden rounded-[var(--r,6px)] bg-raised shadow-[0_12px_30px_-8px_rgb(0_0_0/0.7)] transition-shadow duration-300',
+          front && 'ring-2 ring-accent shadow-[0_0_32px_-6px_var(--color-accent)]',
+        )}
+      >
+        {t.coverUrl ? (
+          <img {...coverProps(t.coverUrl, `${CARD_W}px`)} alt="" draggable={false} className="size-full object-cover" />
+        ) : (
+          <div className="grid size-full place-items-center p-3 text-center text-xs text-muted">
+            <Clapperboard className="mb-1 size-5" aria-hidden="true" />
+            {t.title}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

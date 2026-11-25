@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { PriorityScale } from './PriorityScale'
-import { Check, Library, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { Check, Library, RotateCcw, Star, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { usePlexWatch } from '../lib/integrations'
+import type { ItemPatch } from '../lib/library'
 import { statusesFor, statusLabel } from '../lib/statusLabels'
 import { plexPatch } from '../../supabase/functions/_shared/plexApply.ts'
 import { plexStateOf } from '../lib/plexSync'
@@ -11,7 +12,7 @@ import { upNext } from '../lib/home'
 import { useKeys, useStatusKeys } from '../lib/shortcuts'
 import { toast } from '../lib/toast'
 import { isOngoing, seasonsOf } from '../lib/seasons'
-import { type Progress, type UserItem } from '../types'
+import { type MediaType, type Progress, type UserItem } from '../types'
 import { labelClass, Segmented, ArchiveButton, Toggle, Notes, useSaver, SaveState } from './trackingParts'
 import { episodesBetween, latestAired, TvProgressSection, NextUp } from './TvProgress'
 import { MovieProgressSection, AvailabilityBadge } from './MovieProgress'
@@ -169,6 +170,7 @@ export function StatusControls({ item }: { item: UserItem }) {
         numberKeys
         onChange={setProgress}
       />
+      <AgainLine item={item} plexSyncActive={plexSyncActive} save={save} />
       {type === 'game' && item.steamPlaytimeMinutes != null && (
         <p className="-mt-2 text-xs text-muted">
           Steam:{' '}
@@ -252,5 +254,86 @@ export function TrackingDetails({ item }: { item: UserItem }) {
 
       <Notes key={item.id} initial={item.notes ?? ''} onSave={(notes) => update(item, { notes })} />
     </section>
+  )
+}
+
+const AGAIN: Record<MediaType, { button: string; doing: string }> = {
+  movie: { button: 'Watch again', doing: 'Rewatching' },
+  tv: { button: 'Watch again', doing: 'Rewatching' },
+  game: { button: 'Play again', doing: 'Replaying' },
+  book: { button: 'Read again', doing: 'Rereading' },
+}
+const ORD = ['', 'first', 'second', 'third', 'fourth', 'fifth']
+const ordinal = (n: number) => ORD[n] ?? `${n}th`
+const monthYear = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+
+/**
+ * Times through, and Start again: a finished title can be watched / played / read again without losing that it was
+ * finished, and when. Its finish date moves to past_completions, it goes back to in progress from the start (shows:
+ * back to before episode 1), and Plex stops updating it, since Plex would mark it finished again straight away.
+ */
+function AgainLine({
+  item,
+  plexSyncActive,
+  save,
+}: {
+  item: UserItem
+  plexSyncActive: boolean
+  save: (patch: ItemPatch, onSaved?: () => void) => Promise<boolean>
+}) {
+  const type = item.title.mediaType
+  const past = item.pastCompletions ?? []
+  const finished = item.progress === 'completed'
+  const finishes = [...past, ...(finished && item.completedAt ? [item.completedAt] : [])]
+  const words = AGAIN[type]
+
+  const again = () => {
+    const before = {
+      progress: item.progress,
+      pastCompletions: past,
+      tvProgress: item.tvProgress ?? null,
+      plexSync: item.plexSync ?? true,
+      dates: datesOf(item),
+    }
+    const now = new Date().toISOString()
+    // Finished with no date recorded (older entries, imports): the last change is the best guess, so it still counts.
+    const lastFinish = item.completedAt ?? item.updatedAt ?? now
+    void save(
+      {
+        progress: 'in_progress',
+        pastCompletions: [...past, lastFinish],
+        ...(type === 'tv' && { tvProgress: null }),
+        ...(plexSyncActive && { plexSync: false }),
+        dates: { startedAt: now, completedAt: null, stalledAt: null },
+      },
+      () =>
+        toast({
+          message: `${words.doing} “${item.title.title}”${plexSyncActive ? '. Plex won’t update it until you turn its sync back on' : ''}.`,
+          key: item.id,
+          duration: 10_000,
+          action: { label: 'Undo', onClick: () => void save(before) },
+        }),
+    )
+  }
+
+  if (!finished && !past.length) return null
+  return (
+    <p className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+      {past.length > 0 && !finished && (
+        <span>
+          <span className="text-fg">{words.doing}</span>, {ordinal(past.length + 1)} time through
+        </span>
+      )}
+      {finishes.length > 0 && (
+        <span>
+          {finishes.length === 1 ? 'Finished' : `Finished ${finishes.length} times`}: {finishes.map(monthYear).join(', ')}
+        </span>
+      )}
+      {finished && (
+        <button type="button" onClick={again} className="hit flex items-center gap-1 font-medium text-accent-ink hover:underline">
+          <RotateCcw className="size-3.5" aria-hidden="true" /> {words.button}
+        </button>
+      )}
+    </p>
   )
 }

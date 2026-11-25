@@ -10,6 +10,7 @@ import { BottomNav } from './BottomNav'
 import { PageSkeleton } from './LazyPage'
 import { Toaster } from './Toaster'
 import { ShortcutsSheet } from './ShortcutsSheet'
+import { PickForMe } from './PickForMe'
 import { useScrollMemory } from '../lib/useScrollMemory'
 import { useRouteFocus } from '../lib/useRouteFocus'
 import { useLibraryCache } from '../lib/libraryCache'
@@ -76,6 +77,7 @@ export function AppShell() {
       {!bare && <BottomNav />}
       <Toaster />
       <ShortcutsSheet />
+      <PickForMe />
     </div>
   )
 }

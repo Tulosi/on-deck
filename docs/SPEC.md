@@ -485,6 +485,27 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   - iPhone/iPad: only from the home-screen app (Share → Add to Home Screen; iOS 16.4+); Settings explains this.
     No email.
 
+### Pick for me
+- Home's toolbar: **Pick for me** ("Pick" on narrow phones) opens a dialog. No questions: choose **Anything**, **A show**,
+  **A movie**, **A game** or **A book** (in your nav order) and it spins straight away.
+- The spin: posters round a faux cylinder (front one full size, neighbours 90 % and 80 %, dimmer, fading out round
+  the back), fast with a little motion blur, slowing to a stop just past the pick and settling back onto it. Reduced
+  motion: no spin, the pick just appears.
+- What can come up: Want to…, In progress and Stalled titles that are out, not snoozed, and (movies / shows) not
+  known to be unwatchable; shows in progress only with a new episode out. Weighted random: high priority ×3,
+  medium ×1.6, low ×0.6; already started ×1.5, stalled ×0.8; on Plex / a service or owned ×1.5 (games / books not
+  owned ×0.4); up to ×1.5 for waiting a year. The pick shows up to three of those reasons.
+- **Spin again** never lands on an earlier pick in that sitting; when nothing's left, **Start over**. The pick offers
+  **Start watching / playing / reading** (Want to… only, with Undo) and **Open**.
+- Code: `src/lib/picker.ts` (rules), `src/components/PickForMe.tsx` (dialog and spin).
+
+### Start again (rewatch / replay / reread)
+- A finished title shows **Watch again / Play again / Read again** under its status. It goes back to In progress
+  (started now), its finish date moves to `past_completions` (none recorded → the last change date), shows go back to
+  before episode 1, and Plex sync is paused for it (Plex would mark it finished again at once), with Undo.
+- Under the status: "Rewatching, second time through" and "Finished 2 times: Mar 2025, Nov 2026". Posters say
+  Rewatching / Replaying / Rereading instead of the usual in-progress word. Backups include `past_completions`.
+
 ### Schema additions (future migration)
 - `titles`: `release_date`, `release_precision`, `release_status` (`announced | early_access | released | cancelled`),
   `next_season_date`, `release_history jsonb`.

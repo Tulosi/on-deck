@@ -27,6 +27,7 @@ const ITEM_FIELDS = [
   'started_at',
   'completed_at',
   'stalled_at',
+  'past_completions',
   'archived_at',
   'created_at',
 ] as const
@@ -53,6 +54,7 @@ const ITEM_DEFAULTS: Record<string, unknown> = {
   started_at: null,
   completed_at: null,
   stalled_at: null,
+  past_completions: [],
   archived_at: null,
 }
 

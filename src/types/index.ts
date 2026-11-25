@@ -64,6 +64,8 @@ export interface UserItem {
   archivedAt?: string
   /** When the user (or sync) marked it Watched/Played/Read. */
   completedAt?: string
+  /** Earlier finish dates, oldest first (set by Start again: rewatch / replay / reread). */
+  pastCompletions?: string[]
   /** When it moved from Want to In progress. */
   startedAt?: string
   /** Games: playtime and last played, from the linked Steam account. */

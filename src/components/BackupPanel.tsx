@@ -59,6 +59,16 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
     setError(null)
     setProgress({ done: 0, total: pending.items.length })
     try {
+      // Replace can't be undone, so first save what's there now. If that fails, nothing is replaced.
+      if (mode === 'overwrite') {
+        try {
+          const now = await buildExport(user!.id)
+          downloadJson(now, `on-deck-before-replace-${new Date().toISOString().slice(0, 10)}.json`)
+        } catch {
+          setError('Couldn’t save a copy of your library first, so nothing was replaced. Please try again.')
+          return
+        }
+      }
       const r = await importExport(user!.id, pending, { replaceSettings, mode, onProgress: (done, total) => setProgress({ done, total }) })
       setReport(r)
       setPending(null)
@@ -111,7 +121,7 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
                   {
                     value: 'overwrite',
                     label: 'Replace my library',
-                    hint: 'Your library ends up matching the file: its tracking wins, and anything not in it is removed.',
+                    hint: 'Your library ends up matching the file: its tracking wins, and anything not in it is removed. A copy of your library downloads first.',
                   },
                 ] as const
               ).map((o) => (
@@ -141,11 +151,8 @@ export function BackupPanel({ onSetUpAccounts }: { onSetUpAccounts: () => void }
                       .filter(Boolean)
                       .join(' and ')}
                   </b>{' '}
-                  that aren’t in the file, and can’t be undone.{' '}
-                  <button type="button" onClick={() => void doExport()} disabled={exporting} className="text-accent-ink underline">
-                    Export a backup first
-                  </button>{' '}
-                  if you might want them back.
+                  that aren’t in the file. A copy of your library as it is now downloads first, so you can import it
+                  to get them back.
                 </p>
               </div>
             )}

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
 /**
  * Rolling version: MAJOR, then the build number (the commit count on main, so it goes up by itself with every
@@ -30,11 +31,15 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     define: { __APP_VERSION__: JSON.stringify(appVersion()) },
+    // Live updates aren't used: a small stand-in replaces supabase-js's realtime client (see src/lib/realtimeStub.ts).
+    resolve: { alias: { '@supabase/realtime-js': fileURLToPath(new URL('./src/lib/realtimeStub.ts', import.meta.url)) } },
     plugins: [
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // 'prompt': a new version waits until you reload (src/lib/pwaUpdate.ts offers it with a toast), instead of the old
+        // one hanging on until a second reload.
+        registerType: 'prompt',
         includeAssets: ['icon.svg'],
         // Web Push: the generated service worker also loads the push handler (public/push-sw.js).
         workbox: { importScripts: ['push-sw.js'] },

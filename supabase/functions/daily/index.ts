@@ -25,7 +25,7 @@ type Json = Record<string, any>
 const BUDGET_MS = 120_000 // stay well inside the Edge Function time limit; leftovers are picked up next run
 const TITLE_SHARE = 0.45 // share of the budget for title refreshes
 const TITLE_STALE_MS = 20 * 60 * 60 * 1000
-const SOURCE_FN: Record<string, string> = { tmdb: 'tmdb', igdb: 'igdb', hardcover: 'hardcover' }
+const SOURCE_FN: Record<string, string> = { tmdb: 'tmdb', igdb: 'igdb', steam: 'igdb', hardcover: 'hardcover' }
 const LIVE_TV = new Set(['Returning Series', 'In Production', 'Planned', 'Pilot'])
 /** "Deep discount" = at least this % off Steam's full price, unless the user set their own (10–90). */
 const DEEP_DISCOUNT_PCT = 30
@@ -125,6 +125,7 @@ async function callFn(fn: string, body: Json, userId?: string): Promise<Json | n
 function addBody(t: TitleRow): Json | null {
   if (t.source === 'tmdb') return { action: 'add', tmdbId: Number(t.source_id), mediaType: t.media_type }
   if (t.source === 'igdb') return { action: 'add', igdbId: Number(t.source_id) }
+  if (t.source === 'steam') return { action: 'add', steamAppId: Number(t.source_id) }
   if (t.source === 'hardcover') return { action: 'add', hardcoverId: Number(t.source_id) }
   return null
 }

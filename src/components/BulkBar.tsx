@@ -5,7 +5,7 @@ import { useBulkItems } from '../lib/library'
 import { useCollectionActions, useCollections } from '../lib/collections'
 import { statusLabel } from '../lib/statusLabels'
 import { toast } from '../lib/toast'
-import type { Progress, UserItem } from '../types'
+import type { MediaType, Progress, UserItem } from '../types'
 
 /** In select mode, a card toggles instead of opening the title. Covers the card so its link can't be followed. */
 export function SelectableCard({
@@ -62,6 +62,7 @@ export function BulkBar({
   onSelectAll,
   onClear,
   onDone,
+  pageType = null,
 }: {
   selected: UserItem[]
   /** Everything currently shown, for "Select all". */
@@ -71,17 +72,30 @@ export function BulkBar({
   /** Untick everything but stay in select mode. */
   onClear: () => void
   onDone: () => void
+  /** The Library page's type, for the status words before anything is picked. */
+  pageType?: MediaType | null
 }) {
   const { setStatus, archive, remove } = useBulkItems()
   const { data: collections = [] } = useCollections()
   const { toggleItem } = useCollectionActions()
   const n = selected.length
   const types = new Set(selected.map((i) => i.title.mediaType))
-  const one = types.size === 1 ? [...types][0] : null
+  // The words follow what's picked; with nothing picked yet, the page's type (Games → "Want to play").
+  const one = n === 0 ? pageType : types.size === 1 ? [...types][0] : null
+  // What the picked titles can all be set to. Nothing picked: what this page's type allows.
+  const all = (test: (i: UserItem) => boolean) => (n === 0 ? null : selected.every(test))
+  const pageIs = (...t: MediaType[]) => !!pageType && t.includes(pageType)
+  const canStall = all((i) => i.title.mediaType === 'game' || i.title.mediaType === 'book') ?? pageIs('game', 'book')
+  // Caught up (shows) / Waiting for 1.0 (Early Access games): only when every pick is one of those.
+  const canCatchUp =
+    n > 0 &&
+    (selected.every((i) => i.title.mediaType === 'tv') ||
+      selected.every((i) => i.title.mediaType === 'game' && i.title.details?.early_access === true))
   const statuses: Progress[] = [
     'wanted',
     'in_progress',
-    ...(selected.every((i) => i.title.mediaType === 'game' || i.title.mediaType === 'book') ? (['stalled'] as const) : []),
+    ...(canCatchUp ? (['caught_up'] as const) : []),
+    ...(canStall ? (['stalled'] as const) : []),
     'completed',
     'dropped',
   ]

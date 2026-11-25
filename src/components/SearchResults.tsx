@@ -11,10 +11,10 @@ export type AddState = 'adding' | 'added' | { error: string }
 
 /** What the search looks for. One type at a time keeps results relevant; "All" leads so it's never off the edge on phones. */
 export const SEARCH_TYPES: { value: SearchType; label: string; icon: LucideIcon; placeholder: string }[] = [
-  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search movies, TV, games and books…' },
+  { value: 'all', label: 'All', icon: Layers, placeholder: 'Search everything…' },
   { value: 'movie', label: 'Movies', icon: Film, placeholder: 'Search movies…' },
-  { value: 'tv', label: 'TV', icon: Tv, placeholder: 'Search TV shows…' },
-  { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search PC games…' },
+  { value: 'tv', label: 'TV', icon: Tv, placeholder: 'Search shows…' },
+  { value: 'game', label: 'Games', icon: Gamepad2, placeholder: 'Search games…' },
   { value: 'book', label: 'Books', icon: BookOpen, placeholder: 'Search books…' },
 ]
 export const TYPE_KEY = 'ondeck.searchType'

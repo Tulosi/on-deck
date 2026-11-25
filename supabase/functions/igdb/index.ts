@@ -1,11 +1,15 @@
 // Games (PC). Caller must be signed in.
 //   POST { action: 'search', query }   → up to 12 PC games from IGDB (nothing stored)
 //   POST { action: 'add', igdbId }     → full details, upserted into `titles`; also used to refresh a cached game
+//   POST { action: 'add', steamAppId } → the same for a game only Steam knows (source 'steam'), from Steam's store
+// Search also asks Steam's store, and adds the games IGDB doesn't have yet (new and Early Access releases often
+// reach Steam well before IGDB).
 // Sources: IGDB (details, cover, genres, modes, developer, Steam app id) · IsThereAnyDeal game info (Steam
 // review %, Metacritic, Early Access, Steam user tags) · Steam store (co-op categories, free-to-play) ·
 // Steam Deck compatibility report. Steam/ITAD/Deck lookups fail soft — the game is still added.
 import { admin, HttpError, json, requireUser, serve } from '../_shared/http.ts'
 import { igdb, igdbImage, PC, type Json } from '../_shared/igdb.ts'
+import { steamItem, steamRow, steamSearch } from '../_shared/steamStore.ts'
 
 const STEAM_SOURCE = 1 // IGDB external_game_source for Steam
 
@@ -26,11 +30,13 @@ const limitOf = (v: unknown) => Math.min(40, Math.max(1, Number.isInteger(v) ? (
 async function search(query: string, limit = 12, fuzzy = false) {
   const q = query.trim().replace(/"/g, '')
   if (q.length < 2) return json({ results: [] })
+  // Steam's store in parallel (normal searches only), for games IGDB doesn't know yet.
+  const steamHits = fuzzy ? Promise.resolve([]) : steamSearch(q, 8).catch(() => [])
   const games = await igdb(
     'games',
     fuzzy
-      ? `fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where name ~ *"${fuzzyStem(q)}"* & (platforms = (${PC}) | platforms = null) & version_parent = null; sort total_rating_count desc; limit ${limit};`
-      : `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent; where (platforms = (${PC}) | platforms = null) & version_parent = null; limit ${limit};`,
+      ? `fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent,external_games.uid,external_games.external_game_source; where name ~ *"${fuzzyStem(q)}"* & (platforms = (${PC}) | platforms = null) & version_parent = null; sort total_rating_count desc; limit ${limit};`
+      : `search "${q}"; fields name,summary,first_release_date,cover.image_id,involved_companies.company.name,involved_companies.developer,version_parent,external_games.uid,external_games.external_game_source; where (platforms = (${PC}) | platforms = null) & version_parent = null; limit ${limit};`,
   )
   const results = games.map((g) => ({
     igdbId: g.id as number,
@@ -42,7 +48,18 @@ async function search(query: string, limit = 12, fuzzy = false) {
     developer:
       ((g.involved_companies ?? []) as Json[]).find((c) => c.developer)?.company?.name ?? null,
   }))
-  return json({ results })
+  // Steam games IGDB already has (by Steam app id, or the same name) are left out; the rest go after IGDB's.
+  const linked = new Set(
+    games.flatMap((g) =>
+      ((g.external_games ?? []) as Json[]).filter((e) => e.external_game_source === STEAM_SOURCE).map((e) => String(e.uid)),
+    ),
+  )
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const names = new Set(results.map((r) => norm(r.title)))
+  const steamOnly = (await steamHits)
+    .filter((h) => !linked.has(String(h.steamAppId)) && !names.has(norm(h.title)))
+    .map((h) => ({ ...h, mediaType: 'game' as const }))
+  return json({ results: [...results, ...steamOnly.slice(0, 4)] })
 }
 
 // ─── Extra sources (all fail soft) ─────────────────────────────────────────
@@ -295,11 +312,32 @@ async function add(igdbId: number) {
   return json({ title: data })
 }
 
+/** A game only Steam knows: built from Steam's store, plus IsThereAnyDeal's scores and tags when it has them. */
+async function addFromSteam(appId: number) {
+  const item = await steamItem(appId)
+  if (!item) throw new HttpError(404, 'steam_not_found')
+  const itad = await itadInfo(String(appId))
+  const row = steamRow(item, itad)
+  // ITAD's Early Access flag can confirm one Steam hasn't set yet.
+  if (itad?.earlyAccess) row.metadata.early_access = true
+  const { data, error } = await admin().from('titles').upsert(row, { onConflict: 'media_type,source,source_id' }).select().single()
+  if (error) {
+    console.error(error)
+    throw new HttpError(500, 'title_save_failed')
+  }
+  return json({ title: data })
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'method_not_allowed')
   await requireUser(req)
   const body = (await req.json().catch(() => null)) as Json | null
   if (body?.action === 'search' && typeof body.query === 'string') return search(body.query, limitOf(body.limit), body.fuzzy === true)
+  if (body?.action === 'add' && body.steamAppId != null) {
+    const appId = Number(body.steamAppId)
+    if (!Number.isInteger(appId) || appId <= 0) throw new HttpError(400, 'bad_steam_app_id')
+    return addFromSteam(appId)
+  }
   if (body?.action === 'add') {
     const id = Number(body.igdbId)
     if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, 'bad_igdb_id')

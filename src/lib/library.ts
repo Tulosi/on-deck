@@ -161,7 +161,7 @@ function toUserItem(row: ItemRow): UserItem {
             t.metadata.time_to_beat === undefined ||
             // Games saved before Steam's Early Access flag was read
             (!!t.external_ids?.steam_appid && t.metadata.steam_genres === undefined))) ||
-        (t.source === 'hardcover' && scoresNeedRefresh(t.ratings)),
+        ((t.source === 'hardcover' || t.source === 'steam') && scoresNeedRefresh(t.ratings)),
     },
   }
 }
@@ -298,6 +298,8 @@ export interface SearchResult {
   tmdbId?: number
   /** Games (IGDB) */
   igdbId?: number
+  /** Games IGDB doesn't have yet, from Steam's store */
+  steamAppId?: number
   title: string
   year: number | null
   posterUrl: string | null
@@ -316,7 +318,9 @@ export interface SearchResult {
 /** Matches a search result to a title already on deck (`${mediaType}:${source}:${id}`). */
 export const resultKey = (r: SearchResult) =>
   r.mediaType === 'game'
-    ? `game:igdb:${r.igdbId}`
+    ? r.igdbId
+      ? `game:igdb:${r.igdbId}`
+      : `game:steam:${r.steamAppId}`
     : r.mediaType === 'book'
       ? `book:hardcover:${r.hardcoverId}`
       : `${r.mediaType}:tmdb:${r.tmdbId}`
@@ -348,7 +352,9 @@ export function useAddFromTmdb() {
   return async (result: SearchResult) => {
     const { data, error } =
       result.mediaType === 'game'
-        ? await supabase!.functions.invoke('igdb', { body: { action: 'add', igdbId: result.igdbId } })
+        ? await supabase!.functions.invoke('igdb', {
+            body: result.igdbId ? { action: 'add', igdbId: result.igdbId } : { action: 'add', steamAppId: result.steamAppId },
+          })
         : result.mediaType === 'book'
           ? await supabase!.functions.invoke('hardcover', { body: { action: 'add', hardcoverId: result.hardcoverId } })
           : await supabase!.functions.invoke('tmdb', {
@@ -470,9 +476,11 @@ export function useScoreBackfill() {
         const [mediaType, source, id] = item.title.sourceKey!.split(':')
         await supabase!.functions
           .invoke(
-            source === 'igdb' ? 'igdb' : source === 'hardcover' ? 'hardcover' : 'tmdb',
+            source === 'igdb' || source === 'steam' ? 'igdb' : source === 'hardcover' ? 'hardcover' : 'tmdb',
             source === 'igdb'
               ? { body: { action: 'add', igdbId: Number(id) } }
+              : source === 'steam'
+                ? { body: { action: 'add', steamAppId: Number(id) } }
               : source === 'hardcover'
                 ? { body: { action: 'add', hardcoverId: Number(id) } }
                 : { body: { action: 'add', tmdbId: Number(id), mediaType } },

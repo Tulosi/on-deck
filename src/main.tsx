@@ -10,6 +10,7 @@ import { Home } from './pages/Home'
 import { Library } from './pages/Library'
 import { NotFound } from './pages/Placeholders'
 import { lazyPage } from './components/LazyPage'
+import { watchForUpdates } from './lib/pwaUpdate'
 
 // Home and Library are where most visits land, so they ship in the main bundle.
 // Everything else loads when first opened.
@@ -39,6 +40,8 @@ const queryClient = new QueryClient({
 // can morph straight into it instead of waiting on a loading placeholder.
 const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500))
 idle(() => TitleDetail.preload())
+
+watchForUpdates()
 
 // BASE_URL is "/" in dev and "/on-deck/" on GitHub Pages.
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')

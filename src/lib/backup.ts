@@ -171,6 +171,7 @@ export interface ImportReport {
 const ADD_FN: Record<string, (r: TitleRef) => { fn: string; body: Record<string, unknown> }> = {
   tmdb: (r) => ({ fn: 'tmdb', body: { action: 'add', tmdbId: Number(r.source_id), mediaType: r.media_type } }),
   igdb: (r) => ({ fn: 'igdb', body: { action: 'add', igdbId: Number(r.source_id) } }),
+  steam: (r) => ({ fn: 'igdb', body: { action: 'add', steamAppId: Number(r.source_id) } }),
   hardcover: (r) => ({ fn: 'hardcover', body: { action: 'add', hardcoverId: Number(r.source_id) } }),
 }
 

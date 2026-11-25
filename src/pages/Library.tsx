@@ -389,6 +389,7 @@ export function Library() {
           archivedView={f.archived === 'only'}
           onSelectAll={() => setPicked(new Set(results.map((i) => i.id)))}
           onClear={() => setPicked(new Set())}
+          pageType={f.type}
           onDone={stopSelecting}
         />
       )}

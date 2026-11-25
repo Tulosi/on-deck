@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { useCallback, useMemo, useState, ViewTransition } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Layers, LayoutGrid, Loader2, Rows3, Sparkles, X } from 'lucide-react'
+import { CheckSquare, Eye, EyeOff, Layers, LayoutGrid, Loader2, Rows3, Sparkles, X } from 'lucide-react'
 import { BulkBar, SelectableCard } from '../components/BulkBar'
 import { PageHeader } from '../components/PageHeader'
 import { PageSkeleton } from '../components/LazyPage'
@@ -19,6 +19,7 @@ import {
 } from '../lib/filters'
 import { useItems } from '../lib/library'
 import { useLibraryView } from '../lib/libraryView'
+import { releaseInfo } from '../lib/release'
 import { statusLabel } from '../lib/statusLabels'
 import { rulesFrom, useFilters } from '../lib/useFilters'
 import { useCollectionActions, useCollections } from '../lib/collections'
@@ -132,16 +133,19 @@ export function Library() {
 
   // Filtering, sorting and grouping a large library is the expensive part of this page:
   // only redo it when the library or the filters change.
-  const { inType, results, hiddenArchived, groups } = useMemo(() => {
+  const { inType, results, archivedCount, preReleaseCount, groups } = useMemo(() => {
     const inType = f.type ? items.filter((i) => i.title.mediaType === f.type) : items
     // allItems, so the Archived filter can bring archived titles back (applyFilters hides them by default).
     const results = sortItems(applyFilters(allItems, f), f.sort)
-    const hiddenArchived =
-      f.archived === 'hide' ? allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length : 0
+    const archivedCount = allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length
+    // Games: how many aren't out yet, for the Hide/Show pre-release toggle.
+    const preReleaseCount = f.type === 'game' ? inType.filter((i) => releaseInfo(i.title).preRelease).length : 0
     // Progress view: grouped by status unless another grouping is picked.
     const group = rows && f.group === 'none' ? 'status' : f.group
-    return { inType, results, hiddenArchived, groups: groupItems(results, group, f.type) }
+    return { inType, results, archivedCount, preReleaseCount, groups: groupItems(results, group, f.type) }
   }, [items, allItems, f, rows])
+
+  const hidesPreRelease = f.release.length === 1 && f.release[0] === 'released'
 
   if (isLoading) return <PageSkeleton />
   // Only what's on screen counts (a filter change can hide something you'd picked).
@@ -169,11 +173,16 @@ export function Library() {
             <Sparkles className="size-3.5" /> Save as smart collection
           </button>
         )}
-        {/* Selecting works on covers; the Progress view has no checkboxes. */}
-        {!isSample && !rows && results.length > 0 && (
+        {/* Shown in both views, so the Covers/Progress switch never moves (or drops to its own line on narrower
+            windows) when you flip views. Selecting works on covers, so from Progress it switches to Covers first. */}
+        {!isSample && results.length > 0 && (
           <button
             type="button"
-            onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+            onClick={() => {
+              if (selecting) return stopSelecting()
+              if (rows) setView('covers')
+              setSelecting(true)
+            }}
             aria-pressed={selecting}
             className={clsx(
               'hit flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs hover:border-accent',
@@ -277,13 +286,26 @@ export function Library() {
         </form>
       )}
       <ActiveFilters f={f} set={set} />
-      {hiddenArchived > 0 && (
-        <p className="-mt-3 mb-4 text-xs text-faint">
-          {hiddenArchived} archived title{hiddenArchived === 1 ? ' is' : 's are'} hidden by default ·{' '}
-          <button type="button" onClick={() => set({ ...f, archived: 'include' })} className="text-accent-ink hover:underline">
-            Show
-          </button>
-        </p>
+      {/* Quick show/hide switches for the two things people most often want out of the way. */}
+      {(archivedCount > 0 || preReleaseCount > 0) && f.archived !== 'only' && (
+        <div className="-mt-3 mb-4 flex flex-wrap gap-2">
+          {archivedCount > 0 && (
+            <ToggleChip
+              on={f.archived === 'hide'}
+              onClick={() => set({ ...f, archived: f.archived === 'hide' ? 'include' : 'hide' })}
+              hide="Hide archived"
+              show={`Show archived (${archivedCount})`}
+            />
+          )}
+          {preReleaseCount > 0 && (
+            <ToggleChip
+              on={hidesPreRelease}
+              onClick={() => set({ ...f, release: hidesPreRelease ? [] : ['released'] })}
+              hide={`Hide pre-release (${preReleaseCount})`}
+              show="Show pre-release"
+            />
+          )}
+        </div>
       )}
 
       {inType.length === 0 ? (
@@ -350,6 +372,7 @@ export function Library() {
           visible={results.length}
           archivedView={f.archived === 'only'}
           onSelectAll={() => setPicked(new Set(results.map((i) => i.id)))}
+          onClear={() => setPicked(new Set())}
           onDone={stopSelecting}
         />
       )}
@@ -361,5 +384,23 @@ export function Library() {
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * A show/hide switch: `on` means the things are hidden, so it offers to show them (and the reverse). The label says
+ * what tapping it does.
+ */
+function ToggleChip({ on, onClick, hide, show }: { on: boolean; onClick: () => void; hide: string; show: string }) {
+  const Icon = on ? Eye : EyeOff
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hit flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-xs text-muted hover:border-accent hover:text-fg"
+    >
+      <Icon className="size-3.5" />
+      {on ? show : hide}
+    </button>
   )
 }

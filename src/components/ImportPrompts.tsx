@@ -81,7 +81,7 @@ function PromptRow({
         <span className="text-xs text-faint">{hint}</span>
         {action && <span className="ml-auto">{action}</span>}
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-1">{children}</div>
+      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto overflow-y-hidden px-4 pb-1">{children}</div>
     </section>
   )
 }

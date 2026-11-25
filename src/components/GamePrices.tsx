@@ -1,3 +1,4 @@
+import { Price } from './Price'
 import clsx from 'clsx'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import { cheapest, formatPrice, priceOptions, type PriceOption } from '../lib/prices'
@@ -39,9 +40,9 @@ function Row({
           </span>
         )}
         {option.discountPct != null && steamRegular != null && (
-          <span className="font-mono text-xs text-faint line-through">{formatPrice(steamRegular, currency)}</span>
+          <span className="font-mono text-xs text-faint line-through"><Price>{formatPrice(steamRegular, currency)}</Price></span>
         )}
-        <span className="font-mono text-base font-semibold text-fg">{formatPrice(option.price, currency)}</span>
+        <span className="font-mono text-base font-semibold text-fg"><Price>{formatPrice(option.price, currency)}</Price></span>
         {option.atLow && (
           <span className="rounded border border-good/60 bg-good/10 px-1.5 py-0.5 text-[11px] font-medium text-good">
             Historical low

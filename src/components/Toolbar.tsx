@@ -69,10 +69,11 @@ const selectClass = 'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 t
 // instead of the old tap-twice-to-exclude chips. Each option shows how many titles it would leave.
 
 /** Explains the two statuses people ask about, for the ones this view has. */
-function statusHint(opts: readonly string[]): string | undefined {
+function statusHint(opts: readonly string[], type: MediaType | null): string | undefined {
   const parts = [
     opts.includes('stalled') && 'Stalled: started, then set aside.',
-    opts.includes('caught_up') && 'Caught up: seen everything out so far.',
+    opts.includes('caught_up') &&
+      (type === 'game' ? 'Waiting for 1.0: played the Early Access so far.' : 'Caught up: seen everything out so far.'),
   ].filter(Boolean)
   return parts.length ? parts.join(' ') : undefined
 }
@@ -199,7 +200,7 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
           options={present('status', statusFilterOptions(f.type))}
           selected={f.status}
           render={(v) => statusLabel(v, f.type)}
-          hint={statusHint(present('status', statusFilterOptions(f.type)))}
+          hint={statusHint(present('status', statusFilterOptions(f.type)), f.type)}
           onToggle={tog('status')}
           count={count('status')}
           neg={negOf('status')}

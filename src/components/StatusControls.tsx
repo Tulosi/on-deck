@@ -859,7 +859,11 @@ export function StatusControls({ item }: { item: UserItem }) {
   const ongoingShow = type === 'tv' && isOngoing(item)
   const doneValue: Progress = ongoingShow ? 'caught_up' : 'completed'
   // Per-type wording and options (Games / Books also get Stalled).
-  const progressOptions: { value: Progress; label: string }[] = statusesFor(type, { ongoingShow }).map((p) => ({
+  const progressOptions: { value: Progress; label: string }[] = statusesFor(type, {
+    ongoingShow,
+    earlyAccess: type === 'game' && item.title.details?.early_access === true,
+    current: item.progress,
+  }).map((p) => ({
     value: p,
     label: statusLabel(p, type),
   }))

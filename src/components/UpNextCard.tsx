@@ -182,7 +182,7 @@ export function UpNext({ items }: { items: UserItem[] }) {
         // The peeking card fades out at the edge(s) with more beyond.
         style={scrollable ? { maskImage: fade(!edges.start, !edges.end), WebkitMaskImage: fade(!edges.start, !edges.end) } : undefined}
         className={clsx(
-          'no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain select-none @[40rem]/up:gap-4',
+          'no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain select-none @[40rem]/up:gap-4',
           // A mouse can grab the row when there's more than fits.
           scrollable && 'pointer-fine:cursor-grab data-[dragging]:cursor-grabbing',
         )}

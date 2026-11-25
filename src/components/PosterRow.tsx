@@ -81,7 +81,7 @@ export function PosterRow({
       <div
         ref={scroller}
         className={clsx(
-          'no-scrollbar flex snap-x gap-4 overflow-x-auto pb-1',
+          'no-scrollbar flex snap-x gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1',
           inset ? '-mx-4 scroll-px-4 px-4 md:-mx-6 md:scroll-px-6 md:px-6 xl:mx-0 xl:scroll-px-0 xl:px-0' : '-mx-4 scroll-px-4 px-4 md:-mx-6 md:scroll-px-6 md:px-6',
         )}
       >

@@ -1,3 +1,4 @@
+import { Price } from './Price'
 import { memo, ViewTransition } from 'react'
 import { statusLabel } from '../lib/statusLabels'
 import { Link } from 'react-router-dom'
@@ -192,10 +193,13 @@ export const PosterCard = memo(function PosterCard({
                       <span className="bg-black/75 px-1.5 py-0.5 font-sans text-good">Free</span>
                     ) : (
                       <>
+                        {/* Narrow posters get slimmer padding, so the whole tag fits more often. */}
                         {item.price!.discountPct ? (
-                          <span className="bg-accent px-1.5 py-0.5 text-accent-fg">-{item.price!.discountPct}%</span>
+                          <span className="bg-accent px-1 py-0.5 text-accent-fg @[7rem]/chips:px-1.5">-{item.price!.discountPct}%</span>
                         ) : null}
-                        <span className="bg-black/75 px-1.5 py-0.5 text-white">{item.price!.amount}</span>
+                        <span className="bg-black/75 px-1 py-0.5 text-white @[7rem]/chips:px-1.5">
+                          <Price>{item.price!.amount}</Price>
+                        </span>
                         {/* Narrow posters (phone grids): "Low" becomes a dot so the tag stays inside the poster. */}
                         {item.price!.atLow && (
                           <span className="flex items-center bg-good px-1 py-0.5 font-sans text-accent-fg">

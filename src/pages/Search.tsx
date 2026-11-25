@@ -78,13 +78,13 @@ export function SearchPage() {
           className="field-bare w-full bg-transparent text-base text-fg outline-none placeholder:text-faint [&::-webkit-search-cancel-button]:appearance-none"
         />
         {text && (
-          <button type="button" onClick={() => setText('')} aria-label="Clear search" className="hit text-muted hover:text-fg">
+          <button type="button" onClick={(e) => { setText(''); (e.currentTarget.closest('label')?.querySelector('input') as HTMLInputElement | null)?.focus() }} aria-label="Clear search" className="hit text-muted hover:text-fg">
             <X className="size-4" />
           </button>
         )}
       </label>
 
-      <div role="radiogroup" aria-label="Search for" className="no-scrollbar -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+      <div role="radiogroup" aria-label="Search for" className="no-scrollbar -mx-4 mt-3 flex gap-1.5 overflow-x-auto overflow-y-hidden px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {SEARCH_TYPES.map((t) => {
           const Icon = t.icon
           const active = t.value === type

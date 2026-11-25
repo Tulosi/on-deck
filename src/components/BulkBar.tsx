@@ -60,6 +60,7 @@ export function BulkBar({
   visible,
   archivedView,
   onSelectAll,
+  onClear,
   onDone,
 }: {
   selected: UserItem[]
@@ -67,6 +68,8 @@ export function BulkBar({
   visible: number
   archivedView: boolean
   onSelectAll: () => void
+  /** Untick everything but stay in select mode. */
+  onClear: () => void
   onDone: () => void
 }) {
   const { setStatus, archive, remove } = useBulkItems()
@@ -99,7 +102,6 @@ export function BulkBar({
         if (!c.itemIds.includes(item.id)) await toggleItem.mutateAsync({ collectionId: id, itemId: item.id, add: true })
       }
       toast({ message: `Added ${n} to “${c.name}”` })
-      onDone()
     } catch {
       toast({ message: `Couldn’t add them all to “${c.name}”. Try again.`, tone: 'error' })
     }
@@ -116,8 +118,13 @@ export function BulkBar({
           {n} selected
         </p>
         {n < visible && (
-          <button type="button" onClick={onSelectAll} className="text-xs text-accent-ink hover:underline">
+          <button type="button" onClick={onSelectAll} className="hit text-xs text-accent-ink hover:underline">
             Select all {visible}
+          </button>
+        )}
+        {n > 0 && (
+          <button type="button" onClick={onClear} className="hit text-xs text-muted hover:text-fg hover:underline">
+            Clear
           </button>
         )}
         <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
@@ -126,8 +133,8 @@ export function BulkBar({
           disabled={n === 0}
           value=""
           onChange={(e) => {
+            // Your picks stay, so you can follow up (archive them, add them to a collection) without picking again.
             void setStatus(selected, e.target.value as Progress)
-            onDone()
           }}
           className={selectClass}
         >

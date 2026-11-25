@@ -1,3 +1,4 @@
+import { statusLabel } from './statusLabels'
 import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
@@ -667,6 +668,12 @@ export function useRemoveItemWithUndo() {
  * each keeps its own started / finished dates. Archive and Remove hide the titles now and save after a few
  * seconds, with Undo.
  */
+/** The media type shared by every item, or null when they're mixed (for status wording). */
+function oneType(items: UserItem[]) {
+  const t = items[0]?.title.mediaType
+  return t && items.every((i) => i.title.mediaType === t) ? t : null
+}
+
 export function useBulkItems() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -678,6 +685,7 @@ export function useBulkItems() {
     const results = await Promise.allSettled(items.filter((i) => i.progress !== progress).map((i) => update(i, { progress })))
     const failed = results.filter((r) => r.status === 'rejected').length
     if (failed) toast({ message: `Couldn’t update ${plural(failed)}. Try again.`, tone: 'error' })
+    else toast({ message: `${plural(items.length)} set to ${statusLabel(progress, oneType(items))}` })
   }
 
   const archive = (items: UserItem[], archived: boolean) => {

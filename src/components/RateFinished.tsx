@@ -106,7 +106,7 @@ export function RateFinished({ items }: { items: UserItem[] }) {
         <span className="font-mono text-xs text-faint">{prompts.length}</span>
         <span className="hidden text-xs text-faint sm:inline">How was it? A quick rating keeps your library honest.</span>
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 md:-mx-6 md:scroll-px-6 md:px-6">
+      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto overflow-y-hidden px-4 pb-1 md:-mx-6 md:scroll-px-6 md:px-6">
         {prompts.map((p) => (
           <PromptCard key={`${p.item.id}:${p.key}`} p={p} />
         ))}

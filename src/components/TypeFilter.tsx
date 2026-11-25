@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import clsx from 'clsx'
+import { ChevronDown, ListFilter } from 'lucide-react'
 import { LABELS, TYPES } from '../lib/filters'
 import type { MediaType } from '../types'
 import { useSlidingIndicator } from '../lib/useSlidingIndicator'
@@ -10,6 +11,9 @@ const selectClass =
 /**
  * The one media-type picker (All · Movies · TV Shows · Games · Books), used by the toolbar and Calendar so the
  * labels and options match everywhere: the same pills at every width (they scroll sideways if they don't fit).
+ *
+ * Phones (below md, where the bottom bar also says Movies, TV, Games…): the pills become one "Showing: All types"
+ * dropdown, so this reads as a filter on the page rather than a second set of tabs.
  *
  * `navOwned`: the page's type is already set by the navigation (Library: sidebar on desktop). Then only a
  * compact dropdown shows, and only below the width where the sidebar appears, since the Library's phone toolbar
@@ -60,11 +64,33 @@ export function TypeFilter({
         </select>
       )}
       {!navOwned && (
+        <label className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm text-fg focus-within:border-accent md:hidden">
+          <ListFilter className="size-4 text-muted" aria-hidden="true" />
+          <span>
+            <span className="text-muted">Showing:</span> {value ? LABELS.type[value] : 'All types'}
+          </span>
+          <ChevronDown className="size-4 text-muted" aria-hidden="true" />
+          {/* The real control: invisible over the pill, so phones get their native picker. */}
+          <select
+            aria-label="Show only"
+            value={value ?? ''}
+            onChange={(e) => onChange((e.target.value || null) as MediaType | null)}
+            className="absolute inset-0 cursor-pointer opacity-0"
+          >
+            {options.map((o) => (
+              <option key={o.label} value={o.value ?? ''}>
+                {o.value ? o.label : 'All types'}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!navOwned && (
         <div
           ref={setPills}
           role="radiogroup"
           aria-label="Media type"
-          className="no-scrollbar relative flex min-w-0 gap-1 overflow-x-auto"
+          className="no-scrollbar relative hidden min-w-0 gap-1 overflow-x-auto overflow-y-hidden md:flex"
         >
           {/* The quiet raised selection used by the app's other segmented controls; lemon is for actions. */}
           <span

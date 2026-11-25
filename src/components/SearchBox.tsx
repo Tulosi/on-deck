@@ -133,8 +133,21 @@ export function SearchBox() {
           aria-label={current.placeholder.replace('…', '')}
           enterKeyHint="search"
           aria-keyshortcuts="/ Meta+K Control+K"
-          className="field-bare w-full bg-transparent text-fg outline-none placeholder:text-faint"
+          className="field-bare w-full bg-transparent text-fg outline-none placeholder:text-faint [&::-webkit-search-cancel-button]:appearance-none"
         />
+        {text && (
+          <button
+            type="button"
+            onClick={() => {
+              setText('')
+              input.current?.focus()
+            }}
+            aria-label="Clear search"
+            className="hit shrink-0 text-muted hover:text-fg"
+          >
+            <X className="size-4" />
+          </button>
+        )}
         {/* Keyboard hint, only with a mouse/trackpad and while the box is empty and unfocused. */}
         {!text && !open && (
           <kbd className="hidden shrink-0 rounded border border-line px-1.5 font-mono text-[11px] text-faint pointer-fine:sm:block">
@@ -154,7 +167,7 @@ export function SearchBox() {
         <div className="absolute inset-x-0 top-11 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 max-sm:fixed max-sm:inset-x-3 max-sm:top-14">
           {/* Type picker + close */}
           <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-surface py-2 pr-2 pl-3">
-            <div role="radiogroup" aria-label="Search for" className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
+            <div role="radiogroup" aria-label="Search for" className="flex min-w-0 flex-1 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
               {SEARCH_TYPES.map((t) => {
                 const Icon = t.icon
                 const active = t.value === type

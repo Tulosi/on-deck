@@ -117,6 +117,7 @@ export function ArchiveButton({ item, save }: { item: UserItem; save: (patch: It
         toast({
           message: `Archived “${item.title.title}”. It’s off Home, the Library and alerts, and kept under Archive.`,
           action: { label: 'Undo', onClick: () => void save({ archived: false }) },
+          key: item.id,
           duration: 10_000,
         }),
     )

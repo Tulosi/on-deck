@@ -20,6 +20,9 @@ export interface Toast {
   /** Called when its timer pauses (hover, focus) and starts again: an Undo pauses its save with it. */
   onPause?: () => void
   onResume?: () => void
+  /** What it's about (e.g. one title). A newer toast with the same key replaces it, so only the latest Undo for
+   * a title is on screen and an older one can't put back a state from before newer changes. */
+  key?: string
 }
 
 let toasts: Toast[] = []
@@ -62,6 +65,7 @@ export function toast(t: Omit<Toast, 'id' | 'duration'> & { duration?: number })
   const id = nextId++
   const full: Toast = { duration: 5000, ...t, id }
   // The oldest goes when there are too many (an Undo's save carries on regardless).
+  if (t.key) for (const old of toasts.filter((x) => x.key === t.key && !x.leaving)) dismiss(old.id)
   const shown = toasts.filter((x) => !x.leaving)
   for (const old of shown.slice(0, Math.max(0, shown.length - (MAX_SHOWN - 1)))) remove(old.id)
   toasts = [...toasts, full]
@@ -117,12 +121,15 @@ export function undoable({
   commit,
   restore,
   failMessage = 'Couldn’t save that. It’s been put back.',
+  key: about,
 }: {
   message: string
   hide: () => void
   commit: () => Promise<void>
   restore: () => void
   failMessage?: string
+  /** See Toast.key. */
+  key?: string
 }) {
   const key = nextId++
   let done = false
@@ -144,6 +151,7 @@ export function undoable({
   pending.set(key, run)
   const toastId = toast({
     message,
+    key: about,
     duration: UNDO_MS,
     onPause: () => {
       clearTimeout(timer)

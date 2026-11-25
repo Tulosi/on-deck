@@ -188,3 +188,50 @@ The Nielsen number moves with the reviewer. Each fresh, independent review finds
 | Taste | 8.5 | **8.5**. The calendar reads calmer. Real sample covers are still the next step up. |
 | Unslop | 9 | **9** |
 | UI/UX Pro Max | 9.5 | **9.5** |
+
+---
+
+## 6. Nielsen rescore after b2c2d7c
+
+A fresh reviewer did this pass. It didn't see the earlier reviews. It checked 20 routes at both widths in the sample library and ran the main flows. Remove was not tested, because it only shows when you're signed in.
+
+| Heuristic | Score | Note |
+|---|---|---|
+| Visibility of system status | 3 | Every change shows a toast. An Undo toast doesn't change after you press Undo. |
+| Match with the real world | 3 | The words fit each media type. "Seerr", "Hardcover" and "Stalled" aren't explained everywhere. |
+| User control and freedom | 3 | Undo is everywhere. Undoing older toasts out of order can lose newer progress. |
+| Consistency and standards | 3 | The filter chips say "Wanted / Done", but title pages say "Want to watch / Watched it". |
+| Error prevention | 3 | Archive can be undone and Replace backs up first. The single key `3` marks a whole show caught up. |
+| Recognition rather than recall | 3 | The shortcut sheet shows this title's statuses. Nothing on screen points to `?`. |
+| Flexibility and efficiency | 3 | Strong shortcuts and bulk actions. Few shortcuts outside title pages. |
+| Aesthetic and minimalist design | 3 | Calm overall. Three stacked toasts and the permanent drag hint add noise. |
+| Error recognition and recovery | 3 | Plain messages. A title ID that doesn't exist is a dead end. |
+| Help and documentation | 2 | No help page or first-run explanation. |
+| **Total** | **29 / 40 (Good)** | Up from the rerun's 27. |
+
+**What it found (confirmed in code):**
+
+| # | Sev | Issue | Fix |
+|---|---|---|---|
+| 16 | P2 | The Undo toast stays up after you press Undo ([Toaster.tsx](../src/components/Toaster.tsx)), so you can't tell it worked. | Dismiss the toast when its action runs. |
+| 17 | P2 | Undoing an older toast after newer changes to the same title restores an old snapshot and loses the newer progress. | Keep only the latest Undo for each title. |
+| 18 | P2 | An empty Archive says "Nothing matches these filters" ([Library.tsx](../src/pages/Library.tsx)). | Give it its own empty state. |
+| 19 | P3 | A title that isn't in your library is a dead end ([TitleDetail.tsx](../src/pages/TitleDetail.tsx)). | Add a "Go to Library" link. |
+| 20 | P3 | Filter status words differ from title-page words. Episode numbers on cards aren't labelled (last watched vs next). | A hint line, and "Watched S02E04" / "Next S02E05". |
+| 21 | P3 | Nothing points to `?`, and Caught up doesn't say how many episodes it marked. | A shortcuts link in the sidebar footer, and the count in the toast. |
+
+**Fixed (same day):**
+- **#16:** Pressing Undo closes its toast.
+- **#17:** Toasts are tied to their title. A newer change to the same title replaces the older toast, so the only Undo on screen is the latest one. Pressing W then 3 shows one toast: "Marked 5 episodes watched, up to S02E10".
+- **#18:** An empty Archive says "Nothing archived. Archive a title from its page…".
+- **#19:** A missing title offers "Go to Library" and "Search to add it".
+- **#20:**
+  - Across types, the Status filter's hint explains the general words ("Wanted = Want to watch, play or read. Done = …").
+  - Library cards say "Watched S02E04".
+- **#21:**
+  - The sidebar footer has a "Keyboard shortcuts ?" button. The sheet now also lists Alt + ↑/↓ for moving sidebar items.
+  - Caught up says how many episodes it marked.
+
+**Also, from feedback:**
+- **Home and Library filter by any mix of types** ("Games", or "Movies and games"). On desktop, each type is a chip you toggle on and off. On phones, the "Showing:" pill opens a checklist. The URL holds the list (`?type=movie,game`). Per-type filters (genres, Steam Deck…) still appear when exactly one type is picked. Calendar stays one type at a time.
+- **New for you sits closer to Pick it back up?** The first row is only as wide as it needs to be, up to 36rem. Rows with more titles still push the second one over.

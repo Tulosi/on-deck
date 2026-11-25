@@ -10,7 +10,7 @@ import {
   clearFilters,
   type AvailabilityFilter,
   toggleValue,
-  withType,
+  withTypes,
   type Filters,
   type NegKey,
   type GroupKey,
@@ -19,7 +19,7 @@ import {
 import { useItems } from '../lib/library'
 import { statusFilterOptions, statusLabel } from '../lib/statusLabels'
 import { useFilters } from '../lib/useFilters'
-import { TypeFilter } from './TypeFilter'
+import { TypesFilter } from './TypeFilter'
 import type { MediaType } from '../types'
 
 // ─── Poster details button ──────────────────────────────────────────────────
@@ -74,6 +74,8 @@ const selectClass = 'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 t
 /** Explains the two statuses people ask about, for the ones this view has. */
 function statusHint(opts: readonly string[], type: MediaType | null): string | undefined {
   const parts = [
+    // Across types the words are general; say what they stand for on title pages.
+    !type && 'Wanted = Want to watch, play or read. Done = Watched, Beat or Read it.',
     opts.includes('stalled') && 'Stalled: started, then set aside.',
     opts.includes('caught_up') &&
       (type === 'game' ? 'Waiting for 1.0: played the Early Access so far.' : 'Caught up: seen everything out so far.'),
@@ -477,7 +479,7 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
 
 /**
  * The row under the search bar on browsing pages.
- * Library: type pills · Filters · Sort · Group · labels switch. Home: type pills · labels switch.
+ * Library: type chips (any mix) · Filters · Sort · Group · labels switch. Home: type pills · labels switch.
  */
 export function Toolbar() {
   const { pathname } = useLocation()
@@ -485,16 +487,16 @@ export function Toolbar() {
   const [f, set] = useFilters()
   const isLibrary = pathname === '/library'
 
-  const setType = (t: MediaType | null) => {
-    if (isLibrary) set(withType(f, t))
-    else navigate({ pathname, search: t ? `?type=${t}` : '' })
+  const setTypes = (ts: MediaType[]) => {
+    if (isLibrary) set(withTypes(f, ts))
+    else navigate({ pathname, search: ts.length ? `?type=${ts.join(',')}` : '' })
   }
 
   return (
     <div className="vt-chrome-toolbar sticky top-14 z-10 flex h-12 items-center gap-3 border-b sm:h-11 border-line bg-bg/85 px-4 backdrop-blur md:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        {/* Library: the sidebar sets the type on desktop, so the toolbar only offers it on phones. */}
-        <TypeFilter value={f.type} onChange={setType} navOwned={isLibrary} />
+        {/* Any mix of types: "Games", or "Games and movies". */}
+        <TypesFilter value={f.types} onChange={setTypes} />
         {isLibrary && (
           <>
             <FiltersButton f={f} set={set} />

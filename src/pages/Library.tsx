@@ -9,6 +9,7 @@ import { PosterCard } from '../components/PosterCard'
 import { ProgressRows } from '../components/ProgressRows'
 import {
   LABELS,
+  typesLabel,
   activeCount,
   applyFilters,
   clearFilters,
@@ -145,10 +146,10 @@ export function Library() {
   // Filtering, sorting and grouping a large library is the expensive part of this page:
   // only redo it when the library or the filters change.
   const { inType, results, archivedCount, preReleaseCount, groups } = useMemo(() => {
-    const inType = f.type ? items.filter((i) => i.title.mediaType === f.type) : items
+    const inType = f.types.length ? items.filter((i) => f.types.includes(i.title.mediaType)) : items
     // allItems, so the Archived filter can bring archived titles back (applyFilters hides them by default).
     const results = sortItems(applyFilters(allItems, f), f.sort)
-    const archivedCount = allItems.filter((i) => i.archivedAt && (!f.type || i.title.mediaType === f.type)).length
+    const archivedCount = allItems.filter((i) => i.archivedAt && (!f.types.length || f.types.includes(i.title.mediaType))).length
     // Games: how many aren't out yet, for the Hide/Show pre-release toggle.
     const preReleaseCount = f.type === 'game' ? inType.filter((i) => releaseInfo(i.title).preRelease).length : 0
     // Progress view: grouped by status unless another grouping is picked.
@@ -173,7 +174,8 @@ export function Library() {
     </SelectableCard>
   )
 
-  const title = f.archived === 'only' ? (f.type ? `Archived ${LABELS.type[f.type]}` : 'Archive') : f.type ? LABELS.type[f.type] : 'Library'
+  const shown = typesLabel(f.types)
+  const title = f.archived === 'only' ? (shown ? `Archived ${typesLabel(f.types, true)}` : 'Archive') : (shown ?? 'Library')
 
   return (
     <div>
@@ -331,6 +333,11 @@ export function Library() {
               ? 'No books yet. Use the search bar to add one.'
               : 'No games yet. Use the search bar to add one.'
             : 'Nothing here yet. Use the search bar to add something.'}
+        </p>
+      ) : results.length === 0 && f.archived === 'only' && narrowing <= 0 ? (
+        <p className="py-16 text-center text-sm text-muted">
+          Nothing archived{shown ? ` in ${typesLabel(f.types, true)}` : ''}. Archive a title from its page to keep it off
+          Home and the Library without losing it.
         </p>
       ) : results.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">

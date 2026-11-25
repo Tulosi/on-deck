@@ -11,7 +11,7 @@ import { builtinItems, smartItems, useCollectionActions, useCollectionList, type
 import { DEFAULT_DEAL_PCT } from '../lib/home'
 import { useProfile } from '../lib/integrations'
 import { useNavLayout } from '../lib/navLayout'
-import { activeCount, LABELS, parseFilters } from '../lib/filters'
+import { activeCount, LABELS, parseFilters, typesLabel } from '../lib/filters'
 import { useItems } from '../lib/library'
 import type { UserItem } from '../types'
 
@@ -136,7 +136,7 @@ function rulesSummary(rules: string): string {
   const f = parseFilters(new URLSearchParams(rules))
   const n = activeCount(f)
   return [
-    f.type ? LABELS.type[f.type] : 'All types',
+    typesLabel(f.types) ?? 'All types',
     n ? `${n} filter${n === 1 ? '' : 's'}` : 'no filters',
     `sorted by ${LABELS.sort[f.sort]}`,
   ].join(', ')

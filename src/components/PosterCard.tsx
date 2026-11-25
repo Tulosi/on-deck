@@ -48,9 +48,9 @@ function CoverPlaceholder({ item }: { item: UserItem }) {
   )
 }
 
-/** TV: where you are, as an episode code (S02E04). */
+/** TV: the last episode you watched ("Watched S02E04"; the Up next card and rows show the next one). */
 function episodeLine(item: UserItem): string | undefined {
-  return item.tvProgress ? episodeCode(item.tvProgress) : undefined
+  return item.tvProgress ? `Watched ${episodeCode(item.tvProgress)}` : undefined
 }
 
 /**

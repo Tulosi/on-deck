@@ -28,8 +28,8 @@ export function Home() {
   const profile = useProfile()
   // Home takes only the type pills from the toolbar (?type=…), narrowing every row.
   const [filters] = useFilters()
-  const items = filters.type ? allItems.filter((i) => i.title.mediaType === filters.type) : allItems
-  const typeParam = filters.type ? `&type=${filters.type}` : ''
+  const items = filters.types.length ? allItems.filter((i) => filters.types.includes(i.title.mediaType)) : allItems
+  const typeParam = filters.types.length ? `&type=${filters.types.join(',')}` : ''
   const fresh = useNewForYou(items, isSample)
   // Pick it back up? Each title can be put away for a month (Not now).
   const notNow = useSnoozed('stalled', 30)
@@ -93,9 +93,10 @@ export function Home() {
           <WeekList upcoming={week} href="/calendar?view=month" />
         </div>
       )}
-      {/* Wide screens: the two short-by-design rows (last 7 days, stalled lately) share a line, lined up with the lists
-          above. On their own, either takes the whole line; when one empties, the other slides over (useFlipChildren). */}
-      <div ref={setPairEl} className="relative grid items-start gap-10 empty:hidden xl:grid-cols-[repeat(2,minmax(0,36rem))] xl:has-[>:only-child]:grid-cols-1">
+      {/* Wide screens: the two short-by-design rows (last 7 days, stalled lately) share a line. The first is only as wide
+          as it needs (up to half), so with a title or two each they sit close; with more, the second moves over to make
+          room. On their own, either takes the whole line; when one empties, the other slides over (useFlipChildren). */}
+      <div ref={setPairEl} className="relative grid items-start gap-10 empty:hidden xl:grid-cols-[fit-content(36rem)_minmax(0,36rem)] xl:gap-x-16 xl:has-[>:only-child]:grid-cols-1">
         <PosterRow
           inset
           title="New for you"

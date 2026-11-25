@@ -16,6 +16,7 @@ export function markWatched(update: Update, item: UserItem, ep: { season: number
     .then(() =>
       toast({
         message: `Marked ${episodeCode(ep)} of ${item.title.title} watched`,
+        key: item.id,
         action: {
           label: 'Undo',
           onClick: () => {

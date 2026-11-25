@@ -22,6 +22,25 @@ export function latestAired(item: UserItem, seasons: SeasonMeta[]): { season: nu
   return null
 }
 
+/** How many aired episodes lie after `from` up to and including `to` (what Caught up just marked watched). */
+export function episodesBetween(
+  item: UserItem,
+  seasons: SeasonMeta[],
+  from: { season: number; episode: number } | null,
+  to: { season: number; episode: number },
+): number {
+  const airedIn = airedCounter(item)
+  let n = 0
+  for (const s of seasons) {
+    const k = s.season_number
+    if (overrideOf(item, k) === 'ignored' || k > to.season || (from && k < from.season)) continue
+    const end = k === to.season ? to.episode : airedIn(s)
+    const start = from && k === from.season ? from.episode : 0
+    n += Math.max(0, end - start)
+  }
+  return n
+}
+
 /** Collapsed-by-default per-season controls: Auto (follows Progress) / Watched / Unwatched / Ignore. */
 export function SeasonOptions({
   item,

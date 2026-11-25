@@ -41,7 +41,11 @@ function ToastView({ t }: { t: Toast }) {
       {t.action && (
         <button
           type="button"
-          onClick={t.action.onClick}
+          onClick={() => {
+            // Done: it goes, so it's clear the action ran (and can't be pressed twice).
+            t.action!.onClick()
+            dismiss(t.id)
+          }}
           className="hit rounded-md px-2.5 py-1 font-medium text-accent-ink hover:bg-accent/10"
         >
           {t.action.label}

@@ -13,7 +13,7 @@ import { toast } from '../lib/toast'
 import { isOngoing, seasonsOf } from '../lib/seasons'
 import { type Progress, type UserItem } from '../types'
 import { labelClass, Segmented, ArchiveButton, Toggle, Notes, useSaver, SaveState } from './trackingParts'
-import { latestAired, TvProgressSection, NextUp } from './TvProgress'
+import { episodesBetween, latestAired, TvProgressSection, NextUp } from './TvProgress'
 import { MovieProgressSection, AvailabilityBadge } from './MovieProgress'
 
 /**
@@ -99,7 +99,11 @@ export function StatusControls({ item }: { item: UserItem }) {
       (ok) =>
         ok &&
         toast({
-          message: `Marked watched up to ${episodeCode(caughtUp!)}`,
+          message: (() => {
+            const n = episodesBetween(item, seasons, cur ?? null, caughtUp!)
+            return n > 1 ? `Marked ${n} episodes watched, up to ${episodeCode(caughtUp!)}` : `Marked watched up to ${episodeCode(caughtUp!)}`
+          })(),
+          key: item.id,
           action: { label: 'Undo', onClick: () => void save(before) },
         }),
     )
@@ -108,7 +112,7 @@ export function StatusControls({ item }: { item: UserItem }) {
   const markNext = (ep: { season: number; episode: number }) => {
     const before = { tvProgress: item.tvProgress ?? null, progress: item.progress }
     save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) }).then((ok) =>
-      ok && toast({ message: `Marked ${episodeCode(ep)} watched`, action: { label: 'Undo', onClick: () => void save(before) } }),
+      ok && toast({ message: `Marked ${episodeCode(ep)} watched`, key: item.id, action: { label: 'Undo', onClick: () => void save(before) } }),
     )
   }
   useStatusKeys(progressOptions.map((o) => o.label))

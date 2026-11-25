@@ -2,7 +2,7 @@
 //
 //   /library?type=tv&status=wanted,in_progress&score=70&release=released&genre=Drama&sort=score&group=status
 //
-// Layer 1: type (single-select; absent = all). Layer 2: cross-category filters (any type).
+// Layer 1: types (any combination, ?type=game,movie; absent = all). Layer 2: cross-category filters (any type).
 // Layer 3: type-specific filters — only read when that type is selected.
 // Within one filter values are OR'd; different filters are AND'd. A few groups (status, rating, genre, co-op) can
 // be flipped to "is not": then their values are exclusions, written to the URL with a leading "-".
@@ -37,6 +37,9 @@ export type ArchivedFilter = 'hide' | 'include' | 'only'
 export type GroupKey = 'none' | 'status' | 'type' | 'priority' | 'year'
 
 export interface Filters {
+  /** The types shown; empty = all. */
+  types: MediaType[]
+  /** The one type, when exactly one is picked (its own Layer 3 filters and words apply); otherwise null. */
   type: MediaType | null
   // Layer 2
   status: Progress[]
@@ -128,7 +131,8 @@ function incList<T extends string>(v: string | null, allowed: readonly T[]): T[]
 }
 
 export function parseFilters(p: URLSearchParams): Filters {
-  const type = (TYPES as string[]).includes(p.get('type') ?? '') ? (p.get('type') as MediaType) : null
+  const types = normTypes(list(p.get('type'), TYPES))
+  const type = types.length === 1 ? types[0] : null
   const hasGenres = type === 'movie' || type === 'tv' || type === 'game'
   const isGame = type === 'game'
   const status = negList(p.get('status'), STATUS)
@@ -146,6 +150,7 @@ export function parseFilters(p: URLSearchParams): Filters {
   const tvStatus = type === 'tv' ? [...new Set(incList((p.get('tvstatus') ?? '').replace(/cancelled/g, 'ended'), TV_STATUS))] : []
   return {
     type,
+    types,
     neg,
     status: status.values,
     priority: incList(p.get('priority'), PRIORITY),
@@ -182,7 +187,7 @@ export function filtersToParams(f: Filters): URLSearchParams {
   /** A group's values; in an "is not" group each one gets a leading "-". */
   const tri = (key: NegKey, vs: readonly string[]) =>
     f.neg[key] && vs.length === 0 ? '-' : vs.map((v) => (f.neg[key] ? `-${v}` : v)).join(',')
-  set('type', f.type)
+  set('type', f.types.join(','))
   set('status', tri('status', f.status))
   set('priority', f.priority.join(','))
   set('rating', tri('rating', f.rating))
@@ -211,13 +216,35 @@ export function filtersToParams(f: Filters): URLSearchParams {
   return p
 }
 
+/** In the usual order, without repeats; every type picked is the same as none (all). */
+export function normTypes(ts: readonly MediaType[]): MediaType[] {
+  const out = TYPES.filter((t) => ts.includes(t))
+  return out.length === TYPES.length ? [] : out
+}
+
+/** "Movies", "Movies and games", "Movies, TV shows and games" (all lower case mid-sentence); null for all types. */
+export function typesLabel(ts: readonly MediaType[], midSentence = false): string | null {
+  if (!ts.length) return null
+  const lower = (t: MediaType) => LABELS.type[t].toLowerCase().replace('tv', 'TV')
+  const names = ts.map((t, i) => (i || midSentence ? lower(t) : LABELS.type[t]))
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
+
+/** Picking a set of types. Layer 3 filters stay while the one type stays the same. */
+export function withTypes(f: Filters, ts: readonly MediaType[]): Filters {
+  const types = normTypes(ts)
+  const type = types.length === 1 ? types[0] : null
+  if (type && type === f.type) return { ...f, types }
+  return { ...withType(f, type), types }
+}
+
 /** Switching type keeps Layer 2 but drops the old type's Layer 3 filters. */
 export function withType(f: Filters, type: MediaType | null): Filters {
   const neg = { ...f.neg }
   delete neg.genre
   delete neg.coop
   const group = type && f.group === 'type' ? 'none' : f.group
-  return { ...f, type, neg, group, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
+  return { ...f, type, types: type ? [type] : [], neg, group, genre: [], tvStatus: [], tvProgress: [], coop: [], deck: [], access: [], deal: [], length: [], maxPrice: null }
 }
 
 export function clearFilters(f: Filters): Filters {
@@ -305,7 +332,7 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
   return items.filter((i) => {
     if (f.archived === 'hide' && i.archivedAt) return false
     if (f.archived === 'only' && !i.archivedAt) return false
-    if (f.type && i.title.mediaType !== f.type) return false
+    if (f.types.length && !f.types.includes(i.title.mediaType)) return false
     // "Is not" groups drop what matches; the others keep only what matches.
     const keep = (key: NegKey, match: boolean) => (f.neg[key] ? !match : match)
     if (f.status.length && !keep('status', f.status.includes(i.progress))) return false

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { currentStatusKeys, useKeys } from '../lib/shortcuts'
@@ -8,15 +8,25 @@ const ROWS: { keys: string[]; what: string; where?: string }[] = [
   { keys: ['/'], what: 'Search' },
   { keys: ['1', '–', '5'], what: 'Set the status, in the order shown', where: 'On a title' },
   { keys: ['W'], what: 'Mark the next episode watched', where: 'On a show' },
+  { keys: ['Alt', '↑/↓'], what: 'Move a sidebar item', where: 'Or drag it' },
   { keys: ['?'], what: 'Show these shortcuts' },
 ]
 
 const kbd = 'grid h-6 min-w-6 place-items-center rounded border border-line bg-bg px-1.5 font-mono text-xs text-fg'
 
-/** Keyboard shortcuts, listed when you press ? anywhere (not while typing). */
+const OPEN = 'ondeck:shortcuts'
+/** Open the sheet from a button (the sidebar's "Keyboard shortcuts"). */
+export const openShortcuts = () => window.dispatchEvent(new Event(OPEN))
+
+/** Keyboard shortcuts, listed when you press ? anywhere (not while typing), or from the sidebar. */
 export function ShortcutsSheet() {
   const [open, setOpen] = useState(false)
   const panel = useDialog<HTMLDivElement>(open, () => setOpen(false))
+  useEffect(() => {
+    const show = () => setOpen(true)
+    window.addEventListener(OPEN, show)
+    return () => window.removeEventListener(OPEN, show)
+  }, [])
   useKeys((key) => {
     if (key !== '?') return
     setOpen(true)

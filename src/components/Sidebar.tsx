@@ -1,4 +1,5 @@
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { openShortcuts } from './ShortcutsSheet'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { collectionIcon } from './collectionIcon'
@@ -269,7 +270,15 @@ export function Sidebar() {
         <div className="flex">
           <SideLink to="/settings" label="Settings" icon={Settings} active={pathname.startsWith('/settings')} />
         </div>
-        <p className="px-3 pt-1 text-xs text-faint">Drag to rearrange, or Alt + ↑/↓</p>
+        {/* The sheet also covers rearranging this sidebar (drag, or Alt + ↑/↓). */}
+        <button
+          type="button"
+          onClick={openShortcuts}
+          className="hit flex w-full items-center justify-between px-3 pt-1 text-xs text-faint hover:text-fg"
+        >
+          Keyboard shortcuts
+          <kbd className="grid h-5 min-w-5 place-items-center rounded border border-line px-1 font-mono text-[11px]">?</kbd>
+        </button>
       </div>
     </aside>
   )

@@ -277,7 +277,20 @@ export function TitleDetail() {
   if (isLoading) return <TitleSkeleton />
 
   const item = items.find((i) => i.title.id === id)
-  if (!item) return <p className="py-16 text-center text-sm text-muted">This title isn’t in your library.</p>
+  if (!item)
+    return (
+      <div className="py-16 text-center text-sm text-muted">
+        <p>This title isn’t in your library. It may have been removed, or the link is old.</p>
+        <p className="mt-3 flex justify-center gap-4">
+          <Link to="/library" className="hit text-accent-ink hover:underline">
+            Go to Library
+          </Link>
+          <Link to="/search" className="hit text-accent-ink hover:underline">
+            Search to add it
+          </Link>
+        </p>
+      </div>
+    )
 
   const { title } = item
   const Icon = typeIcon[title.mediaType]

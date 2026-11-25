@@ -674,6 +674,7 @@ export function useRemoveItemWithUndo() {
       },
       restore: () => void queryClient.invalidateQueries({ queryKey: key }),
       failMessage: `Couldn’t remove “${item.title.title}”. It’s back in your library.`,
+      key: item.id,
     })
 }
 

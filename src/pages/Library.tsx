@@ -256,6 +256,7 @@ export function Library() {
             A smart collection keeps these filters and sort, and updates itself as your library changes.
           </p>
           <input
+            name="name"
             autoFocus
             autoComplete="off"
             value={saveName}

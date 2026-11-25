@@ -128,13 +128,13 @@ export function ImportPage() {
   const pickable = useMemo(() => list.filter((c) => !inLibrary.has(c.key)), [list, inLibrary])
 
   // Start with the suggestions ticked (minus anything skipped before or already in the library).
-  const suggestedSet = () => new Set(pickable.filter((c) => c.suggested && !skips.data?.has(c.key)).map((c) => c.key))
-  useEffect(() => {
-    if (selected === null && cands.data && skips.data) setSelected(suggestedSet())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cands.data, skips.data])
-
-  const sel = selected ?? new Set<string>()
+  // Until you tick or untick anything, the selection is the suggestions (worked out here, not copied in by an effect).
+  const suggested = useMemo(
+    () => new Set(pickable.filter((c) => c.suggested && !skips.data?.has(c.key)).map((c) => c.key)),
+    [pickable, skips.data],
+  )
+  const suggestedSet = () => new Set(suggested)
+  const sel = selected ?? (cands.data && skips.data ? suggested : new Set<string>())
   const toggle = (key: string) => {
     const next = new Set(sel)
     if (next.has(key)) next.delete(key)
@@ -232,6 +232,8 @@ export function ImportPage() {
             <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-muted focus-within:border-accent sm:max-w-xs">
               <Search className="size-3.5 shrink-0" />
               <input
+                name="filter"
+                autoComplete="off"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder="Filter by title…"

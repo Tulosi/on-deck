@@ -344,6 +344,7 @@ function GenreGroup({
             <span className="sr-only">Find a {label === 'Genre' ? 'genre' : 'genre or tag'}</span>
             <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-faint" />
             <input
+              name="filter-options"
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}

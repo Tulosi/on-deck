@@ -59,6 +59,7 @@ export function CollectionPicker({ item }: { item: UserItem }) {
           {adding ? (
             <form onSubmit={submit} className="flex items-center gap-2">
               <input
+                name="name"
                 autoFocus
                 autoComplete="off"
                 value={name}

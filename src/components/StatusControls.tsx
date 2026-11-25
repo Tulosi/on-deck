@@ -742,8 +742,35 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
     }
   }
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current)
+  // The latest text, for the page-leave handlers below (they're set up once).
+  const latest = useRef(initial)
+  latest.current = text
+  const saveRef = useRef(save)
+  saveRef.current = save
+
+  useEffect(() => {
+    const flush = () => {
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = null
+      void saveRef.current(latest.current)
+    }
+    // Switching tabs or apps, or closing the tab: save now rather than waiting for the pause.
+    const onHide = () => document.visibilityState === 'hidden' && flush()
+    // Closing the tab with typing not yet saved: the browser asks first.
+    const onLeave = (e: BeforeUnloadEvent) => {
+      if (latest.current !== lastSaved.current) {
+        flush()
+        e.preventDefault()
+      }
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('beforeunload', onLeave)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('beforeunload', onLeave)
+      // Leaving the title page mid-pause still saves.
+      if (timer.current) flush()
+    }
   }, [])
 
   return (
@@ -759,6 +786,8 @@ function Notes({ initial, onSave }: { initial: string; onSave: (text: string) =>
         </span>
       </div>
       <textarea
+        name="notes"
+        autoComplete="off"
         id={`notes-${id}`}
         value={text}
         rows={3}

@@ -100,6 +100,8 @@ export function Login() {
             <label className="block space-y-1.5">
               <span className="text-xs text-muted">Email</span>
               <input
+                name="email"
+                spellCheck={false}
                 type="email"
                 required
                 autoComplete="email"
@@ -125,6 +127,7 @@ export function Login() {
                   )}
                 </span>
                 <input
+                  name="password"
                   id="password"
                   type="password"
                   required

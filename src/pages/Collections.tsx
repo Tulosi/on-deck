@@ -60,6 +60,7 @@ function CollectionForm({
   return (
     <form onSubmit={submit} className="space-y-3 rounded-lg border border-line bg-surface p-4">
       <input
+        name="name"
         autoFocus
         autoComplete="off"
         value={name}
@@ -70,6 +71,8 @@ function CollectionForm({
         className={input}
       />
       <input
+        name="description"
+        autoComplete="off"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Description (optional)…"

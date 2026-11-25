@@ -369,12 +369,15 @@ function PlexSection() {
   const update = useUpdateProfile()
   const [linking, setLinking] = useState(false)
   const abort = useRef<AbortController | null>(null)
-  const [url, setUrl] = useState('')
+  // What you've typed; until you type, the box shows the saved address. (Copying the saved one in with an effect
+  // would wipe your typing whenever the profile reloads, e.g. after saving another setting.)
+  const [draft, setUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ on: 'plex' | 'seerr'; ok: boolean; text: string } | null>(null)
   const [editingUrl, setEditingUrl] = useState(false)
   const savedUrl = profile.data?.seerr_url ?? null
   const savedHost = savedUrl ? hostOf(savedUrl) : ''
+  const url = draft ?? savedUrl ?? ''
   // Live check of the saved Seerr, so it shows Connected like Plex and Steam do.
   const seerrCheck = useQuery({
     queryKey: ['seerr-test', user?.id, savedUrl],
@@ -383,10 +386,6 @@ function PlexSection() {
     retry: false,
     queryFn: () => testSeerr(savedUrl!),
   })
-
-  useEffect(() => {
-    if (profile.data) setUrl(profile.data.seerr_url ?? '')
-  }, [profile.data])
 
   async function disconnectSeerr() {
     setMessage(null)
@@ -511,7 +510,7 @@ function PlexSection() {
               name="seerr-url"
               autoComplete="off"
               aria-label="Seerr address"
-              placeholder="https://requests.example.com"
+              placeholder="https://requests.example.com…"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className={`${inputClass} min-w-0 flex-1`}

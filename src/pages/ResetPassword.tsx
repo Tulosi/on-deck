@@ -111,6 +111,7 @@ export function ResetPassword() {
         <label className="block space-y-1.5">
           <span className="text-xs text-muted">New password</span>
           <input
+            name="new-password"
             type="password"
             required
             minLength={8}
@@ -124,6 +125,7 @@ export function ResetPassword() {
         <label className="block space-y-1.5">
           <span className="text-xs text-muted">Confirm new password</span>
           <input
+            name="confirm-password"
             type="password"
             required
             minLength={8}

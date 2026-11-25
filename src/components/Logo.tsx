@@ -13,7 +13,9 @@ export function Wordmark() {
   return (
     <span className="flex items-center gap-2.5">
       <Logo />
-      <span className="text-[17px] font-semibold tracking-tight text-fg">On Deck</span>
+      <span className="text-[17px] font-semibold tracking-tight text-fg" translate="no">
+        On Deck
+      </span>
     </span>
   )
 }

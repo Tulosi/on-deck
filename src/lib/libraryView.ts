@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { MediaType } from '../types'
 
 /**
  * Covers or Progress, remembered per Library page (All, Movies, TV, Games, Books) on this device. Covers until you
- * pick otherwise.
+ * pick otherwise. The address says it too (`?view=progress` or `?view=covers`), so a bookmark or shared link opens the
+ * same view; when the address names one, it wins.
  */
 export type LibraryView = 'covers' | 'rows'
 
@@ -21,6 +23,8 @@ function readAll(): Record<string, LibraryView> {
 export function useLibraryView(type: MediaType | null): [LibraryView, (v: LibraryView) => void] {
   const page = type ?? 'all'
   const [saved, setSaved] = useState(readAll)
+  const [params, setParams] = useSearchParams()
+  const inUrl = params.get('view')
   const set = useCallback(
     (v: LibraryView) => {
       const next = { ...readAll(), [page]: v }
@@ -30,8 +34,19 @@ export function useLibraryView(type: MediaType | null): [LibraryView, (v: Librar
       } catch {
         // Private mode or storage off: it still switches, just isn't remembered.
       }
+      // Swapping views isn't a place to go Back to, so it replaces the current history entry.
+      setParams(
+        (p) => {
+          const q = new URLSearchParams(p)
+          q.set('view', v === 'rows' ? 'progress' : 'covers')
+          return q
+        },
+        { replace: true },
+      )
     },
-    [page],
+    [page, setParams],
   )
-  return [saved[page] === 'rows' ? 'rows' : 'covers', set]
+  const view: LibraryView =
+    inUrl === 'progress' ? 'rows' : inUrl === 'covers' ? 'covers' : saved[page] === 'rows' ? 'rows' : 'covers'
+  return [view, set]
 }

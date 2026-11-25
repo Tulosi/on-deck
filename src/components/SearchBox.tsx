@@ -31,10 +31,13 @@ export function SearchBox() {
   // Type: the page's type when it has one (Home, Library and Calendar all use ?type=), otherwise your last pick.
   const { pathname, search } = useLocation()
   const pageType = new URLSearchParams(search).get('type')
-  const [type, setTypeState] = useState<SearchType>(savedType)
-  useEffect(() => {
+  const [type, setTypeState] = useState<SearchType>(() => (isSearchType(pageType) ? pageType : savedType()))
+  // Moving to a page with a different type switches to it, set during render so there's no frame with the old one.
+  const [seenPageType, setSeenPageType] = useState(pageType)
+  if (pageType !== seenPageType) {
+    setSeenPageType(pageType)
     if (isSearchType(pageType)) setTypeState(pageType)
-  }, [pageType])
+  }
   const setType = (t: SearchType) => {
     setTypeState(t)
     saveType(t)
@@ -106,6 +109,8 @@ export function SearchBox() {
       <label className="flex h-11 items-center gap-2 rounded-md sm:h-9 border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
         {s.fetching ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Search className="size-4 shrink-0" />}
         <input
+          name="q"
+          autoComplete="off"
           ref={input}
           type="search"
           value={text}

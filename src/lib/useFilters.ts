@@ -4,7 +4,7 @@ import { filtersToParams, parseFilters, type Filters } from './filters'
 
 /**
  * Library filters from the URL, plus a setter that writes them back (each change is a history entry).
- * `smart=<collection id>` (editing a smart collection's rules) survives filter changes.
+ * `smart=<collection id>` (editing a smart collection's rules) and `view=progress` survive filter changes.
  */
 export function useFilters(): [Filters, (next: Filters) => void] {
   const [params, setParams] = useSearchParams()
@@ -16,6 +16,8 @@ export function useFilters(): [Filters, (next: Filters) => void] {
       const p = filtersToParams(next)
       const smart = params.get('smart')
       if (smart) p.set('smart', smart)
+      const view = params.get('view')
+      if (view) p.set('view', view)
       setParams(p)
     },
   ]

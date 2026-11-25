@@ -145,6 +145,14 @@ h1[tabindex='-1']:focus {
   html {
     font-variant-numeric: tabular-nums;
     touch-action: manipulation;
+    /* No grey flash on tap: every control has its own pressed and focus states. */
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* With a mouse or trackpad the page doesn't rubber-band past its ends. Phones keep their native bounce. */
+  @media (pointer: fine) {
+    html {
+      overscroll-behavior: none;
+    }
   }
   /* No lone word on a paragraph's last line; headings break into even lines. */
   p {

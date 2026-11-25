@@ -99,34 +99,31 @@ export function StatusControls({ item }: { item: UserItem }) {
     // Every change says what it did, with Undo that puts back the status, place and dates exactly (Want to…
     // clears the started and finished dates, so a stray key mustn't lose them).
     const before = { progress: item.progress, tvProgress: cur ?? null, dates: datesOf(item) }
+    // The toast comes with the save, so it also shows when a failed save goes through on Retry.
     if (!moves)
-      return void save({ progress }).then(
-        (ok) =>
-          ok &&
-          toast({
-            message: `Set to ${statusLabel(progress, type)}`,
-            key: item.id,
-            action: { label: 'Undo', onClick: () => void save(before) },
-          }),
-      )
-    save({ progress, tvProgress: caughtUp }).then(
-      (ok) =>
-        ok &&
+      return void save({ progress }, () =>
         toast({
-          message: (() => {
-            const n = episodesBetween(item, seasons, cur ?? null, caughtUp!)
-            return n > 1 ? `Marked ${n} episodes watched, up to ${episodeCode(caughtUp!)}` : `Marked watched up to ${episodeCode(caughtUp!)}`
-          })(),
+          message: `Set to ${statusLabel(progress, type)}`,
           key: item.id,
           action: { label: 'Undo', onClick: () => void save(before) },
         }),
+      )
+    void save({ progress, tvProgress: caughtUp }, () =>
+      toast({
+        message: (() => {
+          const n = episodesBetween(item, seasons, cur ?? null, caughtUp!)
+          return n > 1 ? `Marked ${n} episodes watched, up to ${episodeCode(caughtUp!)}` : `Marked watched up to ${episodeCode(caughtUp!)}`
+        })(),
+        key: item.id,
+        action: { label: 'Undo', onClick: () => void save(before) },
+      }),
     )
   }
   // Next episode watched, from the button or W. Undo puts back the episode (and status) from before.
   const markNext = (ep: { season: number; episode: number }) => {
     const before = { tvProgress: item.tvProgress ?? null, progress: item.progress, dates: datesOf(item) }
-    save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) }).then((ok) =>
-      ok && toast({ message: `Marked ${episodeCode(ep)} watched`, key: item.id, action: { label: 'Undo', onClick: () => void save(before) } }),
+    void save({ tvProgress: ep, ...(item.progress === 'wanted' && { progress: 'in_progress' as const }) }, () =>
+      toast({ message: `Marked ${episodeCode(ep)} watched`, key: item.id, action: { label: 'Undo', onClick: () => void save(before) } }),
     )
   }
   useStatusKeys(progressOptions.map((o) => o.label))

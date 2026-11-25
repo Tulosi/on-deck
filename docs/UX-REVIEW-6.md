@@ -332,3 +332,8 @@ The total is the same because each new reviewer looks somewhere new.
 - Failed bulk change: the toast named both games with Retry. **Bug found and fixed:** the screen put back only one of them; the other vanished from the list until reload, because each failed save restored a whole-list snapshot. Now a failed save puts back only its own title and re-syncs.
 - **Fixed:** while the selection bar is open, toasts now sit above it instead of on top of it.
 - Waiting for 1.0 → Want to play: a released game left on Waiting for 1.0 moved on load, kept its start date, and said why; Undo put it back and it stayed there after reload.
+
+**Follow-ups (same day):**
+- The automatic status moves (Waiting for 1.0 → Want to play, TV catch-up) only act on library data just loaded from the server, never on an older copy or mid-refetch.
+- A status, episode or archive change that failed and then went through on Retry now shows its usual message with Undo.
+- Moving a title back to Playing / Watching / Reading, Caught up or Stalled clears its finish date. Undo still puts the old date back.

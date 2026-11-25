@@ -270,7 +270,7 @@ export function useItems() {
   // Memoised so pages can memoise their own filtering on a stable list.
   const items = useMemo(() => (all ?? EMPTY).filter((i) => !i.archivedAt), [all])
   if (!user) {
-    return { items, allItems: all ?? EMPTY, isSample: !authLoading, isLoading: authLoading, error: null }
+    return { items, allItems: all ?? EMPTY, isSample: !authLoading, isLoading: authLoading, error: null, fresh: true }
   }
   return {
     items,
@@ -278,6 +278,8 @@ export function useItems() {
     isSample: false,
     isLoading: query.isLoading,
     error: query.error,
+    /** Loaded from the server since this screen opened, and not mid-refetch: safe to act on automatically. */
+    fresh: query.isFetchedAfterMount && !query.isFetching,
   }
 }
 
@@ -559,6 +561,8 @@ export function useUpdateItem() {
       const now = new Date().toISOString()
       if (patch.progress === 'in_progress' && item.progress === 'wanted') row.started_at = now
       if (patch.progress === 'completed') row.completed_at = now
+      // Back to playing / watching / reading: it isn't finished any more (Undo puts the old date back via `dates`).
+      if (patch.progress === 'in_progress' || patch.progress === 'caught_up' || patch.progress === 'stalled') row.completed_at = null
       row.stalled_at = patch.progress === 'stalled' ? now : null
       if (patch.progress === 'wanted') {
         row.started_at = null
@@ -656,11 +660,13 @@ const statusMovesTried = new Set<string>()
  * dates from playing it in Early Access are kept.
  */
 export function useRenewalCheck() {
-  const { items, isSample } = useItems()
+  const { items, isSample, fresh } = useItems()
   const update = useUpdateItem()
 
   useEffect(() => {
-    if (isSample || !supabase) return
+    // Only on data just loaded from the server: an older copy (another device changed a status since) must not
+    // move anything.
+    if (isSample || !supabase || !fresh) return
     for (const item of items) {
       // Only when the stored data says so: older titles that never had the flag recorded are left alone.
       if (item.title.mediaType === 'game' && item.progress === 'caught_up' && item.title.details?.early_access === false) {
@@ -705,7 +711,7 @@ export function useRenewalCheck() {
       void update(item, { progress: next }).catch(() => undefined)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, isSample])
+  }, [items, isSample, fresh])
 }
 
 /**

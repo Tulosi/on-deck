@@ -97,7 +97,7 @@ export function Segmented<T extends string>({
  * Archive: straight away, with Undo (it's reversible, so no "Are you sure?"). The toast says what it does and where
  * to find the title again. Archived titles show a notice on their page to bring them back.
  */
-export function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch) => Promise<unknown> }) {
+export function ArchiveButton({ item, save }: { item: UserItem; save: (patch: ItemPatch, onSaved?: () => void) => Promise<unknown> }) {
   if (item.archivedAt) {
     return (
       <button
@@ -111,15 +111,13 @@ export function ArchiveButton({ item, save }: { item: UserItem; save: (patch: It
     )
   }
   const archive = () =>
-    void save({ archived: true }).then(
-      (ok) =>
-        ok !== false &&
-        toast({
-          message: `Archived “${item.title.title}”. It’s off Home, the Library and alerts, and kept under Archive.`,
-          action: { label: 'Undo', onClick: () => void save({ archived: false }) },
-          key: item.id,
-          duration: 10_000,
-        }),
+    void save({ archived: true }, () =>
+      toast({
+        message: `Archived “${item.title.title}”. It’s off Home, the Library and alerts, and kept under Archive.`,
+        action: { label: 'Undo', onClick: () => void save({ archived: false }) },
+        key: item.id,
+        duration: 10_000,
+      }),
     )
   return (
     <button
@@ -275,25 +273,27 @@ export function useSaver(item: UserItem) {
   const update = useUpdateItem()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
-  // The change that failed, so Retry can send it again (the screen has already put the old value back).
-  const failed = useRef<ItemPatch | null>(null)
-  /** Resolves true once saved; a failure shows beside the Tracking heading and resolves false. */
-  async function save(patch: ItemPatch): Promise<boolean> {
+  // The change that failed, so Retry can send it again (the screen has already put the old value back), with what
+  // should follow a save (e.g. the "Set to …" toast with Undo).
+  const failed = useRef<{ patch: ItemPatch; onSaved?: () => void } | null>(null)
+  /** Resolves true once saved (then runs `onSaved`); a failure shows beside the Tracking heading and resolves false. */
+  async function save(patch: ItemPatch, onSaved?: () => void): Promise<boolean> {
     setError(null)
     failed.current = null
     setPending((n) => n + 1)
     try {
       await update(item, patch)
+      onSaved?.()
       return true
     } catch (err) {
-      failed.current = patch
+      failed.current = { patch, onSaved }
       setError(`${plainError(err, 'Couldn’t save that change.')} It’s been put back.`)
       return false
     } finally {
       setPending((n) => n - 1)
     }
   }
-  const retry = () => failed.current && void save(failed.current)
+  const retry = () => failed.current && void save(failed.current.patch, failed.current.onSaved)
   return { save, update, pending, error, retry }
 }
 

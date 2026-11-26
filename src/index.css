@@ -53,7 +53,21 @@
   --od-bad: #ef7a6a;
   --od-info: #7fb8e8;
   --od-warn: #fdba74;
+  /* The logo: a lemon D with its play cut out. */
+  --od-logo-d: var(--od-accent);
+  --od-logo-play: transparent;
   color-scheme: dark;
+}
+
+/* The logo draws a dark-theme and a light-theme version (different void sizes); show the one that applies. */
+.od-logo-light {
+  display: none;
+}
+[data-theme='light'] .od-logo-light {
+  display: inline;
+}
+[data-theme='light'] .od-logo-dark {
+  display: none;
 }
 
 [data-theme='light'] {
@@ -72,6 +86,9 @@
   --od-bad: #a8341f;
   --od-info: #255c94;
   --od-warn: #8f4508;
+  /* The logo: lemon is too faint on paper, so the D is espresso and only its play is lemon. */
+  --od-logo-d: var(--od-fg);
+  --od-logo-play: var(--od-accent);
 }
 
 html,

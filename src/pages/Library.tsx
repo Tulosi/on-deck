@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { usePageTitle } from '../lib/usePageTitle'
-import { useCallback, useMemo, useState, ViewTransition } from 'react'
+import { useCallback, useId, useMemo, useState, ViewTransition, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckSquare, Eye, EyeOff, Layers, LayoutGrid, Loader2, Rows3, Sparkles, X } from 'lucide-react'
+import { CheckSquare, ChevronDown, Eye, EyeOff, Layers, LayoutGrid, Loader2, Rows3, Sparkles, X } from 'lucide-react'
 import { BulkBar, SelectableCard } from '../components/BulkBar'
 import { PageHeader } from '../components/PageHeader'
 import { PageSkeleton } from '../components/LazyPage'
@@ -20,7 +20,7 @@ import {
   DEFAULT_SORT,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
-import { useLibraryView } from '../lib/libraryView'
+import { useFoldedSections, useLibraryView } from '../lib/libraryView'
 import { releaseInfo } from '../lib/release'
 import { statusLabelFor } from '../lib/statusLabels'
 import { rulesFrom, useFilters } from '../lib/useFilters'
@@ -113,6 +113,35 @@ function Reorderable({ on, children }: { on: boolean; children: React.ReactNode 
   )
 }
 
+/** One Progress view section: a heading that folds it shut or opens it, then its rows. */
+function ProgressSection({ label, count, folded, onToggle, children }: { label?: string; count: number; folded: boolean; onToggle: () => void; children: ReactNode }) {
+  const id = useId()
+  if (!label) return <section>{children}</section>
+  return (
+    <section className="space-y-2">
+      <h2 className="text-base font-semibold tracking-tight text-fg">
+        <button
+          type="button"
+          aria-expanded={!folded}
+          aria-controls={id}
+          onClick={onToggle}
+          className="hit group/fold -ml-1 flex items-baseline gap-2 rounded-md px-1 text-left hover:text-fg"
+        >
+          <ChevronDown
+            aria-hidden="true"
+            className={clsx('size-4 shrink-0 self-center text-faint transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/fold:text-muted', folded && '-rotate-90')}
+          />
+          {label}
+          <span className="font-mono text-xs font-normal text-faint">{count}</span>
+        </button>
+      </h2>
+      <div id={id} hidden={folded}>
+        {children}
+      </div>
+    </section>
+  )
+}
+
 /** Progress view: status groups in the order you'd act on them. */
 const ROW_ORDER = ['in_progress', 'caught_up', 'stalled', 'wanted', 'completed', 'dropped']
 
@@ -124,6 +153,7 @@ export function Library() {
   usePageTitle(pageTitle)
   const [view, setView] = useLibraryView(f.type)
   const rows = view === 'rows'
+  const [folded, toggleFold] = useFoldedSections()
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { data: collections = [] } = useCollections()
@@ -354,15 +384,11 @@ export function Library() {
         <div className="max-w-5xl space-y-8">
           {/* What you're in the middle of leads; then what's next to start; finished last. */}
           {(f.group === 'none' ? [...groups].sort((x, y) => ROW_ORDER.indexOf(x.key) - ROW_ORDER.indexOf(y.key)) : groups).map((g) => (
-            <section key={g.key} className="space-y-2">
-              {g.label && (
-                <h2 className="flex items-baseline gap-3 text-base font-semibold tracking-tight text-fg">
-                  {g.label}
-                  <span className="font-mono text-xs font-normal text-faint">{g.items.length}</span>
-                </h2>
-              )}
+            // Each section folds shut from its heading (remembered on this device), so a long Finished list can
+            // stay out of the way. Folding is instant: it's a tap you'll make often.
+            <ProgressSection key={g.key} label={g.label} count={g.items.length} folded={folded.has(`${f.group === 'none' ? 'status' : f.group}:${g.key}`)} onToggle={() => toggleFold(`${f.group === 'none' ? 'status' : f.group}:${g.key}`)}>
               <ProgressRows items={g.items} />
-            </section>
+            </ProgressSection>
           ))}
         </div>
       ) : f.group === 'none' ? (

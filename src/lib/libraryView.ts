@@ -50,3 +50,35 @@ export function useLibraryView(type: MediaType | null): [LibraryView, (v: Librar
     inUrl === 'progress' ? 'rows' : inUrl === 'covers' ? 'covers' : saved[page] === 'rows' ? 'rows' : 'covers'
   return [view, set]
 }
+
+const FOLD_KEY = 'ondeck:progress-folded'
+const readFolded = (): string[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(FOLD_KEY) ?? '[]')
+    return Array.isArray(v) ? v.filter((k) => typeof k === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Which Progress view sections are folded shut ("status:completed", "type:game"), remembered on this device. All
+ * open by default.
+ */
+export function useFoldedSections(): [Set<string>, (key: string) => void] {
+  const [folded, setFolded] = useState(() => new Set(readFolded()))
+  const toggle = useCallback((key: string) => {
+    setFolded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      try {
+        localStorage.setItem(FOLD_KEY, JSON.stringify([...next]))
+      } catch {
+        // Storage off: it still folds, just isn't remembered.
+      }
+      return next
+    })
+  }, [])
+  return [folded, toggle]
+}

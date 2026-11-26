@@ -519,9 +519,10 @@ function PickDialog({ onClose }: { onClose: () => void }) {
  */
 function SpinHint({ text, onSpin }: { text: string; onSpin: () => void }) {
   const at = text.toLowerCase().indexOf('spin me')
-  if (at < 0) return <>{text}</>
+  // One inline span, so it flows as a single sentence (the hint is a grid, which would stack loose pieces apart).
+  if (at < 0) return <span>{text}</span>
   return (
-    <>
+    <span>
       {text.slice(0, at)}
       <button
         type="button"
@@ -531,7 +532,7 @@ function SpinHint({ text, onSpin }: { text: string; onSpin: () => void }) {
         {text.slice(at, at + 7)}
       </button>
       {text.slice(at + 7)}
-    </>
+    </span>
   )
 }
 

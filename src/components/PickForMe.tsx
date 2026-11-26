@@ -18,6 +18,8 @@ import { SteamIcon } from './SteamIcon'
 const KIND_LABEL: Record<PickKind, string> = { any: 'Anything', game: 'A game', movie: 'A movie', tv: 'A show', book: 'A book' }
 const KIND_ICON = { any: Shuffle, game: Gamepad2, movie: Film, tv: Tv, book: BookOpen } as const
 const TYPE_ONE: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
+/** Where to add titles once a type has run out of picks. */
+const MORE_IN: Record<PickKind, string> = { any: 'your library', movie: 'Movies', tv: 'TV Shows', game: 'Games', book: 'Books' }
 const START_WORD: Record<MediaType, string> = { movie: 'Start watching', tv: 'Start watching', game: 'Start playing', book: 'Start reading' }
 
 /**
@@ -315,10 +317,10 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     onClose()
   }
 
-  // The reasons split into where you'd get it (owned, a service) and why it came up.
+  // Where you'd get it (owned, a service), from the reasons it came up. An owned Steam game says Steam.
   const reasons = pick ? weigh(pick).reasons : []
-  const where = reasons.find((r) => r === 'You own it' || r === 'Ready to watch' || r.startsWith('On ') && !r.startsWith('On your list'))
-  const why = reasons.filter((r) => r !== where).map((r, n) => (n ? r.charAt(0).toLowerCase() + r.slice(1) : r))
+  const owned = reasons.find((r) => r === 'You own it' || r === 'Ready to watch' || (r.startsWith('On ') && !r.startsWith('On your list')))
+  const where = owned === 'You own it' && pick?.title.mediaType === 'game' && pick.title.steamAppId ? 'On Steam' : owned
   const left = kind ? pools[kind].filter((i) => !seen.current.has(i.id)).length : 0
 
   return createPortal(
@@ -403,8 +405,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
             <div className="mt-0.5 flex h-4 items-center justify-center">
               <span className={clsx('h-2.5 w-28 rounded bg-raised', reel?.resting && 'invisible')} />
             </div>
-            <div className="mt-3 grid grid-cols-3 border-y border-line">
-              {['Status', 'Why', 'Where'].map((label, n) => (
+            <div className="mt-3 grid grid-cols-2 border-y border-line">
+              {['Status', 'Where'].map((label, n) => (
                 <div key={label} className={clsx('min-w-0 py-2 pr-2', n > 0 && 'border-l border-line pl-2.5')}>
                   <p className="text-[11px] leading-4 text-faint">{label}</p>
                   <div className="mt-0.5 flex h-[2lh] items-start pt-1 text-[13px] leading-snug">
@@ -421,7 +423,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           <div className="[grid-area:1/1] min-w-0">
             {exhausted ? (
               <div className="grid h-full place-content-center text-center">
-                <p className="text-sm text-fg">That’s everything that fits.</p>
+                <p className="text-sm text-balance text-fg">Wanna spin more? Add more titles to {MORE_IN[kind ?? 'any']} first.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -444,10 +446,9 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                     </span>
                   ))}
                 </p>
-                <dl className="reveal mt-3 grid grid-cols-3 border-y border-line text-left" style={{ animationDelay: '80ms' }}>
+                <dl className="reveal mt-3 grid grid-cols-2 border-y border-line text-left" style={{ animationDelay: '80ms' }}>
                   {[
                     ['Status', statusLabel(pick.progress, pick.title.mediaType)],
-                    ['Why', why.length ? why.join(', ') : 'Its turn'],
                     ['Where', where ?? '—'],
                   ].map(([label, value], n) => (
                     <div key={label} className={clsx('min-w-0 py-2 pr-2', n > 0 && 'border-l border-line pl-2.5')}>

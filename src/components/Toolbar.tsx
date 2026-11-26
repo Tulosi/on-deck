@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Check, Search, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
+import { ArrowDownUp, Check, Search, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
 import { useChipModeControl } from '../lib/chips'
 import {
   LABELS,
@@ -49,8 +49,9 @@ function LabelsButton() {
       {/* Its name is the words it shows (no separate label), so voice control users can say what they see. */}
       {/* Says what the chips on posters do now: always there, only on hover, or off (touch screens can't hover). */}
       {/* Phones: a word, not just the icon ("Details" alone read like the cards' own Details buttons). */}
-      <span className="sm:hidden">Poster info</span>
-      <span className="hidden sm:inline">
+      {/* Up to wide screens too, where the Library's toolbar row is tight (the shading still shows on or off). */}
+      <span className="xl:hidden">Poster info</span>
+      <span className="hidden xl:inline">
         <span className="text-muted">Poster details:</span>{' '}
         {on ? (
           'Always'
@@ -68,6 +69,8 @@ function LabelsButton() {
 // ─── Type pills (Layer 1) ──────────────────────────────────────────────────
 
 const selectClass = 'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
+/** A select as wide as the option showing (not its longest option), so the toolbar row fits. */
+const fitTo = (text: string) => ({ width: `calc(${text.length * 0.82}ch + 1.875rem)` })
 
 // ─── Filters panel ─────────────────────────────────────────────────────────
 //
@@ -394,6 +397,19 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
   const count = activeCount(f)
+  // From small tablets up the panel hangs off the button, 32rem wide. When the button sits far enough right that it
+  // would run off the window (the type chips have room on mid-size screens), it moves left to stay 12px inside.
+  const [shift, setShift] = useState(0)
+  useLayoutEffect(() => {
+    if (!open) return
+    const fit = () => {
+      const left = wrap.current?.getBoundingClientRect().left ?? 0
+      setShift(Math.min(0, window.innerWidth - 12 - 512 - left))
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -429,7 +445,9 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
         )}
       </button>
       {open && (
-        <div className="vt-chrome-filters pop-in origin-top fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl sm:origin-top-left border border-line bg-surface p-4 shadow-2xl shadow-black/40 sm:absolute sm:inset-x-auto sm:top-9 sm:left-0 sm:w-[32rem]">
+        <div className="vt-chrome-filters pop-in origin-top fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl sm:origin-top-left border border-line bg-surface p-4 shadow-2xl shadow-black/40 sm:absolute sm:inset-x-auto sm:top-9 sm:left-(--shift) sm:w-[32rem]"
+          style={{ '--shift': `${shift}px` } as CSSProperties}
+        >
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm font-semibold text-fg">Filters</p>
             <div className="flex items-center gap-3">
@@ -444,8 +462,8 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
             </div>
           </div>
           <FilterPanel f={f} set={set} />
-          {/* Phones: sorting and grouping live here (the toolbar has no room for them). */}
-          <div className="mt-5 space-y-2 border-t border-line pt-4 sm:hidden">
+          {/* Phones: sorting and grouping live here (the toolbar has no room for them); mid-size screens, grouping. */}
+          <div className="mt-5 space-y-2 border-t border-line pt-4 lg:hidden">
             <p className="text-xs font-medium text-muted">Arrange</p>
             <ArrangeSelects f={f} set={set} stacked />
           </div>
@@ -455,37 +473,69 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
   )
 }
 
+/** Flips the sort or the groups. Lit while reversed. */
+function ReverseButton({ on, label, onClick, className }: { on: boolean; label: string; onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={on}
+      title={on ? `${label} (on)` : label}
+      className={clsx(
+        'grid size-11 shrink-0 place-items-center rounded-md border transition-colors sm:size-7',
+        on ? 'border-accent bg-accent/10 text-accent-ink' : 'border-line bg-surface text-muted hover:text-fg',
+        className,
+      )}
+    >
+      <ArrowDownUp className="size-3.5" aria-hidden="true" />
+    </button>
+  )
+}
+
 function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) => void; stacked?: boolean }) {
   return (
     <div className={stacked ? 'flex flex-wrap items-center gap-2' : 'hidden items-center gap-1.5 sm:flex'}>
-      <select
-        aria-label="Sort by"
-        value={f.sort}
-        onChange={(e) => set({ ...f, sort: e.target.value as SortKey })}
-        className={selectClass}
-      >
-        {/* Price and Length only mean something for games (shown for Games and All). */}
-        {LABELS.options.SORTS.filter(
-          (s) => !['played', 'price', 'discount', 'length'].includes(s) || !f.type || f.type === 'game' || f.sort === s,
-        ).map((s) => (
-          <option key={s} value={s}>
-            Sort: {LABELS.sort[s]}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Group by"
-        value={f.group}
-        onChange={(e) => set({ ...f, group: e.target.value as GroupKey })}
-        className={clsx(selectClass, !stacked && 'hidden sm:block')}
-      >
-        {/* Grouping by type only means something across types (Library), not inside Movies, TV and so on. */}
-        {LABELS.options.GROUPS.filter((g) => g !== 'type' || !f.type).map((g) => (
-          <option key={g} value={g}>
-            {g === 'none' ? 'No grouping' : `Group: ${LABELS.group[g]}`}
-          </option>
-        ))}
-      </select>
+      {/* Each dropdown keeps its reverse button beside it, so they wrap as pairs on phones. Sort is in the toolbar
+          from small tablets up; Group only from wide screens up (below that it's in the Filters panel). */}
+      <div className={clsx('shrink-0 items-center gap-1', stacked ? 'flex sm:hidden' : 'flex')}>
+        <select
+          aria-label="Sort by"
+          value={f.sort}
+          onChange={(e) => set({ ...f, sort: e.target.value as SortKey })}
+          className={selectClass}
+          style={stacked ? undefined : fitTo(`Sort: ${LABELS.sort[f.sort]}`)}
+        >
+          {/* Price and Length only mean something for games (shown for Games and All). */}
+          {LABELS.options.SORTS.filter(
+            (s) => !['played', 'price', 'discount', 'length'].includes(s) || !f.type || f.type === 'game' || f.sort === s,
+          ).map((s) => (
+            <option key={s} value={s}>
+              Sort: {LABELS.sort[s]}
+            </option>
+          ))}
+        </select>
+        <ReverseButton on={f.sortRev} label="Reverse sort order" onClick={() => set({ ...f, sortRev: !f.sortRev })} />
+      </div>
+      <div className={clsx('shrink-0 items-center gap-1', stacked ? 'flex' : 'hidden lg:flex')}>
+        <select
+          aria-label="Group by"
+          value={f.group}
+          onChange={(e) => set({ ...f, group: e.target.value as GroupKey })}
+          className={selectClass}
+          style={stacked ? undefined : fitTo(f.group === 'none' ? 'No grouping' : `Group: ${LABELS.group[f.group]}`)}
+        >
+          {/* Grouping by type only means something across types (Library), not inside Movies, TV and so on. */}
+          {LABELS.options.GROUPS.filter((g) => g !== 'type' || !f.type).map((g) => (
+            <option key={g} value={g}>
+              {g === 'none' ? 'No grouping' : `Group: ${LABELS.group[g]}`}
+            </option>
+          ))}
+        </select>
+        {f.group !== 'none' && (
+          <ReverseButton on={f.groupRev} label="Reverse group order" onClick={() => set({ ...f, groupRev: !f.groupRev })} />
+        )}
+      </div>
     </div>
   )
 }

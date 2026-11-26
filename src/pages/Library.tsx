@@ -182,13 +182,13 @@ export function Library() {
   const { inType, results, archivedCount, preReleaseCount, groups } = useMemo(() => {
     const inType = f.types.length ? items.filter((i) => f.types.includes(i.title.mediaType)) : items
     // allItems, so the Archived filter can bring archived titles back (applyFilters hides them by default).
-    const results = sortItems(applyFilters(allItems, f), f.sort)
+    const results = sortItems(applyFilters(allItems, f), f.sort, f.sortRev)
     const archivedCount = allItems.filter((i) => i.archivedAt && (!f.types.length || f.types.includes(i.title.mediaType))).length
     // Games: how many aren't out yet, for the Hide/Show pre-release toggle.
     const preReleaseCount = f.type === 'game' ? inType.filter((i) => releaseInfo(i.title).preRelease).length : 0
     // Progress view: grouped by status unless another grouping is picked.
     const group = rows && f.group === 'none' ? 'status' : f.group
-    return { inType, results, archivedCount, preReleaseCount, groups: groupItems(results, group, f.type) }
+    return { inType, results, archivedCount, preReleaseCount, groups: groupItems(results, group, f.type, f.group !== 'none' && f.groupRev) }
   }, [items, allItems, f, rows])
 
   const hidesPreRelease = f.release.length === 1 && f.release[0] === 'released'
@@ -215,7 +215,7 @@ export function Library() {
     <div>
       <PageHeader title={title} meta={meta}>
         {/* Only once something differs from the defaults (choosing a type alone doesn't count). */}
-        {!isSample && !editing && (activeCount(f) > 0 || f.sort !== DEFAULT_SORT) && (
+        {!isSample && !editing && (activeCount(f) > 0 || f.sort !== DEFAULT_SORT || f.sortRev) && (
           <button
             type="button"
             onClick={() => setSaving((v) => !v)}

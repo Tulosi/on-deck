@@ -73,6 +73,9 @@ export interface Filters {
   // Arranging
   sort: SortKey
   group: GroupKey
+  /** The sort, and the groups, the other way round. Titles without the sorted value (no price, no date) stay last. */
+  sortRev: boolean
+  groupRev: boolean
 }
 
 const list = <T extends string>(v: string | null, allowed: readonly T[]): T[] =>
@@ -176,6 +179,8 @@ export function parseFilters(p: URLSearchParams): Filters {
     sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : DEFAULT_SORT,
     // Group by type is only offered across types; inside one type it falls back to no grouping.
     group: (GROUPS as string[]).includes(p.get('group') ?? '') && !(type && p.get('group') === 'type') ? (p.get('group') as GroupKey) : 'none',
+    sortRev: p.get('sortrev') === '1',
+    groupRev: p.get('grouprev') === '1',
   }
 }
 
@@ -214,6 +219,8 @@ export function filtersToParams(f: Filters): URLSearchParams {
   }
   if (f.sort !== DEFAULT_SORT) set('sort', f.sort)
   if (f.group !== 'none') set('group', f.group)
+  if (f.sortRev) set('sortrev', 1)
+  if (f.group !== 'none' && f.groupRev) set('grouprev', 1)
   return p
 }
 
@@ -432,49 +439,59 @@ export function lengthBucket(i: UserItem): LengthFilter | null {
 
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 }
 
-export function sortItems(items: UserItem[], sort: SortKey): UserItem[] {
+/** "The Gentlemen" files under G, "A Quiet Place" under Q, as in a library or on Plex. */
+export const titleSortKey = (title: string) => title.trim().replace(/^(the|an|a)\s+(?=\S)/i, '')
+const byTitle = (a: UserItem, b: UserItem) =>
+  titleSortKey(a.title.title).localeCompare(titleSortKey(b.title.title), undefined, { sensitivity: 'base', numeric: true })
+
+/**
+ * Sorts by `sort`; `reverse` flips it. Titles without the value being sorted on (no price, no release date, no
+ * score…) stay at the end either way, newest added first, so reversing never buries the list under blanks.
+ */
+export function sortItems(items: UserItem[], sort: SortKey, reverse = false): UserItem[] {
   const added = (i: UserItem) => (i.addedAt ? Date.parse(i.addedAt) : 0)
   const byAddedDesc = (a: UserItem, b: UserItem) => added(b) - added(a)
-  const sorted = [...items]
-  switch (sort) {
-    case 'priority':
-      return sorted.sort(
-        (a, b) => PRIORITY_RANK[a.priority ?? 'none'] - PRIORITY_RANK[b.priority ?? 'none'] || byAddedDesc(a, b),
-      )
-    case 'added':
-      return sorted.sort(byAddedDesc)
-    case 'updated':
-      return sorted.sort((a, b) => Date.parse(b.updatedAt ?? '0') - Date.parse(a.updatedAt ?? '0'))
-    case 'release':
-      // Newest first; undated last.
-      return sorted.sort((a, b) => (b.title.releaseDate ?? '').localeCompare(a.title.releaseDate ?? ''))
-    case 'score':
-      return sorted.sort((a, b) => (normalisedScore(b) ?? -1) - (normalisedScore(a) ?? -1))
-    case 'title':
-      return sorted.sort((a, b) => a.title.title.localeCompare(b.title.title))
-    case 'price': {
-      // Cheapest first (free = 0); no price last.
-      const priceOf = (i: UserItem) => (i.gamePrice?.isFree ? 0 : i.gamePrice ? (cheapest(i.gamePrice)?.price ?? Infinity) : Infinity)
-      return sorted.sort((a, b) => priceOf(a) - priceOf(b))
-    }
-    case 'discount': {
-      // Biggest discount off Steam's full price first (historical lows break ties); no price last.
-      const off = (i: UserItem) => {
-        const b = i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null
-        return b ? (b.discountPct ?? 0) + (b.atLow ? 0.5 : 0) : -1
-      }
-      return sorted.sort((a, b) => off(b) - off(a))
-    }
-    case 'played': {
-      // Games: most recently played first. Steam's last-played date when there is one, otherwise the last
-      // time you did something with it in On Deck; never played last.
-      const played = (i: UserItem) => Date.parse(i.steamLastPlayed ?? i.lastActivityAt ?? '') || 0
-      return sorted.sort((a, b) => played(b) - played(a) || byAddedDesc(a, b))
-    }
-    case 'length':
-      // Shortest first; unknown last.
-      return sorted.sort((a, b) => (hoursToBeat(a) ?? Infinity) - (hoursToBeat(b) ?? Infinity))
+  const priceOf = (i: UserItem) => (i.gamePrice?.isFree ? 0 : i.gamePrice ? (cheapest(i.gamePrice)?.price ?? null) : null)
+  const off = (i: UserItem) => {
+    const b = i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null
+    return b ? (b.discountPct ?? 0) + (b.atLow ? 0.5 : 0) : null
   }
+  // Games: Steam's last-played date when there is one, otherwise the last time you did something with it in On Deck.
+  const played = (i: UserItem) => Date.parse(i.steamLastPlayed ?? i.lastActivityAt ?? '') || null
+  const num = (v: (i: UserItem) => number | null, dir: 1 | -1) => ({
+    has: (i: UserItem) => v(i) != null,
+    cmp: (a: UserItem, b: UserItem) => dir * (v(a)! - v(b)!),
+  })
+  const how: { has?: (i: UserItem) => boolean; cmp: (a: UserItem, b: UserItem) => number } = (() => {
+    switch (sort) {
+      case 'priority':
+        return { has: (i: UserItem) => !!i.priority, cmp: (a: UserItem, b: UserItem) => PRIORITY_RANK[a.priority!] - PRIORITY_RANK[b.priority!] || byAddedDesc(a, b) }
+      case 'added':
+        return { cmp: byAddedDesc }
+      case 'updated':
+        return { cmp: (a: UserItem, b: UserItem) => Date.parse(b.updatedAt ?? '0') - Date.parse(a.updatedAt ?? '0') }
+      case 'release': // newest first
+        return { has: (i: UserItem) => !!i.title.releaseDate, cmp: (a: UserItem, b: UserItem) => b.title.releaseDate!.localeCompare(a.title.releaseDate!) }
+      case 'score':
+        return num(normalisedScore, -1)
+      case 'title':
+        return { cmp: byTitle }
+      case 'price': // cheapest first (free = 0)
+        return num(priceOf, 1)
+      case 'discount': // biggest discount off Steam's full price first (historical lows break ties)
+        return num(off, -1)
+      case 'played': {
+        const p = num(played, -1)
+        return { has: p.has, cmp: (a: UserItem, b: UserItem) => p.cmp(a, b) || byAddedDesc(a, b) }
+      }
+      case 'length': // shortest first
+        return num(hoursToBeat, 1)
+    }
+  })()
+  const has = how.has ?? (() => true)
+  const sorted = items.filter(has).sort(how.cmp)
+  if (reverse) sorted.reverse()
+  return [...sorted, ...items.filter((i) => !has(i)).sort(byAddedDesc)]
 }
 
 export interface Group {
@@ -490,10 +507,10 @@ const TYPE_LABEL: Record<MediaType, string> = { movie: 'Movies', tv: 'TV shows',
 const PRIORITY_LABEL: Record<string, string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority', none: 'No priority' }
 
 /**
- * Groups already-sorted items, keeping each group's order. Group order is fixed per key. With one type selected,
+ * Groups already-sorted items, keeping each group's order. Group order is fixed per key (`reverse` flips it). With one type selected,
  * status groups use that type's words ("Want to play", "Beat it"), matching the filter panel and title pages.
  */
-export function groupItems(items: UserItem[], group: GroupKey, type: MediaType | null = null): Group[] {
+export function groupItems(items: UserItem[], group: GroupKey, type: MediaType | null = null, reverse = false): Group[] {
   if (group === 'none') return [{ key: 'all', label: '', items }]
   const keyOf = (i: UserItem): [string, string] => {
     switch (group) {
@@ -519,8 +536,13 @@ export function groupItems(items: UserItem[], group: GroupKey, type: MediaType |
     priority: ['high', 'medium', 'low', 'none'],
   }
   const groups = [...map.values()]
-  if (group === 'year') return groups.sort((a, b) => (b.key === '—' ? -1 : a.key === '—' ? 1 : Number(b.key) - Number(a.key)))
-  return groups.sort((a, b) => order[group].indexOf(a.key) - order[group].indexOf(b.key))
+  if (group === 'year') groups.sort((a, b) => (b.key === '—' ? -1 : a.key === '—' ? 1 : Number(b.key) - Number(a.key)))
+  else groups.sort((a, b) => order[group].indexOf(a.key) - order[group].indexOf(b.key))
+  if (reverse) groups.reverse()
+  // "No date" and "No priority" stay last either way.
+  const blank = groups.findIndex((g) => g.key === '—' || (group === 'priority' && g.key === 'none'))
+  if (blank >= 0) groups.push(groups.splice(blank, 1)[0])
+  return groups
 }
 
 // ─── Labels for the UI ─────────────────────────────────────────────────────

@@ -116,7 +116,7 @@ export function useCollectionList() {
 /** A smart collection's current titles: the Library filtered and sorted by its rules. */
 export function smartItems(rules: string, items: UserItem[]): UserItem[] {
   const f = parseFilters(new URLSearchParams(rules))
-  return sortItems(applyFilters(items, f), f.sort)
+  return sortItems(applyFilters(items, f), f.sort, f.sortRev)
 }
 
 const key = (userId: string | undefined) => ['collections', userId]

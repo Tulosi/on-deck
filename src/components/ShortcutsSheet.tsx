@@ -42,7 +42,7 @@ export function ShortcutsSheet() {
       )
     : ROWS
   return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
+    <div className="fixed inset-0 z-50 grid grid-cols-1 place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
       <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} aria-hidden="true" />
       <div ref={panel} tabIndex={-1} className="pop-in relative w-full max-w-sm rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
         <div className="mb-3 flex items-center justify-between">

@@ -147,7 +147,7 @@ export function SearchPage() {
 
       {preview &&
         createPortal(
-          <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label={preview.title}>
+          <div className="fixed inset-0 z-50 grid grid-cols-1 place-items-center p-4" role="dialog" aria-modal="true" aria-label={preview.title}>
             <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} aria-hidden="true" />
             <div ref={previewPanel} tabIndex={-1} className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface shadow-2xl outline-none">
               <Preview

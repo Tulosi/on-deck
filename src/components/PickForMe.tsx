@@ -318,8 +318,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     // Scrolls when it's taller than the screen (a phone held sideways), so the result and its buttons stay reachable.
     <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-labelledby="pick-title">
       <div className="fixed inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
-      <div className="pointer-events-none relative grid min-h-full place-items-center p-4">
-      <div ref={panel} tabIndex={-1} className="pop-in pointer-events-auto relative w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
+      <div className="pointer-events-none relative grid min-h-full grid-cols-1 place-items-center p-4">
+      <div ref={panel} tabIndex={-1} className="pop-in pointer-events-auto relative w-full max-w-md min-w-0 rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="pick-title" className="flex items-center gap-2 text-base font-semibold text-fg">
             <Dices className="size-4 text-accent-ink" aria-hidden="true" /> Pick for me

@@ -5,8 +5,10 @@ import type { UserItem } from '../types'
 import { PosterCard } from './PosterCard'
 import { useLeaving } from '../lib/useLeaving'
 import clsx from 'clsx'
+import { POSTER_W } from '../lib/posterWidth'
 
 /** Plex-style horizontal row of posters with a heading and scroll buttons. */
+
 export function PosterRow({
   title,
   items,
@@ -81,12 +83,13 @@ export function PosterRow({
       <div
         ref={scroller}
         className={clsx(
-          'no-scrollbar flex snap-x gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1',
+          'no-scrollbar flex snap-x gap-3 overflow-x-auto sm:gap-4 overflow-y-hidden overscroll-x-contain pb-1',
           inset ? '-mx-4 scroll-px-4 px-4 md:-mx-6 md:scroll-px-6 md:px-6 xl:mx-0 xl:scroll-px-0 xl:px-0' : '-mx-4 scroll-px-4 px-4 md:-mx-6 md:scroll-px-6 md:px-6',
         )}
       >
         {shown.map(({ item, key, leaving }) => (
-          <div key={key} className={clsx('w-32 shrink-0 snap-start sm:w-36 lg:w-40', leaving && 'leave-x')} inert={leaving}>
+          // Phones: exactly three posters across the row (up to the usual 8rem), none cut off at the edge.
+          <div key={key} className={clsx(POSTER_W, leaving && 'leave-x')} inert={leaving}>
             <PosterCard item={item} subline={subline?.(item)} morphKey={title} />
             {footer?.(item)}
           </div>

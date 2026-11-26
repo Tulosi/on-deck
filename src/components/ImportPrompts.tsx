@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { usePlexStatus, useProfile } from '../lib/integrations'
 import { fetchPlexRecent, fetchSteamNew, importCandidates, markSteamSeen, skipCandidate, type Candidate, type CandidateList } from '../lib/importer'
 import { plainError } from '../lib/errors'
+import { POSTER_W } from '../lib/posterWidth'
 
 const PLEX_SHOWN = 5
 const small = 'flex h-7 flex-1 items-center justify-center gap-1 rounded-md text-xs disabled:opacity-50'
@@ -26,7 +27,7 @@ function PromptTile({
 }) {
   const Icon = c.mediaType === 'game' ? Gamepad2 : Tv
   return (
-    <div className="w-32 shrink-0 snap-start sm:w-36 lg:w-40">
+    <div className={POSTER_W}>
       <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-raised">
         {c.poster ? (
           <img src={c.poster} alt="" loading="lazy" className="size-full object-cover" />
@@ -81,7 +82,7 @@ function PromptRow({
         <span className="text-xs text-faint">{hint}</span>
         {action && <span className="ml-auto">{action}</span>}
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-4 overflow-x-auto overflow-y-hidden px-4 pb-1">{children}</div>
+      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto overflow-y-hidden px-4 pb-1 sm:gap-4">{children}</div>
     </section>
   )
 }

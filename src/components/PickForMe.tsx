@@ -378,78 +378,117 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        {/* The result, once it stops. */}
-        <div className="mt-4 min-h-28" aria-live="polite">
-          {exhausted ? (
-            <div className="text-center">
-              <p className="text-sm text-fg">That’s everything that fits.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  seen.current.clear()
-                  if (kind) spin(kind)
-                }}
-                className="hit mt-2 text-sm font-medium text-accent-ink hover:underline"
-              >
-                Start over
-              </button>
+        {/* The result. It keeps one height throughout: soft placeholders shaped like the details hold its place before
+            the first spin and while it spins, and the details fade in over them as it lands. Title and byline keep to
+            one line and each row to two, so a long reason can't make it grow. */}
+        <div className="mt-4 grid" aria-live="polite">
+          <div
+            aria-hidden="true"
+            className={clsx(
+              '[grid-area:1/1] transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
+              (pick && !spinning) || exhausted || reel?.resting || !reel ? 'opacity-0' : spinning && 'motion-safe:animate-pulse',
+            )}
+          >
+            <div className="flex h-6 items-center justify-center">
+              <span className="h-3.5 w-40 rounded bg-raised" />
             </div>
-          ) : pick && !spinning ? (
-            // Details come in just after it lands, top to bottom, laid out like the Up next card's rows.
-            <div key={reel?.key}>
-              <p className="reveal text-center text-base font-semibold text-fg">{pick.title.title}</p>
-              <p className="reveal mt-0.5 flex justify-center gap-3 text-xs text-muted" style={{ animationDelay: '40ms' }}>
-                {[TYPE_ONE[pick.title.mediaType], pick.title.year, pick.title.byline].filter(Boolean).map((part) => (
-                  <span key={String(part)}>{part}</span>
-                ))}
-              </p>
-              <dl className="reveal mt-3 grid grid-cols-3 border-y border-line text-left" style={{ animationDelay: '80ms' }}>
-                {[
-                  ['Status', statusLabel(pick.progress, pick.title.mediaType)],
-                  ['Why', why.length ? why.join(', ') : 'Its turn'],
-                  ['Where', where ?? '—'],
-                ].map(([label, value], n) => (
-                  <div key={label} className={clsx('min-w-0 py-2 pr-2', n > 0 && 'border-l border-line pl-2.5')}>
-                    <dt className="text-[11px] text-faint">{label}</dt>
-                    <dd className="mt-0.5 text-[13px] leading-snug text-fg">{value}</dd>
+            <div className="mt-0.5 flex h-4 items-center justify-center">
+              <span className="h-2.5 w-28 rounded bg-raised" />
+            </div>
+            <div className="mt-3 grid grid-cols-3 border-y border-line">
+              {['Status', 'Why', 'Where'].map((label, n) => (
+                <div key={label} className={clsx('min-w-0 py-2 pr-2', n > 0 && 'border-l border-line pl-2.5')}>
+                  <p className="text-[11px] leading-4 text-faint">{label}</p>
+                  <div className="mt-0.5 flex h-[2lh] items-start pt-1 text-[13px] leading-snug">
+                    <span className="h-3 w-4/5 rounded bg-raised" />
                   </div>
-                ))}
-              </dl>
-              <div className="reveal mt-3 flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: '120ms' }}>
-                {pick.progress === 'wanted' && (
-                  <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110 transition-[transform,border-color,filter] duration-150 active:scale-[0.97]">
-                    {START_WORD[pick.title.mediaType]}
-                  </button>
-                )}
-                <Link
-                  to={`/title/${pick.title.id}`}
-                  onClick={onClose}
-                  className={clsx(
-                    'hit flex h-9 items-center rounded-lg px-3.5 text-sm font-medium transition-[transform,border-color,filter] duration-150 active:scale-[0.97]',
-                    pick.progress === 'wanted' ? 'border border-line text-fg hover:border-faint' : 'bg-accent text-accent-fg hover:brightness-110',
-                  )}
-                >
-                  Open
-                </Link>
-                {/* Never the same one twice; once everything has come up, it offers to start over instead. */}
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex justify-center gap-2">
+              <span className="h-9 w-16 rounded-lg bg-raised" />
+              <span className="h-9 w-28 rounded-lg bg-raised" />
+            </div>
+          </div>
+          <div className="[grid-area:1/1] min-w-0">
+            {exhausted ? (
+              <div className="grid h-full place-content-center text-center">
+                <p className="text-sm text-fg">That’s everything that fits.</p>
                 <button
                   type="button"
                   onClick={() => {
-                    if (!left) seen.current.clear()
+                    seen.current.clear()
                     if (kind) spin(kind)
                   }}
-                  className="hit flex h-9 items-center gap-1.5 rounded-lg border border-line px-3.5 text-sm text-fg hover:border-faint transition-[transform,border-color,filter] duration-150 active:scale-[0.97]"
+                  className="hit mt-2 text-sm font-medium text-accent-ink hover:underline"
                 >
-                  <RotateCcw className="size-3.5" aria-hidden="true" /> {left ? 'Spin again' : 'Start over'}
+                  Start over
                 </button>
               </div>
-              {!left && <p className="mt-2 text-xs text-faint">That was the last one that fits. Start over brings them all back.</p>}
-            </div>
-          ) : spinning ? (
-            <p className="sr-only">Spinning…</p>
-          ) : reel?.resting ? (
-            <p className="pt-3 text-center text-sm text-muted">Choose what to pick from, and it spins.</p>
-          ) : null}
+            ) : pick && !spinning ? (
+              // Details come in just after it lands, top to bottom, laid out like the Up next card's rows.
+              <div key={reel?.key}>
+                <p className="reveal truncate text-center text-base leading-6 font-semibold text-fg">{pick.title.title}</p>
+                <p className="reveal mt-0.5 flex h-4 justify-center gap-3 overflow-hidden text-xs leading-4 whitespace-nowrap text-muted" style={{ animationDelay: '40ms' }}>
+                  {[TYPE_ONE[pick.title.mediaType], pick.title.year, pick.title.byline].filter(Boolean).map((part, n) => (
+                    <span key={String(part)} className={clsx(n === 2 && 'min-w-0 truncate')}>
+                      {part}
+                    </span>
+                  ))}
+                </p>
+                <dl className="reveal mt-3 grid grid-cols-3 border-y border-line text-left" style={{ animationDelay: '80ms' }}>
+                  {[
+                    ['Status', statusLabel(pick.progress, pick.title.mediaType)],
+                    ['Why', why.length ? why.join(', ') : 'Its turn'],
+                    ['Where', where ?? '—'],
+                  ].map(([label, value], n) => (
+                    <div key={label} className={clsx('min-w-0 py-2 pr-2', n > 0 && 'border-l border-line pl-2.5')}>
+                      <dt className="text-[11px] leading-4 text-faint">{label}</dt>
+                      <dd className="mt-0.5 line-clamp-2 h-[2lh] text-[13px] leading-snug text-fg" title={value}>
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {/* One row of buttons (tighter on narrow phones, so all three fit). Once everything has come up, Spin
+                    again becomes Start over, which brings them all back. */}
+                <div className="reveal mt-3 flex flex-wrap items-center justify-center gap-2 max-[24rem]:gap-1.5" style={{ animationDelay: '120ms' }}>
+                  {pick.progress === 'wanted' && (
+                    <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110 transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5">
+                      {START_WORD[pick.title.mediaType]}
+                    </button>
+                  )}
+                  <Link
+                    to={`/title/${pick.title.id}`}
+                    onClick={onClose}
+                    className={clsx(
+                      'hit flex h-9 items-center rounded-lg px-3.5 text-sm font-medium transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5',
+                      pick.progress === 'wanted' ? 'border border-line text-fg hover:border-faint' : 'bg-accent text-accent-fg hover:brightness-110',
+                    )}
+                  >
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!left) seen.current.clear()
+                      if (kind) spin(kind)
+                    }}
+                    title={left ? undefined : 'That was the last one that fits. Start over brings them all back.'}
+                    className="hit flex h-9 items-center gap-1.5 rounded-lg border border-line px-3.5 text-sm text-fg hover:border-faint transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5"
+                  >
+                    <RotateCcw className="size-3.5" aria-hidden="true" /> {left ? 'Spin again' : 'Start over'}
+                  </button>
+                </div>
+              </div>
+            ) : spinning ? (
+              <p className="sr-only">Spinning…</p>
+            ) : reel?.resting || !reel ? (
+              <p className="grid h-full place-items-center text-center text-sm text-muted">
+                {reel ? 'Choose what to pick from, and it spins.' : ''}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
       </div>

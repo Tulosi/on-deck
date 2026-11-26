@@ -77,7 +77,7 @@ in, and the Archive page lists only them.
 
 ## 5. Arranging
 - **Sort:** Priority · Date added · Release date · Score · Title · Last updated, plus type-specific sorts
-  (Price for games, runtime / length per type).
+  (Price for games, runtime / length per type, Progress for TV: share of aired episodes watched).
 - **Group by** (optional, off by default): Status · Type · Priority · Release year. Shown as labelled rows.
 
 ## 6. Persistence

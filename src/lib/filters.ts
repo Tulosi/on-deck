@@ -8,6 +8,7 @@
 // be flipped to "is not": then their values are exclusions, written to the URL with a leading "-".
 import { cheapest } from './prices'
 import { releaseInfo, tvSchedule } from './release'
+import { completion, seasonsOf } from './seasons'
 import { statusLabel } from './statusLabels'
 import type { MediaType, Priority, Progress, UserItem } from '../types'
 
@@ -20,7 +21,7 @@ export type AddedFilter = '7d' | '30d' | '90d' | '365d'
 /** Ended includes cancelled shows (old links with "cancelled" read as ended). */
 export type TvStatusFilter = 'airing' | 'returning' | 'ended'
 export type TvProgressFilter = 'not_started' | 'midway' | 'caught_up'
-export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'played' | 'price' | 'discount' | 'length'
+export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'played' | 'price' | 'discount' | 'length' | 'progress'
 /** How a game is played: alone, with others at all, together against the game (co-op), on one screen, or against each other. */
 export type CoopFilter = 'single' | 'multi' | 'coop' | 'local' | 'pvp'
 export type DeckFilter = 'verified' | 'playable' | 'unsupported'
@@ -95,7 +96,7 @@ const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended']
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
 /** Sort when none is chosen: date added, newest first. */
 export const DEFAULT_SORT: SortKey = 'added'
-const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'played', 'price', 'discount', 'length']
+const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'played', 'price', 'discount', 'length', 'progress']
 const LENGTH: LengthFilter[] = ['short', 'medium', 'long', 'epic']
 const COOP: CoopFilter[] = ['single', 'multi', 'coop', 'local', 'pvp']
 const DECK: DeckFilter[] = ['verified', 'playable', 'unsupported']
@@ -458,6 +459,12 @@ export function sortItems(items: UserItem[], sort: SortKey, reverse = false): Us
   }
   // Games: Steam's last-played date when there is one, otherwise the last time you did something with it in On Deck.
   const played = (i: UserItem) => Date.parse(i.steamLastPlayed ?? i.lastActivityAt ?? '') || null
+  // Shows: share of the aired episodes watched (ignored seasons count as done, as on the show page).
+  const through = (i: UserItem) => {
+    if (i.title.mediaType !== 'tv') return null
+    const c = completion(i, seasonsOf(i))
+    return c.aired ? (c.watched + c.ignored) / c.aired : null
+  }
   const num = (v: (i: UserItem) => number | null, dir: 1 | -1) => ({
     has: (i: UserItem) => v(i) != null,
     cmp: (a: UserItem, b: UserItem) => dir * (v(a)! - v(b)!),
@@ -486,6 +493,11 @@ export function sortItems(items: UserItem[], sort: SortKey, reverse = false): Us
       }
       case 'length': // shortest first
         return num(hoursToBeat, 1)
+      case 'progress': { // furthest through first; ties, most recently watched first
+        const p = num(through, -1)
+        const active = (i: UserItem) => Date.parse(i.lastActivityAt ?? i.updatedAt ?? '') || 0
+        return { has: p.has, cmp: (a: UserItem, b: UserItem) => p.cmp(a, b) || active(b) - active(a) }
+      }
     }
   })()
   const has = how.has ?? (() => true)
@@ -558,7 +570,7 @@ export const LABELS = {
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
   tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
-  sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length' } as Record<SortKey, string>,
+  sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length', progress: 'Progress' } as Record<SortKey, string>,
   coop: { single: 'Single player', multi: 'Multiplayer', coop: 'Co-op', local: 'Local co-op', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,

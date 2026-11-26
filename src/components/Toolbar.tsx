@@ -70,7 +70,7 @@ function LabelsButton() {
 
 const selectClass = 'h-11 sm:h-7 rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none focus:border-accent'
 /** A select as wide as the option showing (not its longest option), so the toolbar row fits. */
-const fitTo = (text: string) => ({ width: `calc(${text.length * 0.82}ch + 1.875rem)` })
+const fitTo = (text: string) => ({ width: `calc(${text.length * 0.82}ch + 2.5rem)` }) // 2.5rem: padding plus the native arrow
 
 // ─── Filters panel ─────────────────────────────────────────────────────────
 //
@@ -506,9 +506,12 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
           className={selectClass}
           style={stacked ? undefined : fitTo(`Sort: ${LABELS.sort[f.sort]}`)}
         >
-          {/* Price and Length only mean something for games (shown for Games and All). */}
+          {/* Price and Length only mean something for games, Progress for shows (each shown for its type and All). */}
           {LABELS.options.SORTS.filter(
-            (s) => !['played', 'price', 'discount', 'length'].includes(s) || !f.type || f.type === 'game' || f.sort === s,
+            (s) =>
+              f.sort === s ||
+              !f.type ||
+              (['played', 'price', 'discount', 'length'].includes(s) ? f.type === 'game' : s === 'progress' ? f.type === 'tv' : true),
           ).map((s) => (
             <option key={s} value={s}>
               Sort: {LABELS.sort[s]}

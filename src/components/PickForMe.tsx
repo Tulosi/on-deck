@@ -2,11 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, Clapperboard, Dices, Film, Gamepad2, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
+import { BookOpen, Clapperboard, Dices, Film, Gamepad2, Play, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
 import { useItems, useUpdateItem } from '../lib/library'
 import { useTypeOrder } from '../lib/navLayout'
 import { candidates, pickOne, reelOf, weigh, type PickKind } from '../lib/picker'
 import { statusLabel } from '../lib/statusLabels'
+import { steamLaunch } from '../lib/steam'
 import { coverProps } from '../lib/images'
 import { toast } from '../lib/toast'
 import { useDialog } from '../lib/useDialog'
@@ -450,36 +451,50 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                     </div>
                   ))}
                 </dl>
-                {/* One row of buttons (tighter on narrow phones, so all three fit). Once everything has come up, Spin
-                    again becomes Start over, which brings them all back. */}
-                <div className="reveal mt-3 flex flex-wrap items-center justify-center gap-2 max-[24rem]:gap-1.5" style={{ animationDelay: '120ms' }}>
-                  {pick.progress === 'wanted' && (
-                    <button type="button" onClick={() => start(pick)} className="hit h-9 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-fg hover:brightness-110 transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5">
-                      {START_WORD[pick.title.mediaType]}
-                    </button>
-                  )}
-                  <Link
-                    to={`/title/${pick.title.id}`}
-                    onClick={onClose}
-                    className={clsx(
-                      'hit flex h-9 items-center rounded-lg px-3.5 text-sm font-medium transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5',
-                      pick.progress === 'wanted' ? 'border border-line text-fg hover:border-faint' : 'bg-accent text-accent-fg hover:brightness-110',
-                    )}
-                  >
-                    Open
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!left) seen.current.clear()
-                      if (kind) spin(kind)
-                    }}
-                    title={left ? undefined : 'That was the last one that fits. Start over brings them all back.'}
-                    className="hit flex h-9 items-center gap-1.5 rounded-lg border border-line px-3.5 text-sm text-fg hover:border-faint transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5"
-                  >
-                    <RotateCcw className="size-3.5" aria-hidden="true" /> {left ? 'Spin again' : 'Start over'}
-                  </button>
-                </div>
+                {/* One row of buttons (tighter on narrow phones, so all three fit). An owned Steam game gets Launch first,
+                    on a computer, where Steam runs (as on its title page). Not started yet, Launch also does what Start
+                    playing would (sets it to Playing, with Undo), so it's one button rather than two. Once everything
+                    has come up, Spin again becomes Start over, which brings them all back. */}
+                {(() => {
+                  const launch = pick.title.mediaType === 'game' && pick.owned && pick.title.steamAppId ? steamLaunch(pick.title.steamAppId) : undefined
+                  const wanted = pick.progress === 'wanted'
+                  const lead = launch ? 'launch' : wanted ? 'start' : 'open'
+                  const btn =
+                    'hit flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5'
+                  const tone = (key: string) => (lead === key ? 'bg-accent font-medium text-accent-fg hover:brightness-110' : 'border border-line text-fg hover:border-faint')
+                  return (
+                    <div className="reveal mt-3 flex flex-wrap items-center justify-center gap-2 max-[24rem]:gap-1.5" style={{ animationDelay: '120ms' }}>
+                      {launch && (
+                        <a
+                          href={launch.href}
+                          // The link opens Steam; the click also marks it started (start closes the picker too).
+                          onClick={() => (wanted ? start(pick) : onClose())}
+                          title={wanted ? 'Start the game in the Steam app, and set it to Playing' : 'Start the game in the Steam app'} className={clsx(btn, tone('launch'))}>
+                          <Play className="size-3.5" strokeWidth={2} aria-hidden="true" /> {launch.label}
+                        </a>
+                      )}
+                      {wanted && !launch && (
+                        <button type="button" onClick={() => start(pick)} className={clsx(btn, 'font-medium', tone('start'))}>
+                          {START_WORD[pick.title.mediaType]}
+                        </button>
+                      )}
+                      <Link to={`/title/${pick.title.id}`} onClick={onClose} className={clsx(btn, 'font-medium', tone('open'))}>
+                        Open
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!left) seen.current.clear()
+                          if (kind) spin(kind)
+                        }}
+                        title={left ? undefined : 'That was the last one that fits. Start over brings them all back.'}
+                        className={clsx(btn, 'border border-line text-fg hover:border-faint')}
+                      >
+                        <RotateCcw className="size-3.5" aria-hidden="true" /> {left ? 'Spin again' : 'Start over'}
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
             ) : spinning ? (
               <p className="sr-only">Spinning…</p>

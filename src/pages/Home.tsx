@@ -98,7 +98,7 @@ export function Home() {
       {/* Wide screens: the two short-by-design rows (last 7 days, stalled lately) share a line. The first is only as wide
           as it needs (up to half), so with a title or two each they sit close; with more, the second moves over to make
           room. On their own, either takes the whole line; when one empties, the other slides over (useFlipChildren). */}
-      <div ref={setPairEl} className="relative grid items-start gap-10 empty:hidden xl:grid-cols-[fit-content(36rem)_minmax(0,36rem)] xl:gap-x-16 xl:has-[>:only-child]:grid-cols-1">
+      <div ref={setPairEl} className="relative grid grid-cols-1 items-start gap-10 empty:hidden xl:grid-cols-[fit-content(36rem)_minmax(0,36rem)] xl:gap-x-16 xl:has-[>:only-child]:grid-cols-1">
         <PosterRow
           inset
           title="New for you"

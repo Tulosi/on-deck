@@ -257,7 +257,7 @@ function UpNextCard({ item, lead }: { item: UserItem; lead: boolean }) {
   const movie = title.mediaType === 'movie' && !next.value ? movieFacts(item) : null
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
       {/* A new title taking the card arrives with a short lift; the same title updating doesn't. */}
       <div key={item.id} className="arrive flex gap-4 p-4">
         <Link to={`/title/${title.id}`} className="hit block w-20 flex-none sm:w-24" aria-label={title.title}>

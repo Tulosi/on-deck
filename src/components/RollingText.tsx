@@ -11,7 +11,9 @@ export function RollingText({ text, className }: { text: string; className?: str
   // Key digit columns by their place counted from the end, so "E9" → "E10" keeps the ones column in place.
   const chars = [...text]
   return (
-    <span className={clsx('inline-flex', className)}>
+    // Relative, so the hidden screen-reader copy stays inside it: otherwise, in a card scrolled off to the side, it sat
+    // outside the card's clipping and widened the page on phones (which pushed pop-ups off the right edge).
+    <span className={clsx('relative inline-flex', className)}>
       <span className="sr-only">{text}</span>
       {chars.map((c, i) => {
         const place = chars.length - i

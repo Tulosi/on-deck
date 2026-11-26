@@ -88,7 +88,7 @@ export function PosterRow({
         )}
       >
         {shown.map(({ item, key, leaving }) => (
-          // Phones: exactly three posters across the row (up to the usual 8rem), none cut off at the edge.
+          // Phones: two and a half posters across, so the next one peeks in at the edge (see POSTER_W).
           <div key={key} className={clsx(POSTER_W, leaving && 'leave-x')} inert={leaving}>
             <PosterCard item={item} subline={subline?.(item)} morphKey={title} />
             {footer?.(item)}

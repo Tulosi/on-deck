@@ -1,7 +1,7 @@
 // "Pick for me": one title from your own list, chosen at random but leaning towards what you'd most likely want to
 // get to now. No questions asked: the only choice is the type (or anything).
 import { isAvailable } from './filters'
-import { nextWatchable } from './home'
+import { readyNow } from './home'
 import { releaseInfo } from './release'
 import type { MediaType, UserItem } from '../types'
 
@@ -19,8 +19,9 @@ function pickable(i: UserItem, now: number): boolean {
   // Movies / shows that are known not to be watchable anywhere you have.
   if ((i.title.mediaType === 'movie' || i.title.mediaType === 'tv') && isAvailable(i) === false) return false
   if (i.available == null && (i.plex === 'requested' || i.plex === 'missing')) return false
-  // A show you're in the middle of with no new episode out yet.
-  if (i.title.mediaType === 'tv' && i.progress === 'in_progress' && i.tvProgress && !nextWatchable(i)) return false
+  // A show you're in the middle of with no new episode out yet. (Same test as Home's Up next; not nextWatchable,
+  // which says no for any show Plex sync tracks.)
+  if (i.title.mediaType === 'tv' && i.progress === 'in_progress' && i.tvProgress && !readyNow(i)) return false
   return true
 }
 

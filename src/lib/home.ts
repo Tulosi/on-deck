@@ -73,8 +73,11 @@ export function continueItems(items: UserItem[]): UserItem[] {
 export const UP_NEXT_MAX = 5
 const UP_NEXT_IDLE_MS = 60 * 86_400_000
 
-/** Can you pick this up right now? Shows need their next episode out; everything else always can. */
-function readyNow(item: UserItem): boolean {
+/**
+ * Can you pick this up right now? Shows need their next episode out; everything else always can. Plex sync doesn't
+ * matter here (Home's Up next and Pick for me both use this).
+ */
+export function readyNow(item: UserItem): boolean {
   if (item.title.mediaType !== 'tv') return true
   // No season data (sample titles): trust the progress you've recorded.
   if (seasonsOf(item).length === 0) return !!item.tvProgress

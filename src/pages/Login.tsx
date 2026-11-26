@@ -2,12 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { usePageTitle } from '../lib/usePageTitle'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authRedirectUrl, resetRedirectUrl, useAuth } from '../lib/auth'
 import { requestPasswordReset, supabase } from '../lib/supabase'
 import { plainError } from '../lib/errors'
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot'
+type Problems = { email?: string; password?: string; confirm?: string }
 
 const inputClass =
   'h-11 w-full rounded-md border border-line bg-bg px-3 text-sm sm:h-10 text-fg outline-none placeholder:text-faint focus:border-accent aria-invalid:border-bad'
@@ -20,11 +21,15 @@ export function Login() {
   usePageTitle(mode === 'sign-up' ? 'Create account' : 'Sign in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Create account asks for the new password twice, so a typo can't lock you out of an account you just made.
+  const [confirm, setConfirm] = useState('')
+  // One eye button shows both password fields at once (as Google's sign-up does), to check what you typed.
+  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   // Field problems, shown under each field in the app's words (instead of the browser's popups).
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  const [fieldErrors, setFieldErrors] = useState<Problems>({})
 
   if (!loading && user) return <Navigate to="/" replace />
 
@@ -36,14 +41,18 @@ export function Login() {
   }
 
   /** What's wrong with the fields, if anything. The 8-character minimum is only for new passwords. */
-  function check(): { email?: string; password?: string } {
-    const problems: { email?: string; password?: string } = {}
+  function check(): Problems {
+    const problems: Problems = {}
     const trimmed = email.trim()
     if (!trimmed) problems.email = 'Enter your email address.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) problems.email = 'That doesn’t look like an email address.'
     if (mode !== 'forgot') {
       if (!password) problems.password = mode === 'sign-up' ? 'Choose a password.' : 'Enter your password.'
       else if (mode === 'sign-up' && password.length < 8) problems.password = 'Use at least 8 characters.'
+    }
+    if (mode === 'sign-up' && !problems.password) {
+      if (!confirm) problems.confirm = 'Enter your password again.'
+      else if (confirm !== password) problems.confirm = 'The two passwords don’t match.'
     }
     return problems
   }
@@ -53,8 +62,8 @@ export function Login() {
     if (!supabase) return
     const problems = check()
     setFieldErrors(problems)
-    if (problems.email || problems.password) {
-      document.getElementById(problems.email ? 'email' : 'password')?.focus()
+    if (problems.email || problems.password || problems.confirm) {
+      document.getElementById(problems.email ? 'email' : problems.password ? 'password' : 'confirm-password')?.focus()
       return
     }
     setBusy(true)
@@ -170,22 +179,35 @@ export function Login() {
                     </button>
                   )}
                 </span>
-                <input
-                  name="password"
-                  id="password"
-                  type="password"
-                  required
-                  minLength={mode === 'sign-up' ? 8 : undefined}
-                  autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-                  value={password}
-                  aria-invalid={!!fieldErrors.password}
-                  aria-describedby={fieldErrors.password ? 'password-error' : mode === 'sign-up' ? 'password-hint' : undefined}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    setFieldErrors((f) => ({ ...f, password: undefined }))
-                  }}
-                  className={inputClass}
-                />
+                <div className="relative">
+                  <input
+                    name="password"
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={mode === 'sign-up' ? 8 : undefined}
+                    autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+                    value={password}
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={fieldErrors.password ? 'password-error' : mode === 'sign-up' ? 'password-hint' : undefined}
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      setFieldErrors((f) => ({ ...f, password: undefined, confirm: undefined }))
+                    }}
+                    className={clsx(inputClass, 'pr-11')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label="Show password"
+                    aria-pressed={showPassword}
+                    aria-controls={mode === 'sign-up' ? 'password confirm-password' : 'password'}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-md text-muted hover:text-fg"
+                  >
+                    {showPassword ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
+                  </button>
+                </div>
                 {fieldErrors.password ? (
                   <span id="password-error" className="block text-xs text-bad">
                     {fieldErrors.password}
@@ -198,6 +220,36 @@ export function Login() {
                   )
                 )}
               </div>
+            )}
+            {mode === 'sign-up' && (
+              <label className="block space-y-1.5">
+                <span className="text-xs text-muted">Confirm password</span>
+                <input
+                  name="confirm-password"
+                  id="confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  // new-password on both, so a password manager's suggested password fills both fields.
+                  autoComplete="new-password"
+                  value={confirm}
+                  aria-invalid={!!fieldErrors.confirm}
+                  aria-describedby={fieldErrors.confirm ? 'confirm-error' : undefined}
+                  onChange={(e) => {
+                    setConfirm(e.target.value)
+                    setFieldErrors((f) => ({ ...f, confirm: undefined }))
+                  }}
+                  // Said as soon as you leave the field, not only on Create account.
+                  onBlur={() => {
+                    if (confirm && password && confirm !== password) setFieldErrors((f) => ({ ...f, confirm: 'The two passwords don’t match.' }))
+                  }}
+                  className={inputClass}
+                />
+                {fieldErrors.confirm && (
+                  <span id="confirm-error" className="block text-xs text-bad">
+                    {fieldErrors.confirm}
+                  </span>
+                )}
+              </label>
             )}
 
             {/* Announced by screen readers as soon as they appear. */}

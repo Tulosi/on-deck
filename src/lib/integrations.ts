@@ -233,9 +233,10 @@ export function useProviders(title: Title) {
   })
 }
 
-export function useSeerrStatus(title: Title) {
+/** `title` may be missing (nothing to look up yet), so a component can call this before it has one. */
+export function useSeerrStatus(title: Title | null | undefined) {
   const { user } = useAuth()
-  const ref = tmdbRef(title)
+  const ref = title ? tmdbRef(title) : null
   return useQuery({
     queryKey: ['seerr', user?.id, ref?.mediaType, ref?.tmdbId],
     enabled: !!user && !!ref,

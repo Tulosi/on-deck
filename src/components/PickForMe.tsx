@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, Clapperboard, Dices, Film, Gamepad2, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
+import { BookOpen, Clapperboard, Dices, Film, Gamepad2, Play, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
+import { useSeerrStatus } from '../lib/integrations'
 import { useItems, useUpdateItem } from '../lib/library'
 import { useTypeOrder } from '../lib/navLayout'
 import { candidates, pickOne, reelOf, weigh, type PickKind } from '../lib/picker'
@@ -113,6 +114,10 @@ function PickDialog({ onClose }: { onClose: () => void }) {
   const [spinning, setSpinning] = useState(false)
   const [exhausted, setExhausted] = useState(false)
   const pick = reel && !reel.resting ? reel.strip[reel.at] : null
+  // A show or movie on your Plex: Seerr knows its Plex link, so the picker can open it there.
+  const onPlex = !!pick && (pick.title.mediaType === 'tv' || pick.title.mediaType === 'movie') && pick.plex === 'available'
+  const seerr = useSeerrStatus(onPlex ? pick.title : null)
+  const plexUrl = onPlex && seerr.data?.configured ? (seerr.data.plexUrl ?? undefined) : undefined
   const stageEl = useRef<HTMLDivElement>(null)
   // Where the carousel is right now (in posters along the strip, fractional mid-spin), for a spin that interrupts it.
   const posNow = useRef(0)
@@ -454,12 +459,20 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                   ))}
                 </dl>
                 {/* One row of buttons (tighter on narrow phones, so all three fit). An owned Steam game gets Launch first,
-                    on a computer, where Steam runs (as on its title page). Not started yet, Launch also does what Start
-                    playing would (sets it to Playing, with Undo), so it's one button rather than two. Once everything
+                    on a computer, where Steam runs (as on its title page); a show or movie on your Plex gets a Plex button
+                    with the play icon. Not started yet, that button also does what Start playing/watching would (sets it
+                    going, with Undo), so it's one button rather than two. Once everything
                     has come up, Spin again becomes Start over, which brings them all back. */}
                 {(() => {
-                  const launch = pick.title.mediaType === 'game' && pick.owned && pick.title.steamAppId ? steamLaunch(pick.title.steamAppId) : undefined
+                  const steam = pick.title.mediaType === 'game' && pick.owned && pick.title.steamAppId ? steamLaunch(pick.title.steamAppId) : undefined
                   const wanted = pick.progress === 'wanted'
+                  // Steam (a computer) or Plex: the link starts it there, and the click also marks it started if it
+                  // wasn't (start closes the picker too). Closing waits a tick so the link still opens.
+                  const launch = steam
+                    ? { href: steam.href, external: false, icon: <SteamIcon className="size-3.5" />, label: steam.label, title: wanted ? 'Start the game in the Steam app, and set it to Playing' : 'Start the game in the Steam app' }
+                    : plexUrl
+                      ? { href: plexUrl, external: true, icon: <Play className="size-3.5" aria-hidden="true" />, label: wanted ? START_WORD[pick.title.mediaType] : 'Watch in Plex', title: wanted ? 'Open it in Plex, and set it to Watching' : 'Open it in Plex' }
+                      : undefined
                   const lead = launch ? 'launch' : wanted ? 'start' : 'open'
                   const btn =
                     'hit flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm transition-[transform,border-color,filter] duration-150 active:scale-[0.97] max-[26rem]:px-2.5'
@@ -469,10 +482,13 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                       {launch && (
                         <a
                           href={launch.href}
-                          // The link opens Steam; the click also marks it started (start closes the picker too).
-                          onClick={() => (wanted ? start(pick) : onClose())}
-                          title={wanted ? 'Start the game in the Steam app, and set it to Playing' : 'Start the game in the Steam app'} className={clsx(btn, tone('launch'))}>
-                          <SteamIcon className="size-3.5" /> {launch.label}
+                          target={launch.external ? '_blank' : undefined}
+                          rel={launch.external ? 'noreferrer' : undefined}
+                          onClick={() => setTimeout(() => (wanted ? start(pick) : onClose()))}
+                          title={launch.title}
+                          className={clsx(btn, tone('launch'))}
+                        >
+                          {launch.icon} {launch.label}
                         </a>
                       )}
                       {wanted && !launch && (

@@ -1,6 +1,14 @@
-<!-- On Deck favicon: the D with its play button. Drawn on a 32 grid. -->
+<!-- On Deck favicon: the D with its play button, nearly filling the square. Follows the browser theme like the logo:
+     dark → lemon D with the play cut through; light → espresso D with a lemon play, 15% smaller (a light shape on dark reads bigger). Drawn on a 32 grid. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#1e1812"/>
-  <path d="M7 4 H14 A12 12 0 0 1 14 28 H7 Z" fill="#f4e04d"/>
-  <polygon points="12.55,10.69 12.55,21.31 21.16,16" fill="#1e1812" stroke="#1e1812" stroke-width="2.27" stroke-linejoin="round"/>
+  <style>.dark{display:none}.light .d{fill:#1e1812}.light .p{fill:#f4e04d;stroke:#f4e04d}@media (prefers-color-scheme:dark){.dark{display:inline}.light{display:none}}</style>
+  <mask id="m"><rect width="32" height="32" fill="#fff"/>
+  <polygon points="10.78,9.06 10.78,22.94 22.03,16" fill="#000" stroke="#000" stroke-width="2.97" stroke-linejoin="round"/></mask>
+  <g class="dark">
+  <path d="M4 1 H12.75 A15 15 0 0 1 12.75 31 H4 Z" fill="#f4e04d" mask="url(#m)"/>
+  </g>
+  <g class="light">
+  <path class="d" d="M4 1 H12.75 A15 15 0 0 1 12.75 31 H4 Z"/>
+  <polygon class="p" points="11.35,10.1 11.35,21.9 20.9,16" stroke-width="2.52" stroke-linejoin="round"/>
+  </g>
 </svg>

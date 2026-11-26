@@ -374,7 +374,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="grid h-full place-items-center px-6 text-center text-sm text-muted">
-              {items.length ? 'Choose what to pick from, and it spins.' : 'Add a few titles first, then let it choose.'}
+              {items.length ? 'You spin me right round, baby, right round.' : 'Add a few titles first, then let it rip.'}
             </div>
           )}
         </div>
@@ -386,7 +386,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           <div
             aria-hidden="true"
             className={clsx(
-              '[grid-area:1/1] transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
+              // Never catches taps: once faded out, it still sits over the text in the same grid cell.
+              'pointer-events-none [grid-area:1/1] transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
               (pick && !spinning) || exhausted || reel?.resting || !reel ? 'opacity-0' : spinning && 'motion-safe:animate-pulse',
             )}
           >
@@ -500,7 +501,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
               <p className="sr-only">Spinning…</p>
             ) : reel?.resting || !reel ? (
               <p className="grid h-full place-items-center text-center text-sm text-muted">
-                {reel ? 'Choose what to pick from, and it spins.' : ''}
+                {reel ? <SpinHint text={'You spin me right round, baby, right round.'} onSpin={() => spin('any')} /> : ''}
               </p>
             ) : null}
           </div>
@@ -509,6 +510,28 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       </div>
     </div>,
     document.body,
+  )
+}
+
+/**
+ * The resting hint, with its "spin me" as a button that spins Anything (the rest stays plain text). If the words
+ * aren't in it, it's just the text.
+ */
+function SpinHint({ text, onSpin }: { text: string; onSpin: () => void }) {
+  const at = text.toLowerCase().indexOf('spin me')
+  if (at < 0) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, at)}
+      <button
+        type="button"
+        onClick={onSpin}
+        className="hit font-medium text-accent-ink underline decoration-accent/40 underline-offset-[3px] transition-[text-decoration-color] duration-150 hover:decoration-accent"
+      >
+        {text.slice(at, at + 7)}
+      </button>
+      {text.slice(at + 7)}
+    </>
   )
 }
 

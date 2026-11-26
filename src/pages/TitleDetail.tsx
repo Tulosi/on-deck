@@ -328,7 +328,9 @@ export function TitleDetail() {
         <div className="absolute inset-x-0 top-4 mx-auto max-w-6xl px-4 md:px-6">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            // Back within the app when there's somewhere to go back to. Opened straight onto this page (a
+            // notification, a shared or typed link), going back would leave the app or do nothing: Home instead.
+            onClick={() => ((window.history.state as { idx?: number } | null)?.idx ? navigate(-1) : navigate('/', { replace: true }))}
             className="hit flex h-9 items-center gap-1.5 rounded-md border border-line bg-bg/90 px-3 text-sm text-fg hover:bg-raised"
           >
             <ArrowLeft className="size-4" /> Back

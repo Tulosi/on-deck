@@ -389,14 +389,14 @@ function PickDialog({ onClose }: { onClose: () => void }) {
             className={clsx(
               // Never catches taps: once faded out, it still sits over the text in the same grid cell.
               'pointer-events-none [grid-area:1/1] transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
-              (pick && !spinning) || exhausted || reel?.resting || !reel ? 'opacity-0' : spinning && 'motion-safe:animate-pulse',
+              (pick && !spinning) || exhausted || !reel ? 'opacity-0' : reel.resting ? 'opacity-35' : spinning && 'motion-safe:animate-pulse',
             )}
           >
             <div className="flex h-6 items-center justify-center">
-              <span className="h-3.5 w-40 rounded bg-raised" />
+              <span className={clsx('h-3.5 w-40 rounded bg-raised', reel?.resting && 'invisible')} />
             </div>
             <div className="mt-0.5 flex h-4 items-center justify-center">
-              <span className="h-2.5 w-28 rounded bg-raised" />
+              <span className={clsx('h-2.5 w-28 rounded bg-raised', reel?.resting && 'invisible')} />
             </div>
             <div className="mt-3 grid grid-cols-3 border-y border-line">
               {['Status', 'Why', 'Where'].map((label, n) => (
@@ -501,9 +501,13 @@ function PickDialog({ onClose }: { onClose: () => void }) {
             ) : spinning ? (
               <p className="sr-only">Spinning…</p>
             ) : reel?.resting || !reel ? (
-              <p className="grid h-full place-items-center text-center text-sm text-muted">
-                {reel ? <SpinHint text={'You spin me right round, baby, right round.'} onSpin={() => spin('any')} /> : ''}
-              </p>
+              // Before the first spin: the hint where the title and byline will be, over the placeholders shown
+              // faintly and still (behind), so the space reads as "your pick goes here" rather than empty.
+              reel ? (
+                <div className="flex h-[2.625rem] items-center justify-center text-center text-sm leading-5 text-muted text-balance">
+                  <SpinHint text={'You spin me right round, baby, right round.'} onSpin={() => spin('any')} />
+                </div>
+              ) : null
             ) : null}
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { BookOpen, Clapperboard, Dices, Film, Gamepad2, Play, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
+import { BookOpen, Clapperboard, Dices, Film, Gamepad2, RotateCcw, Shuffle, Tv, X } from 'lucide-react'
 import { useItems, useUpdateItem } from '../lib/library'
 import { useTypeOrder } from '../lib/navLayout'
 import { candidates, pickOne, reelOf, weigh, type PickKind } from '../lib/picker'
@@ -12,6 +12,7 @@ import { coverProps } from '../lib/images'
 import { toast } from '../lib/toast'
 import { useDialog } from '../lib/useDialog'
 import type { MediaType, UserItem } from '../types'
+import { SteamIcon } from './SteamIcon'
 
 const KIND_LABEL: Record<PickKind, string> = { any: 'Anything', game: 'A game', movie: 'A movie', tv: 'A show', book: 'A book' }
 const KIND_ICON = { any: Shuffle, game: Gamepad2, movie: Film, tv: Tv, book: BookOpen } as const
@@ -471,7 +472,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
                           // The link opens Steam; the click also marks it started (start closes the picker too).
                           onClick={() => (wanted ? start(pick) : onClose())}
                           title={wanted ? 'Start the game in the Steam app, and set it to Playing' : 'Start the game in the Steam app'} className={clsx(btn, tone('launch'))}>
-                          <Play className="size-3.5" strokeWidth={2} aria-hidden="true" /> {launch.label}
+                          <SteamIcon className="size-3.5" /> {launch.label}
                         </a>
                       )}
                       {wanted && !launch && (

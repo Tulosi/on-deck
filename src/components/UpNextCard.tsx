@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { steamLaunch, steamStore } from '../lib/steam'
@@ -13,6 +13,7 @@ import { useSeerrStatus } from '../lib/integrations'
 import { markWatched } from '../lib/markWatched'
 import { statusLabel } from '../lib/statusLabels'
 import type { MediaType } from '../types'
+import { SteamIcon } from './SteamIcon'
 
 const NOUN: Record<MediaType, string> = { movie: 'movie', tv: 'show', game: 'game', book: 'book' }
 const KIND: Record<MediaType, string> = { movie: 'Movie', tv: 'TV show', game: 'Game', book: 'Book' }
@@ -354,10 +355,10 @@ function ActionsWithPlex({ item, lead }: { item: UserItem; lead: boolean }) {
   return <Actions item={item} lead={lead} open={plexUrl ? { label: 'Open in Plex', href: plexUrl } : undefined} />
 }
 
-const lemon = 'grid h-11 flex-1 place-items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
-const secondary = 'grid h-11 place-items-center rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
+const lemon = 'grid h-11 min-w-0 flex-1 place-items-center whitespace-nowrap rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-105 active:scale-[0.98]'
+const secondary = 'grid h-11 shrink-0 place-items-center whitespace-nowrap rounded-md border border-line px-4 text-sm text-fg hover:bg-raised'
 /** The main action on cards after the first: same size and place, outlined instead of lemon. */
-const quietMain = 'grid h-11 flex-1 place-items-center rounded-md border border-line px-4 text-sm font-medium text-fg hover:bg-raised active:scale-[0.98]'
+const quietMain = 'grid h-11 min-w-0 flex-1 place-items-center whitespace-nowrap rounded-md border border-line px-4 text-sm font-medium text-fg hover:bg-raised active:scale-[0.98]'
 
 /**
  * One bold action: Mark watched when that's yours to do, else open it where you watch or buy it (Plex, the
@@ -372,7 +373,7 @@ function Actions({
 }: {
   item: UserItem
   lead: boolean
-  open?: { label: string; href: string }
+  open?: { label: string; short?: string; href: string }
   launch?: { label: string; href: string }
 }) {
   const primary = lead ? lemon : quietMain
@@ -383,7 +384,8 @@ function Actions({
   const openLink = (cls: string) =>
     open && (
       <a href={open.href} target={open.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className={cls}>
-        {open.label}
+        {/* Beside Launch and Details (three buttons), the short label keeps it to one line. */}
+        {launch && open.short ? open.short : open.label}
       </a>
     )
   const details = (cls: string, label: string) => (
@@ -392,7 +394,7 @@ function Actions({
     </Link>
   )
   return (
-    <div className="flex gap-2 border-t border-line px-4 py-3">
+    <div className="@container/actions flex gap-2 border-t border-line px-4 py-3">
       {ep ? (
         <>
           <button
@@ -411,9 +413,15 @@ function Actions({
         <>
           {openLink(primary)}
           {launch && (
-            <a href={launch.href} title="Start the game in the Steam app" className="flex h-11 items-center justify-center gap-1.5 rounded-md border border-line px-4 text-sm text-fg hover:bg-raised">
-              <Play className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
-              {launch.label}
+            <a
+              href={launch.href}
+              aria-label={launch.label}
+              title="Start the game in the Steam app"
+              className="flex h-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-line px-4 text-sm text-fg hover:bg-raised"
+            >
+              <SteamIcon className="size-3.5" />
+              {/* A narrow card: just the Steam logo, so Store page keeps its room. */}
+              <span className="hidden @[18.75rem]/actions:inline">{launch.label}</span>
             </a>
           )}
           {details(secondary, 'Details')}

@@ -76,11 +76,13 @@ export function useSteamOwnershipCheck() {
 // ── Links into Steam for a game's app id (Home's Up next card, the title page). ──
 export interface SteamLink {
   label: string
+  /** A shorter label, for where it shares a row with other buttons. */
+  short?: string
   href: string
 }
 
 /** The game's Steam store listing, in the browser. */
-export const steamStore = (appId: number): SteamLink => ({ label: 'Open store page', href: `https://store.steampowered.com/app/${appId}` })
+export const steamStore = (appId: number): SteamLink => ({ label: 'Open store page', short: 'Store page', href: `https://store.steampowered.com/app/${appId}` })
 
 /**
  * Starts the game in the Steam desktop app. Offered only with a mouse (a computer, where Steam is usually

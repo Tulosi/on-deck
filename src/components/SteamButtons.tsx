@@ -1,5 +1,6 @@
-import { ExternalLink, Play } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { steamLaunch, steamStore } from '../lib/steam'
+import { SteamIcon } from './SteamIcon'
 
 /** Title page, Steam games: the store listing (in the browser) and, on a computer, Launch in the Steam app. */
 export function SteamButtons({ appId }: { appId: number }) {
@@ -22,7 +23,7 @@ export function SteamButtons({ appId }: { appId: number }) {
           title="Start the game in the Steam app"
           className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-4 text-sm text-fg hover:bg-raised"
         >
-          <Play className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+          <SteamIcon className="size-3.5" />
           {launch.label}
         </a>
       )}

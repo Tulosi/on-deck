@@ -48,7 +48,8 @@ function placement(d: number, w: number) {
   return { x, scale, dim: DIM * near, layer: Math.round(100 - a * 10) }
 }
 
-type Reel = { strip: UserItem[]; at: number; key: number; resting?: boolean }
+/** `offset`: how far between posters it was when a new spin interrupted the last, so it carries on from there. */
+type Reel = { strip: UserItem[]; at: number; key: number; resting?: boolean; offset?: number }
 
 /** A still fan of seven posters from the pool, shown before the first spin. */
 function restingReel(pool: UserItem[]): Reel | null {
@@ -111,9 +112,13 @@ function PickDialog({ onClose }: { onClose: () => void }) {
   const [exhausted, setExhausted] = useState(false)
   const pick = reel && !reel.resting ? reel.strip[reel.at] : null
   const stageEl = useRef<HTMLDivElement>(null)
+  // Where the carousel is right now (in posters along the strip, fractional mid-spin), for a spin that interrupts it.
+  const posNow = useRef(0)
 
   const spin = (k: PickKind) => {
-    if (spinning) return
+    // Changing your mind mid-spin starts the new one from where the posters are; the pick it was heading for was
+    // never shown, so it can still come up.
+    if (spinning && reel && !reel.resting) seen.current.delete(reel.strip[reel.at].id)
     setKind(k)
     const pool = pools[k]
     const next = pickOne(pool, seen.current)
@@ -125,9 +130,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     seen.current.add(next.id)
     const r = reelOf(pool, next, 10)
     // The posters already showing stay put and set off from where they are, rather than swapping in new ones.
-    const showing = reel ? reel.strip.slice(reel.at - 3, reel.at + 4) : []
-    if (showing.length === 7) r.strip.splice(0, 7, ...showing)
-    setReel({ ...r, key: Date.now() })
+    const centre = spinning ? Math.round(posNow.current) : (reel?.at ?? 0)
+    const showing = reel ? reel.strip.slice(centre - 3, centre + 4) : []
+    const moving = showing.length === 7
+    if (moving) r.strip.splice(0, 7, ...showing)
+    setReel({ ...r, key: Date.now(), offset: spinning && moving ? posNow.current - centre : 0 })
     setSpinning(true)
   }
 
@@ -137,16 +144,33 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     const stage = stageEl.current
     if (!reel || !stage) return
     const cards = [...stage.querySelectorAll<HTMLElement>('[data-card]')]
-    // Poster width so the middle one and both neighbours exactly fill the window; its height leaves room for the
-    // pick's outline.
-    const w = (stage.clientWidth - 2 * GAP) / (1 + 2 * SIDE)
-    stage.style.height = `${Math.round(w * 1.5) + 8}px`
-    for (const el of cards) {
-      el.style.width = `${w}px`
-      el.style.height = `${w * 1.5}px`
+    // Poster width so the middle one and both neighbours exactly fill the window (on a short screen, a phone held
+    // sideways, no taller than about a third of it); its height leaves room for the pick's outline. Measured again
+    // when the window changes size, so turning the phone doesn't leave posters sized for the old width.
+    let w = 0
+    const measure = () => {
+      stage.style.maxWidth = ''
+      const fit = (stage.clientWidth - 2 * GAP) / (1 + 2 * SIDE)
+      w = Math.min(fit, Math.max(96, (innerHeight * 0.36) / 1.5))
+      // Smaller posters: the window narrows with them, so it still shows exactly three.
+      if (w < fit) stage.style.maxWidth = `${Math.ceil(w * (1 + 2 * SIDE) + 2 * GAP)}px`
+      stage.style.height = `${Math.round(w * 1.5) + 8}px`
+      for (const el of cards) {
+        el.style.width = `${w}px`
+        el.style.height = `${w * 1.5}px`
+      }
     }
+    measure()
+    // Where the carousel is now (fractional mid-spin), so a resize can put it back in place.
+    let cur = reel.at
+    const onResize = () => {
+      measure()
+      place(cur)
+      if (reel.resting) restShade()
+    }
+    addEventListener('resize', onResize)
     // Start a few posters in, so both sides are full from the first frame.
-    const FROM = 3
+    const FROM = 3 + (reel.offset ?? 0)
     // Each poster's face (rounded, clipped) and the dark shade over it that dims it: opacity only, no filters.
     const faces = cards.map((el) => el.firstElementChild as HTMLElement)
     const shades = cards.map((el) => el.querySelector<HTMLElement>('[data-shade]')!)
@@ -155,6 +179,8 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       shades[n].style.opacity = dark.toFixed(3)
     }
     const place = (pos: number) => {
+      cur = pos
+      posNow.current = pos
       cards.forEach((el, n) => {
         const d = n - pos
         if (Math.abs(d) > 2.2) {
@@ -173,7 +199,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
     // Landing: the pick's outline (on the card) marks it; nothing else needs to move.
     const done = () => setSpinning(false)
     // A light tick on phones as each poster passes the front, like a wheel's clicker (Android; others ignore it).
-    let lastSlot = FROM
+    let lastSlot = Math.round(FROM)
     const tick = (pos: number) => {
       const slot = Math.round(pos)
       if (slot !== lastSlot) {
@@ -181,20 +207,23 @@ function PickDialog({ onClose }: { onClose: () => void }) {
         navigator.vibrate?.(4)
       }
     }
-    if (reel.resting) {
-      place(reel.at)
-      // Not chosen yet: all of them dimmed, the middle one included.
+    // Not chosen yet: all of them dimmed, the middle one included.
+    const restShade = () =>
       cards.forEach((el, n) => {
         if (el.style.visibility !== 'hidden') shade(n, Math.max(0.5, placement(n - reel.at, w).dim))
       })
-      return
+    const unlisten = () => removeEventListener('resize', onResize)
+    if (reel.resting) {
+      place(reel.at)
+      restShade()
+      return unlisten
     }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       // No travel: the posters simply fade over to the pick.
       place(reel.at)
       stage.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' })
       done()
-      return
+      return unlisten
     }
     let raf = 0
     let finished = false
@@ -261,6 +290,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
       finished = true
       cancelAnimationFrame(raf)
       clearTimeout(watchdog)
+      unlisten()
     }
   }, [reel?.key])
 
@@ -285,9 +315,11 @@ function PickDialog({ onClose }: { onClose: () => void }) {
   const left = kind ? pools[kind].filter((i) => !seen.current.has(i.id)).length : 0
 
   return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="pick-title">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
-      <div ref={panel} tabIndex={-1} className="pop-in relative w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
+    // Scrolls when it's taller than the screen (a phone held sideways), so the result and its buttons stay reachable.
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div className="pointer-events-none relative grid min-h-full place-items-center p-4">
+      <div ref={panel} tabIndex={-1} className="pop-in pointer-events-auto relative w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-2xl outline-none">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="pick-title" className="flex items-center gap-2 text-base font-semibold text-fg">
             <Dices className="size-4 text-accent-ink" aria-hidden="true" /> Pick for me
@@ -302,17 +334,21 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           {kinds.map((k) => {
             const Icon = KIND_ICON[k]
             const empty = pools[k].length === 0
+            // Greyed out when there's nothing of that type to start, but still focusable and tappable, so the
+            // reason can be heard, hovered or (on a phone) tapped for, rather than a disabled button that says nothing.
+            const why = `Nothing ready to start in ${k === 'any' ? 'your list' : KIND_LABEL[k].toLowerCase().replace(/^an? /, '') + 's'}`
             return (
               <button
                 key={k}
                 type="button"
-                disabled={empty || spinning}
+                aria-disabled={empty || undefined}
                 aria-pressed={kind === k}
-                onClick={() => spin(k)}
-                title={empty ? `Nothing ready to start in ${k === 'any' ? 'your list' : KIND_LABEL[k].toLowerCase()}` : undefined}
+                onClick={() => (empty ? toast({ message: why }) : spin(k))}
+                title={empty ? why : undefined}
                 className={clsx(
-                  'flex flex-col items-center gap-1 rounded-lg border px-0.5 py-2.5 text-xs whitespace-nowrap transition-[color,border-color,background-color,transform] duration-150 enabled:active:scale-[0.97] disabled:opacity-40 max-[24rem]:text-[11px]',
-                  kind === k ? 'border-accent bg-accent/10 text-fg' : 'border-line text-muted enabled:hover:border-faint enabled:hover:text-fg',
+                  'flex flex-col items-center gap-1 rounded-lg border px-0.5 py-2.5 text-xs whitespace-nowrap transition-[color,border-color,background-color,transform] duration-150 disabled:opacity-40 max-[24rem]:text-[11px]',
+                  empty ? 'border-line text-muted opacity-40' : 'enabled:active:scale-[0.97]',
+                  !empty && (kind === k ? 'border-accent bg-accent/10 text-fg' : 'border-line text-muted enabled:hover:border-faint enabled:hover:text-fg'),
                 )}
               >
                 <Icon className="size-4" aria-hidden="true" />
@@ -322,10 +358,10 @@ function PickDialog({ onClose }: { onClose: () => void }) {
           })}
         </div>
 
-        {/* The carousel: posters round a faux cylinder, the pick stopping at the front. Edges fade out. */}
+        {/* The carousel: one flat row of posters, the pick stopping in the middle. */}
         <div
           ref={stageEl}
-          className="relative mt-5 overflow-hidden"
+          className="relative mx-auto mt-5 overflow-hidden"
           style={{ height: Math.round(CARD_W * 1.5) + 8 }}
           aria-hidden="true"
         >
@@ -415,6 +451,7 @@ function PickDialog({ onClose }: { onClose: () => void }) {
             <p className="pt-3 text-center text-sm text-muted">Choose what to pick from, and it spins.</p>
           ) : null}
         </div>
+      </div>
       </div>
     </div>,
     document.body,

@@ -37,7 +37,6 @@ function LabelsButton() {
     <button
       type="button"
       aria-pressed={on}
-      aria-label="Poster details always shown"
       title={on ? 'Show poster details only on hover (scores, prices, dates)' : 'Always show poster details (scores, prices, dates)'}
       onClick={() => setMode(on ? 'hide' : 'show')}
       className={clsx(
@@ -46,7 +45,8 @@ function LabelsButton() {
         on ? 'text-fg sm:bg-raised' : 'text-muted hover:text-fg',
       )}
     >
-      {on ? <Tag className="size-3.5" /> : <TagX className="size-3.5" />}
+      {on ? <Tag className="size-3.5" aria-hidden="true" /> : <TagX className="size-3.5" aria-hidden="true" />}
+      {/* Its name is the words it shows (no separate label), so voice control users can say what they see. */}
       {/* Says what the chips on posters do now: always there, only on hover, or off (touch screens can't hover). */}
       {/* Phones: a word, not just the icon ("Details" alone read like the cards' own Details buttons). */}
       <span className="sm:hidden">Poster info</span>

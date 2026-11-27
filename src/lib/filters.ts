@@ -457,8 +457,16 @@ export function sortItems(items: UserItem[], sort: SortKey, reverse = false): Us
     const b = i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null
     return b ? (b.discountPct ?? 0) + (b.atLow ? 0.5 : 0) : null
   }
-  // Games: Steam's last-played date when there is one, otherwise the last time you did something with it in On Deck.
-  const played = (i: UserItem) => Date.parse(i.steamLastPlayed ?? i.lastActivityAt ?? '') || null
+  // When you last played it: Steam's last-played date when Steam has one; otherwise, only once you've started it
+  // (any status past Want to), your last change to it in On Deck. Last activity alone isn't enough: it's set when a
+  // title is added, so unplayed ones would sort by their add date. Never played → the end of the list.
+  const played = (i: UserItem) => {
+    const steam = i.steamPlaytimeMinutes !== 0 ? Date.parse(i.steamLastPlayed ?? '') : NaN
+    if (steam > 0) return steam
+    if (i.progress === 'wanted' && !i.startedAt) return null
+    // Started but no date at all: still ahead of everything never played.
+    return Date.parse(i.lastActivityAt ?? i.startedAt ?? i.completedAt ?? '') || 1
+  }
   // Shows: share of the aired episodes watched (ignored seasons count as done, as on the show page).
   const through = (i: UserItem) => {
     if (i.title.mediaType !== 'tv') return null

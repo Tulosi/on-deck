@@ -41,11 +41,13 @@ export const fetchPlexRecent = () => callFn<CandidateList>('importer', { action:
 
 /** "Not interested": remembered, so the title isn't offered again (here or in the import picker). */
 export async function skipCandidate(userId: string, c: Candidate) {
-  await supabase!.from('import_skips').upsert({ user_id: userId, key: c.key }, { onConflict: 'user_id,key', ignoreDuplicates: true })
+  const { error } = await supabase!.from('import_skips').upsert({ user_id: userId, key: c.key }, { onConflict: 'user_id,key', ignoreDuplicates: true })
+  if (error) throw error
 }
 
 export async function fetchSkips(): Promise<Set<string>> {
-  const { data } = await supabase!.from('import_skips').select('key')
+  const { data, error } = await supabase!.from('import_skips').select('key')
+  if (error) throw error
   return new Set((data ?? []).map((r) => r.key as string))
 }
 

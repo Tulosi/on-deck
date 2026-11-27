@@ -3,11 +3,12 @@
 // independent, so it reads them all) plus new episodes, worked out here from each show's last aired episode.
 // Price alerts are left out: the Deals row right below shows current sales, and a game sitting at its low
 // would otherwise come back after every Clear.
-import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './auth'
 import { useNotifications, type Notification } from './notifications'
 import { episodeCode, todayIso } from './release'
 import { supabase } from './supabase'
+import { toast } from './toast'
 import type { UserItem } from '../types'
 
 export interface NewEntry {
@@ -22,9 +23,6 @@ export interface NewEntry {
 // ── "Since" = 7 days ago, or when you last pressed Clear if that's later. Visiting Home doesn't reset it. ──
 
 const WEEK = 7 * 86_400_000
-let clearedAt: string | null = null
-let clearedLoaded = false
-const listeners = new Set<(s: string | null) => void>()
 
 const weekAgo = () => new Date(Date.now() - WEEK).toISOString()
 const sinceFrom = (cleared: string | null) => {
@@ -32,40 +30,45 @@ const sinceFrom = (cleared: string | null) => {
   return cleared && cleared > w ? cleared : w
 }
 
-/** The moment "New for you" counts from, plus `clear()` to empty the row (saved to the profile). */
+/**
+ * The moment "New for you" counts from, plus `clear()` to empty the row (saved to the profile). Read again whenever
+ * the app comes back to the front, so a Clear on another device (or before the app was reopened) holds here too.
+ * Signed out (sample library), Clear only lasts for this visit.
+ */
 export function useNewSince(): { since: string | null; clear: () => void } {
   const { user } = useAuth()
-  const [cleared, setCleared] = useState<string | null>(clearedAt)
-  const [loaded, setLoaded] = useState(clearedLoaded)
-
-  useEffect(() => {
-    const l = (c: string | null) => {
-      setCleared(c)
-      setLoaded(true)
-    }
-    listeners.add(l)
-    return () => {
-      listeners.delete(l)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!user || !supabase || clearedLoaded) return
-    clearedLoaded = true
-    void (async () => {
+  const queryClient = useQueryClient()
+  const queryKey = ['new-cleared', user?.id ?? null]
+  const q = useQuery({
+    queryKey,
+    enabled: !!user && !!supabase,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
       // last_seen_home_at now means "row cleared at".
-      const { data } = await supabase!.from('profiles').select('last_seen_home_at').eq('user_id', user.id).maybeSingle()
-      clearedAt = (data?.last_seen_home_at as string | null) ?? null
-      listeners.forEach((l) => l(clearedAt))
-    })()
-  }, [user])
+      const { data, error } = await supabase!.from('profiles').select('last_seen_home_at').eq('user_id', user!.id).maybeSingle()
+      if (error) throw error
+      return (data?.last_seen_home_at as string | null) ?? null
+    },
+  })
 
   const clear = () => {
-    clearedAt = new Date().toISOString()
-    listeners.forEach((l) => l(clearedAt))
-    if (user && supabase) void supabase.from('profiles').update({ last_seen_home_at: clearedAt }).eq('user_id', user.id)
+    const at = new Date().toISOString()
+    const prev = queryClient.getQueryData<string | null>(queryKey)
+    void (async () => {
+      // A read already on its way would put the old time back.
+      await queryClient.cancelQueries({ queryKey })
+      queryClient.setQueryData(queryKey, at)
+      if (!user || !supabase) return
+      const { error } = await supabase.from('profiles').update({ last_seen_home_at: at }).eq('user_id', user.id)
+      if (error) {
+        queryClient.setQueryData(queryKey, prev ?? null)
+        toast({ message: 'Couldn’t clear New for you. Try again.', tone: 'error' })
+      }
+    })()
   }
-  return { since: loaded ? sinceFrom(cleared) : null, clear }
+  const loaded = q.data !== undefined || q.isError
+  return { since: loaded ? sinceFrom(q.data ?? null) : null, clear }
 }
 
 // ── Building the row ──

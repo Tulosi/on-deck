@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Gamepad2, Loader2, Plus, Tv, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { usePlexStatus, useProfile } from '../lib/integrations'
-import { fetchPlexRecent, fetchSteamNew, importCandidates, markSteamSeen, skipCandidate, type Candidate, type CandidateList } from '../lib/importer'
+import { fetchPlexRecent, fetchSkips, fetchSteamNew, importCandidates, markSteamSeen, skipCandidate, type Candidate, type CandidateList } from '../lib/importer'
 import { plainError } from '../lib/errors'
 import { POSTER_W } from '../lib/posterWidth'
 
@@ -93,8 +93,11 @@ function usePromptActions(queryKey: unknown[], onAnswered?: (c: Candidate) => Pr
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const drop = (c: Candidate) =>
+  const drop = async (c: Candidate) => {
+    // A fetch already on its way would bring the answered title back.
+    await queryClient.cancelQueries({ queryKey })
     queryClient.setQueryData<CandidateList>(queryKey, (d) => (d ? { ...d, candidates: d.candidates.filter((x) => x.key !== c.key) } : d))
+  }
   const add = async (c: Candidate) => {
     setBusy(c.key)
     setError(null)
@@ -102,7 +105,7 @@ function usePromptActions(queryKey: unknown[], onAnswered?: (c: Candidate) => Pr
       const r = await importCandidates(user!.id, [c], [], () => {})
       if (r.failed.length) throw new Error(`${c.title} couldn’t be added`)
       await onAnswered?.(c)
-      drop(c)
+      await drop(c)
       await queryClient.invalidateQueries({ queryKey: ['library'] })
     } catch (e) {
       setError(plainError(e, 'Couldn’t add that. Try again.'))
@@ -115,7 +118,7 @@ function usePromptActions(queryKey: unknown[], onAnswered?: (c: Candidate) => Pr
     setError(null)
     try {
       await how(c)
-      drop(c)
+      await drop(c)
     } catch {
       setError('Couldn’t save that. Please try again.')
     } finally {
@@ -149,11 +152,21 @@ function SteamNewPrompt() {
 /** Recently watched on Plex but not in the library: the latest 5, with the full picker one click away. */
 function PlexRecentPrompt() {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const plex = usePlexStatus()
   const queryKey = ['plex-recent', user?.id]
   const q = useQuery({ queryKey, enabled: !!plex.data?.linked, staleTime: 30 * 60_000, retry: false, queryFn: fetchPlexRecent })
+  // Titles you said "Not interested" to, read again whenever the app comes back to the front: the list above is
+  // kept for 30 minutes, and a skip made on another device (or by an earlier visit) must still hide the title here.
+  const skipsKey = ['import-skips', user?.id]
+  const skips = useQuery({ queryKey: skipsKey, enabled: !!plex.data?.linked, staleTime: 0, refetchOnWindowFocus: true, queryFn: fetchSkips })
+  const notInterested = async (c: Candidate) => {
+    await skipCandidate(user!.id, c)
+    await queryClient.cancelQueries({ queryKey: skipsKey })
+    queryClient.setQueryData<Set<string>>(skipsKey, (s) => new Set([...(s ?? []), c.key]))
+  }
   const { busy, error, add, skip } = usePromptActions(queryKey)
-  const list = (q.data?.candidates ?? []).slice(0, PLEX_SHOWN)
+  const list = (q.data?.candidates ?? []).filter((c) => !skips.data?.has(c.key)).slice(0, PLEX_SHOWN)
   if (!plex.data?.linked || list.length === 0) return null
   return (
     <PromptRow
@@ -171,7 +184,7 @@ function PlexRecentPrompt() {
           c={c}
           busy={busy === c.key}
           onAdd={() => void add(c)}
-          onSkip={() => void skip(c, (x) => skipCandidate(user!.id, x))}
+          onSkip={() => void skip(c, notInterested)}
           skipLabel="Not interested"
         />
       ))}

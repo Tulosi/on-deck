@@ -18,10 +18,10 @@ export type RatingFilter = 'liked' | 'disliked' | 'favourite' | 'unrated'
 export type AvailabilityFilter = 'available' | 'unavailable'
 export type ReleaseFilter = 'released' | 'upcoming'
 export type AddedFilter = '7d' | '30d' | '90d' | '365d'
-/** Ended includes cancelled shows (old links with "cancelled" read as ended). */
-export type TvStatusFilter = 'airing' | 'returning' | 'ended'
+/** Ended includes cancelled shows (old links with "cancelled" read as ended). Upcoming: hasn't premiered yet. */
+export type TvStatusFilter = 'airing' | 'returning' | 'upcoming' | 'ended'
 export type TvProgressFilter = 'not_started' | 'midway' | 'caught_up'
-export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'updated' | 'played' | 'price' | 'discount' | 'length' | 'progress'
+export type SortKey = 'priority' | 'added' | 'release' | 'score' | 'title' | 'played' | 'price' | 'discount' | 'length' | 'progress'
 /** How a game is played: alone, with others at all, together against the game (co-op), on one screen, or against each other. */
 export type CoopFilter = 'single' | 'multi' | 'coop' | 'local' | 'pvp'
 export type DeckFilter = 'verified' | 'playable' | 'unsupported'
@@ -92,11 +92,11 @@ const RATING: RatingFilter[] = ['liked', 'disliked', 'favourite', 'unrated']
 const RELEASE: ReleaseFilter[] = ['released', 'upcoming']
 const AVAILABILITY: AvailabilityFilter[] = ['available', 'unavailable']
 const ADDED: AddedFilter[] = ['7d', '30d', '90d', '365d']
-const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'ended']
+const TV_STATUS: TvStatusFilter[] = ['airing', 'returning', 'upcoming', 'ended']
 const TV_PROGRESS: TvProgressFilter[] = ['not_started', 'midway', 'caught_up']
 /** Sort when none is chosen: date added, newest first. */
 export const DEFAULT_SORT: SortKey = 'added'
-const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'updated', 'played', 'price', 'discount', 'length', 'progress']
+const SORTS: SortKey[] = ['added', 'priority', 'release', 'score', 'title', 'played', 'price', 'discount', 'length', 'progress']
 const LENGTH: LengthFilter[] = ['short', 'medium', 'long', 'epic']
 const COOP: CoopFilter[] = ['single', 'multi', 'coop', 'local', 'pvp']
 const DECK: DeckFilter[] = ['verified', 'playable', 'unsupported']
@@ -177,7 +177,8 @@ export function parseFilters(p: URLSearchParams): Filters {
     deal: isGame ? incList(p.get('deal'), DEAL) : [],
     length: isGame ? incList(p.get('length'), LENGTH) : [],
     maxPrice: isGame ? int(p.get('maxprice')) : null,
-    sort: (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : DEFAULT_SORT,
+    // "updated" (Last updated, any edit) became Last watched / played / read; old links and smart collections keep working.
+    sort: p.get('sort') === 'updated' ? 'played' : (SORTS as string[]).includes(p.get('sort') ?? '') ? (p.get('sort') as SortKey) : DEFAULT_SORT,
     // Group by type is only offered across types; inside one type it falls back to no grouping.
     group: (GROUPS as string[]).includes(p.get('group') ?? '') && !(type && p.get('group') === 'type') ? (p.get('group') as GroupKey) : 'none',
     sortRev: p.get('sortrev') === '1',
@@ -308,10 +309,12 @@ export function normalisedScore(item: UserItem): number | null {
 function tvStatusOf(item: UserItem): TvStatusFilter | null {
   if (item.title.mediaType !== 'tv') return null
   if (tvSchedule(item.title)?.kind === 'airing') return 'airing'
+  // Not premiered yet (TMDB's Planned / Pilot / In Production for a new show).
+  if (releaseInfo(item.title).preRelease) return 'upcoming'
   const s = item.title.details?.status
   if (s === 'Ended') return 'ended'
   if (s === 'Canceled') return 'ended'
-  if (s === 'Returning Series' || s === 'In Production') return 'returning'
+  if (s === 'Returning Series' || s === 'In Production' || s === 'Planned' || s === 'Pilot') return 'returning'
   return null
 }
 
@@ -394,7 +397,9 @@ export function applyFilters(items: UserItem[], f: Filters): UserItem[] {
     if (f.deck.length && !f.deck.includes(i.title.details?.steam_deck as DeckFilter)) return false
     if (f.access.length) {
       const ea = i.title.details?.early_access === true
-      if (!f.access.includes(ea ? 'early_access' : 'full_release')) return false
+      // A game that isn't out yet is neither (unless it's already in Early Access).
+      const access = ea ? 'early_access' : releaseInfo(i.title).preRelease ? null : 'full_release'
+      if (!access || !f.access.includes(access)) return false
     }
     if (f.length.length) {
       const b = lengthBucket(i)
@@ -438,6 +443,15 @@ export function lengthBucket(i: UserItem): LengthFilter | null {
   return h < 10 ? 'short' : h < 30 ? 'medium' : h < 60 ? 'long' : 'epic'
 }
 
+/**
+ * A release date to sort on: the full date, or the year when that's all there is. A year alone ("2027") counts as
+ * the end of that year, so it comes after the dated releases in it ("2027-02-01").
+ */
+const releaseKey = (i: UserItem) => {
+  const d = i.title.releaseDate ?? (i.title.year ? String(i.title.year) : null)
+  return d && /^\d{4}$/.test(d) ? `${d}-99` : d
+}
+
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 }
 
 /** "The Gentlemen" files under G, "A Quiet Place" under Q, as in a library or on Plex. */
@@ -457,17 +471,24 @@ export function sortItems(items: UserItem[], sort: SortKey, reverse = false): Us
     const b = i.gamePrice && !i.gamePrice.isFree ? cheapest(i.gamePrice) : null
     return b ? (b.discountPct ?? 0) + (b.atLow ? 0.5 : 0) : null
   }
-  // When you last played it: Steam's last-played date when Steam has one; otherwise, only if there's a sign you've
-  // actually played it (Steam playtime, a start date, or Playing it / Finished / Stalled), your last change to it in
-  // On Deck. Last activity alone isn't enough: it's set when a title is added. Nor is any status past Want to:
-  // Waiting for 1.0 (and Dropped) can be set on a game you've never played. Never played → the end of the list.
+  // When you last watched, played or read it: Steam's last-played date for games when Steam has one; otherwise,
+  // only if there's a sign you've actually started it, your last real activity in On Deck (status or episode
+  // changes, Plex watches). Last activity alone isn't enough: it's set when a title is added. Nor is any status past
+  // Want to: Waiting for 1.0 (games) and Dropped can be set on something you never started. Never → the end.
   const played = (i: UserItem) => {
-    const steam = i.steamPlaytimeMinutes !== 0 ? Date.parse(i.steamLastPlayed ?? '') : NaN
+    const type = i.title.mediaType
+    const steam = type === 'game' && i.steamPlaytimeMinutes !== 0 ? Date.parse(i.steamLastPlayed ?? '') : NaN
     if (steam > 0) return steam
-    const hasPlayed =
-      (i.steamPlaytimeMinutes ?? 0) > 0 || !!i.startedAt || i.progress === 'in_progress' || i.progress === 'completed' || i.progress === 'stalled'
-    if (!hasPlayed) return null
-    // Played but no date at all: still ahead of everything never played.
+    const started =
+      !!i.startedAt ||
+      i.progress === 'in_progress' ||
+      i.progress === 'completed' ||
+      i.progress === 'stalled' ||
+      (type === 'game' && (i.steamPlaytimeMinutes ?? 0) > 0) ||
+      // Shows: caught up means you've seen everything out; an episode pointer or a season marked Watched counts too.
+      (type === 'tv' && (i.progress === 'caught_up' || !!i.tvProgress || Object.values(i.seasonOverrides ?? {}).includes('watched')))
+    if (!started) return null
+    // Started but no date at all: still ahead of everything never started.
     return Date.parse(i.lastActivityAt ?? i.startedAt ?? i.completedAt ?? '') || 1
   }
   // Shows: share of the aired episodes watched (ignored seasons count as done, as on the show page).
@@ -480,16 +501,22 @@ export function sortItems(items: UserItem[], sort: SortKey, reverse = false): Us
     has: (i: UserItem) => v(i) != null,
     cmp: (a: UserItem, b: UserItem) => dir * (v(a)! - v(b)!),
   })
+  // Release date: out now, newest first, then not out yet, soonest first. Reversed: oldest first, upcoming still
+  // after (soonest first). No date at all → the end, as with the other sorts.
+  if (sort === 'release') {
+    const dated = items.filter((i) => releaseKey(i))
+    const upcoming = (i: UserItem) => releaseInfo(i.title).preRelease
+    const out = dated.filter((i) => !upcoming(i)).sort((a, b) => releaseKey(b)!.localeCompare(releaseKey(a)!))
+    if (reverse) out.reverse()
+    const soon = dated.filter(upcoming).sort((a, b) => releaseKey(a)!.localeCompare(releaseKey(b)!))
+    return [...out, ...soon, ...items.filter((i) => !releaseKey(i)).sort(byAddedDesc)]
+  }
   const how: { has?: (i: UserItem) => boolean; cmp: (a: UserItem, b: UserItem) => number } = (() => {
     switch (sort) {
       case 'priority':
         return { has: (i: UserItem) => !!i.priority, cmp: (a: UserItem, b: UserItem) => PRIORITY_RANK[a.priority!] - PRIORITY_RANK[b.priority!] || byAddedDesc(a, b) }
       case 'added':
         return { cmp: byAddedDesc }
-      case 'updated':
-        return { cmp: (a: UserItem, b: UserItem) => Date.parse(b.updatedAt ?? '0') - Date.parse(a.updatedAt ?? '0') }
-      case 'release': // newest first
-        return { has: (i: UserItem) => !!i.title.releaseDate, cmp: (a: UserItem, b: UserItem) => b.title.releaseDate!.localeCompare(a.title.releaseDate!) }
       case 'score':
         return num(normalisedScore, -1)
       case 'title':
@@ -570,6 +597,13 @@ export function groupItems(items: UserItem[], group: GroupKey, type: MediaType |
 
 // ─── Labels for the UI ─────────────────────────────────────────────────────
 
+/** A sort's name for the types showing: Last activity becomes Last watched / played / read inside one kind. */
+export function sortLabel(sort: SortKey, types: readonly MediaType[]): string {
+  if (sort !== 'played' || types.length === 0) return LABELS.sort[sort]
+  const verbs = new Set(types.map((t) => (t === 'game' ? 'played' : t === 'book' ? 'read' : 'watched')))
+  return verbs.size === 1 ? `Last ${[...verbs][0]}` : LABELS.sort.played
+}
+
 export const LABELS = {
   type: TYPE_LABEL,
   status: STATUS_LABEL,
@@ -579,9 +613,9 @@ export const LABELS = {
   availability: { available: 'Available', unavailable: 'Not available' } as Record<AvailabilityFilter, string>,
   archived: { hide: 'Hide', include: 'Include', only: 'Only archived' } as Record<ArchivedFilter, string>,
   added: { '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last year' } as Record<AddedFilter, string>,
-  tvStatus: { airing: 'Airing', returning: 'Returning', ended: 'Ended' } as Record<TvStatusFilter, string>,
+  tvStatus: { airing: 'Airing', returning: 'Returning', upcoming: 'Upcoming', ended: 'Ended' } as Record<TvStatusFilter, string>,
   tvProgress: { not_started: 'Not started', midway: 'Mid-way', caught_up: 'Caught up' } as Record<TvProgressFilter, string>,
-  sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', updated: 'Last updated', played: 'Last played', price: 'Price', discount: 'Discount %', length: 'Length', progress: 'Progress' } as Record<SortKey, string>,
+  sort: { priority: 'Priority', added: 'Recently added', release: 'Release date', score: 'Score', title: 'Title', played: 'Last activity', price: 'Price', discount: 'Discount %', length: 'Length', progress: 'Progress' } as Record<SortKey, string>,
   coop: { single: 'Single player', multi: 'Multiplayer', coop: 'Co-op', local: 'Local co-op', pvp: 'PvP' } as Record<CoopFilter, string>,
   deck: { verified: 'Deck Verified', playable: 'Deck Playable', unsupported: 'Deck Unsupported' } as Record<DeckFilter, string>,
   access: { early_access: 'Early Access', full_release: 'Full release (1.0)' } as Record<AccessFilter, string>,

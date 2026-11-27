@@ -16,6 +16,7 @@ import {
   type NegKey,
   type GroupKey,
   type SortKey,
+  sortLabel,
 } from '../lib/filters'
 import { useItems } from '../lib/library'
 import { statusFilterOptionsFor, statusLabelFor, statusWords } from '../lib/statusLabels'
@@ -201,9 +202,9 @@ function FilterPanel({ f, set }: { f: Filters; set: (next: Filters) => void }) {
     for (const i of allItems) if (i.title.mediaType === f.type) for (const g of i.title.genres) n.set(g, (n.get(g) ?? 0) + 1)
     return [...n.keys()].sort((a, b) => n.get(b)! - n.get(a)! || a.localeCompare(b))
   }, [allItems, f.type])
-  /** How many titles picking just this value would leave, with every other filter as it is. */
-  const count = <K extends keyof Filters>(key: K) => (v: string) =>
-    applyFilters(allItems, { ...f, [key]: [v], neg: { ...f.neg, [key]: false } }).length
+  /** How many titles picking just this value would leave, with every other filter as it is. In an "is not" group,
+   *  picking it excludes it, so the count is what's left without it. */
+  const count = <K extends keyof Filters>(key: K) => (v: string) => applyFilters(allItems, { ...f, [key]: [v] }).length
   const tog = <K extends keyof Filters>(key: K) => (v: string) => set(toggleValue(f, key, v))
   const negOf = (key: NegKey) => ({ value: !!f.neg[key], set: (neg: boolean) => set({ ...f, neg: { ...f.neg, [key]: neg } }) })
   /** Only options some title of this type in the library has (with the other filters cleared), plus any already picked. */
@@ -489,7 +490,7 @@ const sortOptions = (f: Filters) =>
     (s) =>
       f.sort === s ||
       !f.type ||
-      (['played', 'price', 'discount', 'length'].includes(s) ? f.type === 'game' : s === 'progress' ? f.type === 'tv' : true),
+      (['price', 'discount', 'length'].includes(s) ? f.type === 'game' : s === 'progress' ? f.type === 'tv' : true),
   )
 /** Grouping by type only means something across types (Library), not inside Movies, TV and so on. */
 const groupOptions = (f: Filters) => LABELS.options.GROUPS.filter((g) => g !== 'type' || !f.type)
@@ -588,7 +589,7 @@ function SortButton({ f, set }: { f: Filters; set: (next: Filters) => void }) {
           <p id="sort-by" className="mb-1.5 text-xs font-medium text-muted">Sort by</p>
           <div role="radiogroup" aria-labelledby="sort-by" className="flex flex-wrap gap-1.5">
             {sortOptions(f).map((o) => (
-              <Choice key={o} on={f.sort === o} label={LABELS.sort[o]} onClick={() => set({ ...f, sort: o })} />
+              <Choice key={o} on={f.sort === o} label={sortLabel(o, f.types)} onClick={() => set({ ...f, sort: o })} />
             ))}
           </div>
           <SwitchRow label="Reverse order" on={f.sortRev} onChange={(on) => set({ ...f, sortRev: on })} />
@@ -618,11 +619,11 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
           value={f.sort}
           onChange={(e) => set({ ...f, sort: e.target.value as SortKey })}
           className={selectClass}
-          style={stacked ? undefined : fitTo(`Sort: ${LABELS.sort[f.sort]}`)}
+          style={stacked ? undefined : fitTo(`Sort: ${sortLabel(f.sort, f.types)}`)}
         >
           {sortOptions(f).map((s) => (
             <option key={s} value={s}>
-              Sort: {LABELS.sort[s]}
+              Sort: {sortLabel(s, f.types)}
             </option>
           ))}
         </select>

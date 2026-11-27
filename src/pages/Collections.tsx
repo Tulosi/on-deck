@@ -12,7 +12,7 @@ import { builtinItems, smartItems, useCollectionActions, useCollectionList, type
 import { DEFAULT_DEAL_PCT } from '../lib/home'
 import { useProfile } from '../lib/integrations'
 import { useNavLayout } from '../lib/navLayout'
-import { activeCount, LABELS, parseFilters, typesLabel } from '../lib/filters'
+import { activeCount, parseFilters, sortLabel, typesLabel } from '../lib/filters'
 import { useItems } from '../lib/library'
 import { fullRelease } from '../lib/release'
 import type { UserItem } from '../types'
@@ -181,7 +181,7 @@ function rulesSummary(rules: string): string {
   return [
     typesLabel(f.types) ?? 'All types',
     n ? `${n} filter${n === 1 ? '' : 's'}` : 'no filters',
-    `sorted by ${LABELS.sort[f.sort]}`,
+    `sorted by ${sortLabel(f.sort, f.types)}`,
   ].join(', ')
 }
 

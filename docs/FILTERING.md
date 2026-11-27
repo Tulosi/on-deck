@@ -33,7 +33,7 @@ many titles it would leave with the other filters as they are; options that woul
 | Out and available | Release | Released · Upcoming | Waitlist and Ready to start depend on it |
 | | Available to me | on / off | Movies/TV: on Plex or my streaming services. Games/Books: owned |
 | Movies, TV, Games | Genre (Games: Genre & tags) | from the library | **is / is not** |
-| TV | Show status | Airing · Returning · Ended | Ended includes cancelled |
+| TV | Show status | Airing · Returning · Upcoming · Ended | Ended includes cancelled; Upcoming = not premiered yet |
 | Games | Co-op & multiplayer | Online co-op · Local co-op · Split-screen · PvP | **is / is not** |
 | | Length | Short · Medium · Long · Epic | time to beat |
 | | Steam Deck | Verified · Playable · Unsupported | |
@@ -76,7 +76,7 @@ in, and the Archive page lists only them.
 - **Home** gets only the type pills, which narrow every Home row. The full filter panel is Library-only.
 
 ## 5. Arranging
-- **Sort:** Priority · Date added · Release date · Score · Title · Last updated, plus type-specific sorts
+- **Sort:** Priority · Date added · Release date · Score · Title · Last watched / played / read (Last activity across types; only titles you have started, the rest last), plus type-specific sorts
   (Price for games, runtime / length per type, Progress for TV: share of aired episodes watched).
 - **Group by** (optional, off by default): Status · Type · Priority · Release year. Shown as labelled rows.
 

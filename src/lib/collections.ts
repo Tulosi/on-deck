@@ -68,9 +68,8 @@ export function builtinItems(id: string, items: UserItem[], dealPct: number): Us
   const c = BUILTIN_COLLECTIONS.find((b) => b.id === id)
   if (!c?.rules) return []
   const list = smartItems(c.rules, visible)
-  if (id === 'default-waitlist') {
-    return [...list].sort((a, b) => (a.title.releaseDate ?? '9999').localeCompare(b.title.releaseDate ?? '9999'))
-  }
+  // Everything here is upcoming, so the Release date sort gives soonest first (a year alone after that year's dates).
+  if (id === 'default-waitlist') return sortItems(list, 'release')
   return list
 }
 

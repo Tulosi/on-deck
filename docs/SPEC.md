@@ -448,7 +448,10 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   the rest.
   1. Refreshes titles whose dates can still change (anything with an upcoming event, unreleased statuses,
      returning shows, Early Access games), not refreshed in the last 20 h, oldest first. It re-runs each
-     source's `add` (tmdb / igdb / hardcover) and compares upcoming events before and after.
+     source's `add` (tmdb / igdb / hardcover). Then, for every title on a list, compares its upcoming events
+     with what the previous run saw (`titles.release_seen`), so a change the app refreshed in first still alerts.
+     A title seen for the first time is recorded silently. The record is saved only once every user has had
+     their alerts.
   2. For each user, refreshes availability and game prices through the same functions the app uses (called
      with `x-job-secret` + `x-job-user`; see `requireUser` in `_shared/http.ts`).
   3. Writes alerts to `notifications`.
@@ -469,7 +472,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   missing = on / 30%). Release and availability alerts are always on; per title, use the
   title page switch.
 - **First run** for a user: availability and price alerts that are already true are stored as already seen
-  (`payload.seed`, hidden from the inbox), so switching this on doesn't flood the inbox. Deep discounts get the same treatment the first time they're checked.
+  (`payload.seed`, hidden from the inbox), so switching this on doesn't flood the inbox.
 - **Time zone:** the app saves the browser's time zone to `profiles.timezone`, so "today" is your day.
 - **App:** a bell in the top bar shows the unread count and the inbox. Tapping an alert opens the title and
   marks it read; "Mark all read" clears the count. Title pages have a **Notifications on/off** switch

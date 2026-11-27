@@ -1,7 +1,8 @@
 // Scheduled job (every few hours, from .github/workflows/daily.yml). Only callable with the private JOB_SECRET.
 //   POST {} → summary of what it did
 // 1. Refreshes titles that can still change (upcoming releases, airing / returning shows, Early Access games)
-//    by re-running each source's "add" (tmdb / igdb / hardcover). It compares release dates before and after.
+//    by re-running each source's "add" (tmdb / igdb / hardcover), then compares every title's release events
+//    with what the last run saw (titles.release_seen).
 // 2. For each user: refreshes availability (Plex + streaming) and game prices, via the same functions the app uses.
 // 3. Writes inbox notifications (deduplicated per user by `dedup_key`) and pushes new ones to the user's devices:
 //    release_day · week_before · date_changed · announced · available · price_low · price_deal

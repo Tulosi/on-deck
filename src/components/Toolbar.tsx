@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { ArrowDownUp, Check, Search, SlidersHorizontal, Tag, TagX, X } from 'lucide-react'
 import { useChipModeControl } from '../lib/chips'
 import {
+  DEFAULT_SORT,
   LABELS,
   activeCount,
   applyFilters,
@@ -41,16 +42,17 @@ function LabelsButton() {
       onClick={() => setMode(on ? 'hide' : 'show')}
       className={clsx(
         // Phones: the same outline button as the type menu and Pick beside it.
-        'hit flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs transition-colors sm:h-7 sm:rounded-md sm:px-2',
+        // Phones: just the icon (the row also holds Sort); its name stays for screen readers and voice control.
+        'hit flex size-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line text-xs transition-colors sm:h-7 sm:w-auto sm:rounded-md sm:px-2',
         on ? 'text-fg sm:bg-raised' : 'text-muted hover:text-fg',
       )}
     >
       {on ? <Tag className="size-3.5" aria-hidden="true" /> : <TagX className="size-3.5" aria-hidden="true" />}
       {/* Its name is the words it shows (no separate label), so voice control users can say what they see. */}
       {/* Says what the chips on posters do now: always there, only on hover, or off (touch screens can't hover). */}
-      {/* Phones: a word, not just the icon ("Details" alone read like the cards' own Details buttons). */}
-      {/* Up to wide screens too, where the Library's toolbar row is tight (the shading still shows on or off). */}
-      <span className="xl:hidden">Poster info</span>
+      {/* Up to wide screens, where the Library's toolbar row is tight (the shading still shows on or off). Phones:
+          hidden from view, kept as the button's name. */}
+      <span className="sr-only sm:not-sr-only xl:hidden">Poster info</span>
       <span className="hidden xl:inline">
         <span className="text-muted">Poster details:</span>{' '}
         {on ? (
@@ -411,19 +413,7 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
     return () => window.removeEventListener('resize', fit)
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+  useDismiss(open, useCallback(() => setOpen(false), []), wrap)
 
   return (
     <div ref={wrap} className="relative">
@@ -462,8 +452,8 @@ function FiltersButton({ f, set }: { f: Filters; set: (next: Filters) => void })
             </div>
           </div>
           <FilterPanel f={f} set={set} />
-          {/* Phones: sorting and grouping live here (the toolbar has no room for them); mid-size screens, grouping. */}
-          <div className="mt-5 space-y-2 border-t border-line pt-4 lg:hidden">
+          {/* Mid-size screens: grouping lives here (the toolbar has room only for Sort). Phones have the Sort button. */}
+          <div className="mt-5 hidden space-y-2 border-t border-line pt-4 sm:block lg:hidden">
             <p className="text-xs font-medium text-muted">Arrange</p>
             <ArrangeSelects f={f} set={set} stacked />
           </div>
@@ -493,6 +483,130 @@ function ReverseButton({ on, label, onClick, className }: { on: boolean; label: 
   )
 }
 
+/** Sorts that mean something here: Price and Length for games, Progress for shows (each also under All). */
+const sortOptions = (f: Filters) =>
+  LABELS.options.SORTS.filter(
+    (s) =>
+      f.sort === s ||
+      !f.type ||
+      (['played', 'price', 'discount', 'length'].includes(s) ? f.type === 'game' : s === 'progress' ? f.type === 'tv' : true),
+  )
+/** Grouping by type only means something across types (Library), not inside Movies, TV and so on. */
+const groupOptions = (f: Filters) => LABELS.options.GROUPS.filter((g) => g !== 'type' || !f.type)
+
+/** Closes a popover on a tap outside `wrap` or Escape. */
+function useDismiss(open: boolean, close: () => void, wrap: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) close()
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, close, wrap])
+}
+
+/** On / off switch on a row of its own ("Reverse order"). */
+function SwitchRow({ label, on, onChange, disabled }: { label: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className="flex h-11 w-full items-center justify-between text-sm text-fg disabled:text-faint"
+    >
+      <span className="flex items-center gap-2">
+        <ArrowDownUp className="size-3.5 text-muted" aria-hidden="true" />
+        {label}
+      </span>
+      <span aria-hidden="true" className={clsx('relative block h-5 w-9 shrink-0 rounded-full border transition-colors', on ? 'border-accent bg-accent' : 'border-line bg-raised')}>
+        <span className={clsx('absolute top-0.5 left-0.5 block size-3.5 rounded-full transition-transform duration-150', on ? 'translate-x-4 bg-accent-fg' : 'bg-muted')} />
+      </span>
+    </button>
+  )
+}
+
+/** One choice of a single-choice list, styled like the Filters panel's options. */
+function Choice({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      onClick={onClick}
+      className={clsx(
+        'flex h-9 items-center gap-1 rounded-md border px-3 text-xs transition-colors',
+        on ? 'border-accent bg-accent/15 text-fg' : 'border-line text-muted hover:border-faint hover:text-fg',
+      )}
+    >
+      {on && <Check className="size-3" aria-hidden="true" />}
+      {label}
+    </button>
+  )
+}
+
+/**
+ * Phones: one Sort button in the toolbar for sorting and grouping (the row has no room for both dropdowns). Opens a
+ * panel like Filters: the sort, a Reverse switch, then the grouping and its own Reverse. Lit while anything differs
+ * from the default (Recently added, not reversed, no groups).
+ */
+function SortButton({ f, set }: { f: Filters; set: (next: Filters) => void }) {
+  const [open, setOpen] = useState(false)
+  const wrap = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setOpen(false), [])
+  useDismiss(open, close, wrap)
+  const changed = f.sort !== DEFAULT_SORT || f.sortRev || f.group !== 'none'
+  return (
+    <div ref={wrap} className="relative sm:hidden">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={clsx(
+          'hit flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors',
+          open || changed ? 'border-accent text-fg' : 'border-line text-muted hover:text-fg',
+        )}
+      >
+        <ArrowDownUp className="size-3.5" aria-hidden="true" />
+        Sort
+      </button>
+      {open && (
+        <div className="vt-chrome-filters pop-in origin-top fixed inset-x-3 top-28 z-40 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface p-4 shadow-2xl shadow-black/40">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-fg">Sort and group</p>
+            <button type="button" aria-label="Close" onClick={close} className="hit text-muted hover:text-fg">
+              <X className="size-4" />
+            </button>
+          </div>
+          <p id="sort-by" className="mb-1.5 text-xs font-medium text-muted">Sort by</p>
+          <div role="radiogroup" aria-labelledby="sort-by" className="flex flex-wrap gap-1.5">
+            {sortOptions(f).map((o) => (
+              <Choice key={o} on={f.sort === o} label={LABELS.sort[o]} onClick={() => set({ ...f, sort: o })} />
+            ))}
+          </div>
+          <SwitchRow label="Reverse order" on={f.sortRev} onChange={(on) => set({ ...f, sortRev: on })} />
+          <div className="mt-2 border-t border-line pt-4">
+            <p id="group-by" className="mb-1.5 text-xs font-medium text-muted">Group by</p>
+            <div role="radiogroup" aria-labelledby="group-by" className="flex flex-wrap gap-1.5">
+              {groupOptions(f).map((g) => (
+                <Choice key={g} on={f.group === g} label={g === 'none' ? 'None' : LABELS.group[g]} onClick={() => set({ ...f, group: g })} />
+              ))}
+            </div>
+            <SwitchRow label="Reverse groups" on={f.groupRev} disabled={f.group === 'none'} onChange={(on) => set({ ...f, groupRev: on })} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) => void; stacked?: boolean }) {
   return (
     <div className={stacked ? 'flex flex-wrap items-center gap-2' : 'hidden items-center gap-1.5 sm:flex'}>
@@ -506,13 +620,7 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
           className={selectClass}
           style={stacked ? undefined : fitTo(`Sort: ${LABELS.sort[f.sort]}`)}
         >
-          {/* Price and Length only mean something for games, Progress for shows (each shown for its type and All). */}
-          {LABELS.options.SORTS.filter(
-            (s) =>
-              f.sort === s ||
-              !f.type ||
-              (['played', 'price', 'discount', 'length'].includes(s) ? f.type === 'game' : s === 'progress' ? f.type === 'tv' : true),
-          ).map((s) => (
+          {sortOptions(f).map((s) => (
             <option key={s} value={s}>
               Sort: {LABELS.sort[s]}
             </option>
@@ -528,8 +636,7 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
           className={selectClass}
           style={stacked ? undefined : fitTo(f.group === 'none' ? 'No grouping' : `Group: ${LABELS.group[f.group]}`)}
         >
-          {/* Grouping by type only means something across types (Library), not inside Movies, TV and so on. */}
-          {LABELS.options.GROUPS.filter((g) => g !== 'type' || !f.type).map((g) => (
+          {groupOptions(f).map((g) => (
             <option key={g} value={g}>
               {g === 'none' ? 'No grouping' : `Group: ${LABELS.group[g]}`}
             </option>
@@ -547,7 +654,7 @@ function ArrangeSelects({ f, set, stacked }: { f: Filters; set: (next: Filters) 
 
 /**
  * The row under the search bar on browsing pages.
- * Library: type chips (any mix) · Filters · Sort · Group · labels switch. Home: type pills · labels switch.
+ * Library: type chips (any mix) · Filters · Sort · Group · labels switch (phones: Filters · Sort button · labels icon). Home: type pills · labels switch.
  */
 export function Toolbar() {
   const { pathname } = useLocation()
@@ -568,6 +675,7 @@ export function Toolbar() {
         {isLibrary && (
           <>
             <FiltersButton f={f} set={set} />
+            <SortButton f={f} set={set} />
             <ArrangeSelects f={f} set={set} />
           </>
         )}

@@ -460,7 +460,7 @@ The countdown only shows "in X days" for exact dates. Otherwise it shows the pre
   | `date_changed` | an event's date or precision changed (incl. TBA → date, "Q2 2027" → exact) | "… moved from Q2 2027 to Apr 9, 2027" |
   | `announced` | a new event appears (new season, 1.0 date) | "Low Orbit: Season 3 premiere announced — Dec 2, 2026" |
   | `available` | a Wanted / In Progress movie or show became available on Plex or your services since the last run | "Now available on Plex: …" |
-  | `price_low` | a Wanted, unowned game's cheapest shown price is at its lowest ever | "Lowest price ever: … — CA$19.49 on Steam (-50%)" |
+  | `price_low` | a Wanted, unowned game's cheapest shown price is at its lowest ever. Again only for a lower price or after 21 days (lows recur each big sale) | "Lowest price ever: … — CA$19.49 on Steam (-50%)" |
   | `price_deal` | the same game is at least the user's threshold off Steam's full price (default 30%, slider 10–90% in Settings) (and not at its lowest ever, which alerts instead). Once per sale: again only for a lower price or after 21 days | "51% off: … — CA$54.24 on AllYouPlay" |
 - **Dedup:** `dedup_key` is unique per user. Release-day and one-week alerts include the date, so a delay
   re-arms them. A price alert includes the price, so only a new low alerts again.

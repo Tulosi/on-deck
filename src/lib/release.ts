@@ -1,6 +1,6 @@
 // Pre-release detection for movies, TV and games, from the data already stored on each title.
 import type { Title } from '../types'
-import { UNRELEASED_STATUS, type Precision } from '../../supabase/functions/_shared/releases.ts'
+import { UNRELEASED_STATUS, periodEnd, type Precision } from '../../supabase/functions/_shared/releases.ts'
 
 export interface ReleaseInfo {
   preRelease: boolean
@@ -37,7 +37,9 @@ export function releaseInfo(title: Title): ReleaseInfo {
   const precision: Precision = typeof p === 'string' ? (p as Precision) : 'day'
   if (date && precision !== 'day') {
     const label = typeof title.details?.release_label === 'string' ? title.details.release_label : undefined
-    return { preRelease: date > today || unreleased, date, precision, fuzzyLabel: label }
+    // A rough date ("Q4 2026") isn't out until its period is over (the stored day is only a stand-in), unless an
+    // exact date arrives first. Same rule as the Calendar and Waitlist (upcomingEvents).
+    return { preRelease: periodEnd(date, precision) >= today || unreleased, date, precision, fuzzyLabel: label }
   }
   if (date) {
     if (date > today) return { preRelease: true, date, daysUntil: daysBetween(today, date), precision: 'day' }

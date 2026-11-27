@@ -29,7 +29,7 @@ const SOURCE_FN: Record<string, string> = { tmdb: 'tmdb', igdb: 'igdb', steam: '
 const LIVE_TV = new Set(['Returning Series', 'In Production', 'Planned', 'Pilot'])
 /** "Deep discount" = at least this % off Steam's full price, unless the user set their own (10–90). */
 const DEEP_DISCOUNT_PCT = 30
-/** A deep-discount alert repeats only for a lower price, or a new sale after this long. */
+/** A lowest-price or deep-discount alert repeats only for a lower price, or a new sale after this long. */
 const DEAL_QUIET_MS = 21 * 24 * 60 * 60 * 1000
 
 interface TitleRow {
@@ -41,6 +41,8 @@ interface TitleRow {
   release_date: string | null
   metadata: Json
   refreshed_at: string
+  /** Release events as of the last run, by eventKey (null = not recorded yet). */
+  release_seen: Record<string, ReleaseEvent> | null
 }
 
 interface ItemRow {
@@ -230,7 +232,7 @@ serve(async (req) => {
       await inChunks(titleIds, 150, async (chunk) => {
         const { data, error } = await db
           .from('titles')
-          .select('id, media_type, source, source_id, title, release_date, metadata, refreshed_at')
+          .select('id, media_type, source, source_id, title, release_date, metadata, refreshed_at, release_seen')
           .in('id', chunk)
         if (error) throw error
         return (data ?? []) as TitleRow[]
@@ -238,7 +240,7 @@ serve(async (req) => {
     ).map((t) => [t.id, t]),
   )
 
-  // ── 1. Refresh titles that can still change; note release changes ──
+  // ── 1. Refresh titles that can still change, then compare each title's release events with the last run's ──
   interface Change {
     kind: 'date_changed' | 'announced'
     event: ReleaseEvent
@@ -257,16 +259,26 @@ serve(async (req) => {
     const fresh = res?.title as TitleRow | undefined
     if (!fresh) continue
     refreshed++
-    const before = new Map(upcomingEvents(toInput(t), utcToday).filter((e) => e.kind !== 'episode').map((e) => [eventKey(e), e]))
-    const after = upcomingEvents(toInput(fresh), utcToday).filter((e) => e.kind !== 'episode')
-    const list: Change[] = []
-    for (const e of after) {
-      const old = before.get(eventKey(e))
-      if (!old) list.push({ kind: 'announced', event: e })
-      else if (old.date !== e.date || old.precision !== e.precision) list.push({ kind: 'date_changed', event: e, before: old })
+    titles.set(t.id, { ...fresh, release_seen: t.release_seen })
+  }
+  // Compared with what the last run saw (release_seen), not with the copy before this run's refresh: the app also
+  // refreshes titles (scores, new episodes), and a change it picked up first would otherwise never be alerted.
+  const seenUpdates = new Map<string, Record<string, ReleaseEvent>>()
+  for (const t of titles.values()) {
+    const now: Record<string, ReleaseEvent> = {}
+    for (const e of upcomingEvents(toInput(t), utcToday)) if (e.kind !== 'episode') now[eventKey(e)] = e
+    const seen = t.release_seen
+    if (seen) {
+      const list: Change[] = []
+      for (const [k, e] of Object.entries(now)) {
+        const old = seen[k]
+        if (!old) list.push({ kind: 'announced', event: e })
+        else if (old.date !== e.date || old.precision !== e.precision) list.push({ kind: 'date_changed', event: e, before: old })
+      }
+      if (list.length) changes.set(t.id, list)
     }
-    if (list.length) changes.set(t.id, list)
-    titles.set(t.id, fresh)
+    // First sighting (new title, or just after this column was added): recorded silently.
+    if (JSON.stringify(seen) !== JSON.stringify(now)) seenUpdates.set(t.id, now)
   }
 
   // ── 2 + 3. Per user: refresh availability and prices, then write alerts ──
@@ -407,22 +419,24 @@ serve(async (req) => {
         .select('*')
         .eq('country_code', String(profile.country_code ?? 'US').toUpperCase())
         .in('title_id', wantGames.map((i) => i.title_id))
-      // Earlier deep-discount alerts, to alert once per sale.
-      const { data: pastDeals } = wantDeals
-        ? await db
-            .from('notifications')
-            .select('title_id, payload, created_at')
-            .eq('user_id', userId)
-            .eq('kind', 'price_deal')
-            .order('created_at', { ascending: false })
-            .limit(500)
-        : { data: [] }
-      const lastDeal = new Map<string, { price: number; at: number }>()
-      for (const d of (pastDeals ?? []) as Json[]) {
-        if (!lastDeal.has(d.title_id)) lastDeal.set(d.title_id, { price: Number(d.payload?.price), at: Date.parse(d.created_at) })
+      // Earlier price alerts, to alert once per sale: again only for a lower price, or after a quiet spell.
+      const { data: pastPrices } = await db
+        .from('notifications')
+        .select('title_id, kind, payload, created_at')
+        .eq('user_id', userId)
+        .in('kind', ['price_low', 'price_deal'])
+        .order('created_at', { ascending: false })
+        .limit(500)
+      const lastAlert = new Map<string, { price: number; at: number }>()
+      for (const d of (pastPrices ?? []) as Json[]) {
+        const k = `${d.kind}:${d.title_id}`
+        if (!lastAlert.has(k)) lastAlert.set(k, { price: Number(d.payload?.price), at: Date.parse(d.created_at) })
       }
-      // The first time deep discounts run for a user, sales already on are recorded silently.
-      const firstDeals = wantDeals && (pastDeals ?? []).length === 0
+      const isFresh = (kind: string, titleId: string, price: number) => {
+        const last = lastAlert.get(`${kind}:${titleId}`)
+        return !last || price < last.price || Date.now() - last.at > DEAL_QUIET_MS
+      }
+      const day = new Date().toISOString().slice(0, 10)
 
       for (const row of (prices ?? []) as PriceRow[]) {
         const p = gamePriceFromRow(row)
@@ -434,28 +448,27 @@ serve(async (req) => {
         const off = best.discountPct ? ` (-${best.discountPct}%)` : ''
         const payload = { price: best.price, currency: p.currency, kind: best.kind, url: best.url, discountPct: best.discountPct }
         if (wantLows && best.atLow) {
+          // Lows recur (the same low every big sale): alert again after the quiet spell, not just once ever.
+          if (!isFresh('price_low', t.id, best.price)) continue // a lowest-ever alert covers the discount too
           alerts.push({
             user_id: userId,
             title_id: t.id,
             kind: 'price_low',
             message: `Lowest price ever: ${t.title} — ${amount} on ${where}${off}`,
             payload,
-            dedup_key: `low:${t.id}:${best.price}`,
+            dedup_key: `low:${t.id}:${best.price}:${day}`,
           })
           continue // a lowest-ever alert covers the discount too
         }
         if (wantDeals && (best.discountPct ?? 0) >= dealPct) {
-          const last = lastDeal.get(t.id)
-          const fresh = !last || best.price < last.price || Date.now() - last.at > DEAL_QUIET_MS
-          if (!fresh) continue
+          if (!isFresh('price_deal', t.id, best.price)) continue
           alerts.push({
             user_id: userId,
             title_id: t.id,
             kind: 'price_deal',
             message: `${best.discountPct}% off: ${t.title} — ${amount} on ${where}`,
-            payload: firstDeals ? { ...payload, seed: true } : payload,
-            dedup_key: `deal:${t.id}:${best.price}:${new Date().toISOString().slice(0, 10)}`,
-            ...(firstDeals ? { read_at: new Date().toISOString() } : {}),
+            payload,
+            dedup_key: `deal:${t.id}:${best.price}:${day}`,
           })
         }
       }
@@ -496,6 +509,15 @@ serve(async (req) => {
     }
     await db.from('profiles').update({ daily_checked_at: nowIso }).eq('user_id', userId)
     usersDone++
+  }
+
+  // Save what this run saw, once every user has had their alerts. If the run ran out of time, the next run finds the
+  // same changes again (dedup keys keep users who already got them from getting them twice).
+  if (usersDone === users.length) {
+    const pending = [...seenUpdates]
+    for (let i = 0; i < pending.length; i += 20) {
+      await Promise.all(pending.slice(i, i + 20).map(([id, seen]) => db.from('titles').update({ release_seen: seen }).eq('id', id)))
+    }
   }
 
   const summary = {

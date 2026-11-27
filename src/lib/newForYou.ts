@@ -125,8 +125,8 @@ export function newForYou(items: UserItem[], notifications: Notification[], sinc
     const item = byTitle.get(n.titleId)
     const r = fromNotification(n)
     if (!item || !r) continue
-    // A season premiere alert goes once that season's first episode is marked.
-    const season = Number(n.message.match(/^Season (\d+) premieres today/)?.[1])
+    // A premiere alert goes once that season's first episode is marked (a series premiere: S1 E1).
+    const season = n.kind === 'release_day' ? (n.message.startsWith('Premieres today') ? 1 : Number(n.message.match(/^Season (\d+) premieres today/)?.[1])) : 0
     if (season && reached(item, season, 1)) continue
     offer({ item, ...r, at: n.createdAt })
   }

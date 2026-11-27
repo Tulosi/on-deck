@@ -81,7 +81,8 @@ export function upcomingEvents(t: ReleaseInput, today: string): ReleaseEvent[] {
   const rawPrecision = typeof d.release_precision === 'string' && PRECISIONS.has(d.release_precision) ? d.release_precision : 'day'
   const precision = (t.releaseDate ? rawPrecision : 'tbd') as Precision
   const unreleasedStatus = typeof d.status === 'string' && UNRELEASED_STATUS.has(d.status)
-  const preRelease = t.releaseDate ? t.releaseDate >= today || (precision !== 'day' && unreleasedStatus) : unreleasedStatus
+  // A rough date counts until its period is over ("Q4 2026" → Dec 31), whatever day the source used as a stand-in.
+  const preRelease = t.releaseDate ? periodEnd(t.releaseDate, precision) >= today || (precision !== 'day' && unreleasedStatus) : unreleasedStatus
   if (preRelease) {
     out.push({
       kind: t.mediaType === 'tv' ? 'premiere' : 'release',

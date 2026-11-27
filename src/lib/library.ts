@@ -656,14 +656,15 @@ const statusMovesTried = new Set<string>()
 /**
  * Shows move between statuses by themselves as episodes air (Mount once: AppShell):
  *  - In Progress → Caught up: every aired episode watched, and the show is ongoing.
+ *  - In Progress → Watched: every episode watched, and the show has ended.
  *  - Caught up → In Progress: a new episode has aired (so it's back in Continue).
  *  - Caught up → Watched: the show has ended and you'd watched it all.
  *  - Watched → Caught up: an ongoing show marked Watched (shows only use Watched once they've ended).
  *  - Watched → In Progress: a show you'd finished got new episodes (renewal).
  * Dropped and Wanted shows are never touched.
  *
- * Games: Waiting for 1.0 → Want to play once the game is out of Early Access (its 1.0 is out), with Undo. The
- * dates from playing it in Early Access are kept.
+ * Games: Waiting for 1.0 → Playing it (if you played it in Early Access) or Want to play, once the game is out of
+ * Early Access (its 1.0 is out), with Undo. The dates from playing it in Early Access are kept.
  */
 export function useRenewalCheck() {
   const { items, isSample, fresh } = useItems()
@@ -680,17 +681,20 @@ export function useRenewalCheck() {
         if (statusMovesTried.has(key) || keptWaiting().includes(item.id)) continue
         statusMovesTried.add(key)
         const dates = { startedAt: item.startedAt ?? null, completedAt: item.completedAt ?? null, stalledAt: item.stalledAt ?? null }
-        void update(item, { progress: 'wanted', dates })
+        // Played it in Early Access (Steam play time or a start date): back to Playing it. Otherwise Want to play.
+        const played = (item.steamPlaytimeMinutes ?? 0) > 0 || !!item.startedAt
+        const to: Progress = played ? 'in_progress' : 'wanted'
+        void update(item, { progress: to, dates })
           .then(() =>
             toast({
-              message: `${item.title.title} is out of Early Access, so it’s back on Want to play`,
+              message: `${item.title.title} is out of Early Access, so it’s back on ${played ? 'Playing it' : 'Want to play'}`,
               key: item.id,
               duration: 10_000,
               action: {
                 label: 'Undo',
                 onClick: () => {
                   keepWaiting(item.id)
-                  void update({ ...item, progress: 'wanted' }, { progress: 'caught_up', dates }).catch(() => undefined)
+                  void update({ ...item, progress: to }, { progress: 'caught_up', dates }).catch(() => undefined)
                 },
               },
             }),
@@ -703,6 +707,8 @@ export function useRenewalCheck() {
       const ongoing = isOngoing(item)
       let next: Progress | null = null
       if (item.progress === 'in_progress' && done && ongoing) next = 'caught_up'
+      // Watched the last episode of a show that has ended (by hand; Plex sync already does this).
+      else if (item.progress === 'in_progress' && done && !ongoing) next = 'completed'
       else if (item.progress === 'caught_up' && !done && seasonsOf(item).length > 0) next = 'in_progress'
       else if (item.progress === 'caught_up' && done && !ongoing) next = 'completed'
       else if (item.progress === 'completed' && ongoing && done) next = 'caught_up'

@@ -40,10 +40,20 @@ export function firstUnaired(item: UserItem): { season: number; episode: number 
     const today = todayIso()
     const i = dates.air_dates.findIndex((a) => !a || a > today)
     if (i < 0) {
-      // The whole airing season is out; anything later hasn't started (or we'd be fetching that season).
-      return next?.season_number != null && next.season_number > dates.season_number
-        ? { season: next.season_number, episode: next.episode_number ?? 1 }
-        : { season: dates.season_number + 1, episode: 1 }
+      // The whole airing season is out. What's after it hasn't started, unless TMDB's last aired episode or your own
+      // progress says a later season has (the stored dates can be an older season's until the next refresh).
+      const after =
+        next?.season_number != null && next.season_number > dates.season_number
+          ? { season: next.season_number, episode: next.episode_number ?? 1 }
+          : { season: dates.season_number + 1, episode: 1 }
+      const last = d.last_episode_to_air as Ep | null | undefined
+      for (const at of [last?.season_number != null && last.episode_number != null ? { season: last.season_number, episode: last.episode_number } : null, item.tvProgress]) {
+        if (at && (at.season > after.season || (at.season === after.season && at.episode >= after.episode))) {
+          after.season = at.season
+          after.episode = at.episode + 1
+        }
+      }
+      return after
     }
     const at = item.tvProgress
     // Your progress still wins if it's ahead of the dates (proof it's out).

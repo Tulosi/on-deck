@@ -73,21 +73,31 @@ function Overview({ text, tagline, lines, className }: { text?: string; tagline?
   )
 }
 
+interface Chip {
+  label: string
+  value: string
+  /** Where the score comes from: that site's reviews for this title. */
+  href?: string
+}
+
 function ScoreChips({ title }: { title: Title }) {
   const r = title.ratings
-  const chips = r
+  const imdb = title.imdbId ? `https://www.imdb.com/title/${encodeURIComponent(title.imdbId)}/reviews/` : undefined
+  // No Rotten Tomatoes page address is stored, so this opens its search for the title (the top result is the page).
+  const rt = `https://www.rottentomatoes.com/search?search=${encodeURIComponent(title.title)}`
+  const chips: Chip[] = r
     ? [
         // Games: Steam review % first. Books: Hardcover's average (out of 5).
         title.mediaType === 'game' && title.score?.label === 'Steam' && { label: 'Steam reviews', value: title.score.value },
         title.mediaType === 'book' && title.score?.label === 'Hardcover' && { label: 'Hardcover', value: `${title.score.value} / 5` },
-        r.imdb && { label: 'IMDb', value: r.imdb },
-        r.rottenTomatoes && { label: 'Rotten Tomatoes', value: r.rottenTomatoes },
-        r.rtAudience && { label: 'RT Audience', value: r.rtAudience },
+        r.imdb && { label: 'IMDb', value: r.imdb, href: imdb },
+        r.rottenTomatoes && { label: 'Rotten Tomatoes', value: r.rottenTomatoes, href: rt },
+        r.rtAudience && { label: 'RT Audience', value: r.rtAudience, href: rt },
         // Metacritic only for games; never shown for movies/TV.
         title.mediaType === 'game' && r.metacritic && { label: 'Metacritic', value: r.metacritic },
         // TMDB only when nothing better exists.
         !r.imdb && r.tmdb != null && { label: 'TMDB', value: r.tmdb.toFixed(1) },
-      ].filter((c): c is { label: string; value: string } => !!c)
+      ].filter((c): c is Chip => !!c)
     : title.score
       ? [title.score]
       : []
@@ -99,15 +109,31 @@ function ScoreChips({ title }: { title: Title }) {
   }
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {chips.map((c) => (
-        <span
-          key={c.label}
-          className="flex items-baseline gap-1.5 rounded-md border border-line bg-surface/80 px-2 py-1 font-mono text-xs backdrop-blur"
-        >
-          <span className="text-muted">{c.label}</span>
-          <span className="font-semibold text-fg">{c.value}</span>
-        </span>
-      ))}
+      {chips.map((c) => {
+        const inner = (
+          <>
+            <span className="text-muted">{c.label}</span>
+            <span className="font-semibold text-fg">{c.value}</span>
+          </>
+        )
+        const cls = 'flex items-baseline gap-1.5 rounded-md border border-line bg-surface/80 px-2 py-1 font-mono text-xs backdrop-blur'
+        return c.href ? (
+          <a
+            key={c.label}
+            href={c.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`${c.label} reviews (opens in a new tab)`}
+            className={`${cls} transition-colors hover:border-fg/40 hover:bg-surface`}
+          >
+            {inner}
+          </a>
+        ) : (
+          <span key={c.label} className={cls}>
+            {inner}
+          </span>
+        )
+      })}
     </div>
   )
 }

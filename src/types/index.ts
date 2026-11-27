@@ -28,6 +28,8 @@ export interface Title {
   details?: Record<string, unknown>
   /** Games on Steam: the store app id (for Open in Steam). */
   steamAppId?: number
+  /** Movies / TV: IMDb id ("tt0133093"), for links to IMDb. */
+  imdbId?: string
   /** All known review scores (the poster shows only `score`). */
   ratings?: {
     imdb?: string

@@ -65,7 +65,7 @@ alert: that season's first episode); other episode marks, status changes and Ple
 **Movies, games and books** leave once you act on them after the news (status change, Steam play: anything that
 stamps `last_activity_at`). Built from the daily
 job's alerts plus new episodes, worked out from each show's last aired episode (`metadata.last_episode_to_air`).
-**Clear** empties the row and is saved (`profiles.last_seen_home_at` now means "cleared at"); news after that
+**Dismiss** under a card takes that title off the row (with Undo), saved in `profiles.new_dismissed` as { item id: when }; it comes back only with news dated after that. **Clear all** empties the row and is saved (`profiles.last_seen_home_at` now means "cleared at"); news after that
 shows again. Implementation: `src/lib/newForYou.ts`. Every card carries a reason label:
 - **New episodes:** an episode aired for a show you're following (In Progress, or Wanted + caught up).
   Includes renewals that flipped Watched back to In Progress.

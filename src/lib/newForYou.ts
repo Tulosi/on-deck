@@ -8,7 +8,7 @@ import { useAuth } from './auth'
 import { useNotifications, type Notification } from './notifications'
 import { episodeCode, todayIso } from './release'
 import { supabase } from './supabase'
-import { toast } from './toast'
+import { toast, undoable } from './toast'
 import type { UserItem } from '../types'
 
 export interface NewEntry {
@@ -30,12 +30,27 @@ const sinceFrom = (cleared: string | null) => {
   return cleared && cleared > w ? cleared : w
 }
 
+/** Cards dismissed one at a time: user item id → when (ISO). */
+export type Dismissed = Record<string, string>
+
+/** Dismissals still inside the row's window (older ones can't hide anything any more). */
+const prune = (d: Dismissed): Dismissed => {
+  const w = weekAgo()
+  return Object.fromEntries(Object.entries(d).filter(([, at]) => typeof at === 'string' && at > w))
+}
+
+interface Seen {
+  cleared: string | null
+  dismissed: Dismissed
+}
+
 /**
- * The moment "New for you" counts from, plus `clear()` to empty the row (saved to the profile). Read again whenever
- * the app comes back to the front, so a Clear on another device (or before the app was reopened) holds here too.
- * Signed out (sample library), Clear only lasts for this visit.
+ * The moment "New for you" counts from, the cards dismissed one by one, plus `clear()` (Clear all) and `dismiss()`
+ * (one card, with Undo), both saved to the profile. Read again whenever the app comes back to the front, so what you
+ * cleared on another device (or before the app was reopened) holds here too. Signed out (sample library), they only
+ * last for this visit.
  */
-export function useNewSince(): { since: string | null; clear: () => void } {
+export function useNewSince(): { since: string | null; cleared: string | null; dismissed: Dismissed; clear: () => void; dismiss: (item: UserItem) => void } {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const queryKey = ['new-cleared', user?.id ?? null]
@@ -44,31 +59,60 @@ export function useNewSince(): { since: string | null; clear: () => void } {
     enabled: !!user && !!supabase,
     staleTime: 0,
     refetchOnWindowFocus: true,
-    queryFn: async () => {
+    queryFn: async (): Promise<Seen> => {
       // last_seen_home_at now means "row cleared at".
-      const { data, error } = await supabase!.from('profiles').select('last_seen_home_at').eq('user_id', user!.id).maybeSingle()
+      const { data, error } = await supabase!.from('profiles').select('last_seen_home_at, new_dismissed').eq('user_id', user!.id).maybeSingle()
       if (error) throw error
-      return (data?.last_seen_home_at as string | null) ?? null
+      return { cleared: (data?.last_seen_home_at as string | null) ?? null, dismissed: (data?.new_dismissed as Dismissed | null) ?? {} }
     },
   })
+  const current = () => queryClient.getQueryData<Seen>(queryKey) ?? { cleared: null, dismissed: {} }
 
   const clear = () => {
     const at = new Date().toISOString()
-    const prev = queryClient.getQueryData<string | null>(queryKey)
+    const prev = current()
     void (async () => {
       // A read already on its way would put the old time back.
       await queryClient.cancelQueries({ queryKey })
-      queryClient.setQueryData(queryKey, at)
+      queryClient.setQueryData<Seen>(queryKey, { ...current(), cleared: at })
       if (!user || !supabase) return
       const { error } = await supabase.from('profiles').update({ last_seen_home_at: at }).eq('user_id', user.id)
       if (error) {
-        queryClient.setQueryData(queryKey, prev ?? null)
+        queryClient.setQueryData<Seen>(queryKey, { ...current(), cleared: prev.cleared })
         toast({ message: 'Couldn’t clear New for you. Try again.', tone: 'error' })
       }
     })()
   }
+
+  const dismiss = (item: UserItem) => {
+    const at = new Date().toISOString()
+    const set = (fn: (d: Dismissed) => Dismissed) => queryClient.setQueryData<Seen>(queryKey, (s) => ({ ...(s ?? { cleared: null, dismissed: {} }), dismissed: fn(s?.dismissed ?? {}) }))
+    undoable({
+      message: `${item.title.title} removed from New for you`,
+      key: `new:${item.id}`,
+      hide: () => {
+        void queryClient.cancelQueries({ queryKey })
+        set((d) => ({ ...d, [item.id]: at }))
+      },
+      commit: async () => {
+        if (!user || !supabase) return
+        // Merge into what's saved now, so a dismissal from another device (or one still waiting on its Undo) isn't lost.
+        const { data, error } = await supabase.from('profiles').select('new_dismissed').eq('user_id', user.id).maybeSingle()
+        if (error) throw error
+        const next = prune({ ...((data?.new_dismissed as Dismissed | null) ?? {}), [item.id]: at })
+        const { error: e2 } = await supabase.from('profiles').update({ new_dismissed: next }).eq('user_id', user.id)
+        if (e2) throw e2
+      },
+      restore: () =>
+        set((d) => {
+          const { [item.id]: _, ...rest } = d
+          return rest
+        }),
+    })
+  }
+
   const loaded = q.data !== undefined || q.isError
-  return { since: loaded ? sinceFrom(q.data ?? null) : null, clear }
+  return { since: loaded ? sinceFrom(q.data?.cleared ?? null) : null, cleared: q.data?.cleared ?? null, dismissed: q.data?.dismissed ?? {}, clear, dismiss }
 }
 
 // ── Building the row ──
@@ -108,15 +152,19 @@ function reached(item: UserItem, season: number, episode: number): boolean {
 }
 
 /**
- * Entries for "New for you", strongest first. `since` = 7 days ago or the last Clear (ISO). Dropped titles are left out.
+ * Entries for "New for you", strongest first. `since` = 7 days ago or the last Clear (ISO). Dropped titles are left out,
+ * and so are cards dismissed one by one (`dismissed`) until there's news dated after the dismissal.
  * New episodes: shows In Progress, or Wanted and caught up, whose last aired episode is after `since`.
  * Shows: a card goes only once that episode is marked watched (a season premiere alert: that season's first
  * episode). Other titles: once you've acted on them after the news (status change, Steam play: last activity).
  */
-export function newForYou(items: UserItem[], notifications: Notification[], since: string): NewEntry[] {
+export function newForYou(items: UserItem[], notifications: Notification[], since: string, dismissed: Dismissed = {}): NewEntry[] {
   const byTitle = new Map(items.filter((i) => i.progress !== 'dropped').map((i) => [i.title.id, i]))
   const best = new Map<string, NewEntry>()
   const offer = (e: NewEntry) => {
+    // Dismissed on its own: only news dated after that brings it back.
+    const gone = dismissed[e.item.id]
+    if (gone && e.at <= gone) return
     // Shows leave only when that episode is marked (checked where the entry is made); other titles on any activity.
     if (e.item.title.mediaType !== 'tv' && e.item.lastActivityAt && e.item.lastActivityAt > e.at) return
     const cur = best.get(e.item.id)
@@ -162,11 +210,17 @@ export function newForYou(items: UserItem[], notifications: Notification[], sinc
 
 /** Hook for Home: entries for the given (type-filtered) items. */
 export function useNewForYou(items: UserItem[], sample = false) {
-  const { since, clear } = useNewSince()
+  const { since, cleared, dismissed, clear, dismiss } = useNewSince()
   const { data: notifications = [] } = useNotifications()
-  // The sample library has no notifications, so it shows a fixed pair until Clear (signed out, Clear sets `since`).
-  const entries = sample ? (since ? [] : sampleNewForYou(items)) : since ? newForYou(items, notifications, since) : []
-  return { entries, clear, since }
+  // The sample library has no notifications, so it shows a fixed pair until Clear all.
+  const entries = sample
+    ? cleared
+      ? []
+      : sampleNewForYou(items).filter((e) => !dismissed[e.item.id])
+    : since
+      ? newForYou(items, notifications, since, dismissed)
+      : []
+  return { entries, clear, dismiss, since }
 }
 
 /** Two believable "new for you" reasons from the sample titles, so the sandbox shows the row. */

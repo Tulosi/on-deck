@@ -107,9 +107,20 @@ export function Home() {
           subline={(item) => freshById.get(item.id)?.label}
           action={
             <button type="button" onClick={fresh.clear} className="hit text-xs text-muted hover:text-fg">
-              Clear
+              Clear all
             </button>
           }
+          footer={(item) => (
+            <button
+              type="button"
+              onClick={() => fresh.dismiss(item)}
+              aria-label={`Dismiss ${item.title.title} from New for you`}
+              title="Remove from this row until there’s more news"
+              className="hit mt-1.5 text-xs text-muted hover:text-fg"
+            >
+              Dismiss
+            </button>
+          )}
         />
         <PosterRow
           inset

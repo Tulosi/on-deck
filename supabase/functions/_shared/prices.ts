@@ -4,7 +4,8 @@
 //  - Other sources (a store selling a Steam key, or a key shop) only appear when strictly cheaper than Steam.
 //    On a tie, Steam wins.
 //  - Discounts are measured against Steam's full price; "historical low" compares each price with its own
-//    source's lowest-ever.
+//    source's lowest-ever, and only counts when the price is also below Steam's full price. A new release at full
+//    price is at its lowest-ever too, but that isn't a deal (no low badge, no Deals row, no low-price alert).
 
 export interface PriceOption {
   kind: 'steam' | 'official' | 'keyshop'
@@ -17,6 +18,10 @@ export interface PriceOption {
   shop: string
 }
 
+/** At its lowest-ever price and actually discounted (see the header). */
+const isLow = (price: number, low: number | null | undefined, discountPct: number | null) =>
+  low != null && price <= low && (discountPct ?? 0) > 0
+
 export function discountVsSteam(price: number, steamRegular: number | null): number | null {
   if (!steamRegular || steamRegular <= 0 || price >= steamRegular) return null
   return Math.round((1 - price / steamRegular) * 100)
@@ -28,12 +33,13 @@ export function discountVsSteam(price: number, steamRegular: number | null): num
  */
 export function priceOptions(p: GamePrice, steamUrl: string | null = null): PriceOption[] {
   const out: PriceOption[] = []
+  const steamPct = p.steam ? discountVsSteam(p.steam.price, p.steamRegular) : null
   const steam = p.steam
     ? {
         kind: 'steam' as const,
         price: p.steam.price,
-        discountPct: discountVsSteam(p.steam.price, p.steamRegular),
-        atLow: p.steam.low != null && p.steam.price <= p.steam.low,
+        discountPct: steamPct,
+        atLow: isLow(p.steam.price, p.steam.low, steamPct),
         url: steamUrl,
         shop: 'Steam',
       }
@@ -45,7 +51,7 @@ export function priceOptions(p: GamePrice, steamUrl: string | null = null): Pric
       kind: 'official',
       price: p.official.price,
       discountPct: discountVsSteam(p.official.price, p.steamRegular),
-      atLow: p.official.low != null && p.official.price <= p.official.low,
+      atLow: isLow(p.official.price, p.official.low, discountVsSteam(p.official.price, p.steamRegular)),
       url: p.official.url,
       shop: p.official.shop ?? 'Steam key store',
     })
@@ -55,7 +61,7 @@ export function priceOptions(p: GamePrice, steamUrl: string | null = null): Pric
       kind: 'keyshop',
       price: p.keyshop.price,
       discountPct: discountVsSteam(p.keyshop.price, p.steamRegular),
-      atLow: p.keyshop.low != null && p.keyshop.price <= p.keyshop.low,
+      atLow: isLow(p.keyshop.price, p.keyshop.low, discountVsSteam(p.keyshop.price, p.steamRegular)),
       url: p.keyshop.url,
       shop: 'Key shops',
     })

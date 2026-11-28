@@ -63,7 +63,9 @@ than Steam**, and Steam wins ties.
 
 - **Discount %** is always measured against Steam's full price.
 - **Historical low:** each row is compared with its own source's lowest-ever (Steam's own low, the lowest
-  among Steam-key stores, or gg.deals' key-shop low).
+  among Steam-key stores, or gg.deals' key-shop low), and only counts when the price is also below Steam's full
+  price. A new release at full price is at its lowest-ever too, but isn't a deal: no low badge, no Deals row, no
+  low-price alert.
 - **Free-to-play** games show "Free-To-Play". With no Steam price yet (e.g. pre-order), any alternative is
   shown on its own.
 - **Poster** (unowned games): the cheapest shown option, e.g. `-62% · $14.99 · LOW`, or `FREE-TO-PLAY`.

@@ -15,6 +15,7 @@ import { watchForUpdates } from './lib/pwaUpdate'
 // Home and Library are where most visits land, so they ship in the main bundle.
 // Everything else loads when first opened.
 const TitleDetail = lazyPage(() => import('./pages/TitleDetail'), 'TitleDetail')
+const TitlePreview = lazyPage(() => import('./pages/TitlePreview'), 'TitlePreview')
 const Login = lazyPage(() => import('./pages/Login'), 'Login')
 const ResetPassword = lazyPage(() => import('./pages/ResetPassword'), 'ResetPassword')
 const SharedList = lazyPage(() => import('./pages/SharedList'), 'SharedList')
@@ -62,6 +63,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="games" element={<Navigate to="/library?type=game" replace />} />
             <Route path="books" element={<Navigate to="/library?type=book" replace />} />
             <Route path="title/:id" element={<TitleDetail />} />
+            <Route path="preview/:type/:source/:id" element={<TitlePreview />} />
             <Route path="calendar" element={<Waitlist />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="import/:source" element={<ImportPage />} />

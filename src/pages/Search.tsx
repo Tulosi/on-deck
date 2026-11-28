@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePageTitle } from '../lib/usePageTitle'
-import { useDialog } from '../lib/useDialog'
-import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { Loader2, Search as SearchIcon, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
-import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, useSearchTypes, SearchResultsBody, useAdder } from '../components/SearchResults'
+import { isSearchType, ResultRow, SampleSearch, SEARCH_TYPES, saveType, useSearchTypes, SearchResultsBody, useAdder } from '../components/SearchResults'
 import { useAuth } from '../lib/auth'
 import { resultKey, type SearchResult } from '../lib/library'
 import { useDebounced, useSearch, type SearchType } from '../lib/search'
@@ -21,9 +19,7 @@ export function SearchPage() {
   const [text, setText] = useState(params.get('q') ?? '')
   usePageTitle(params.get('q') ? `Search: ${params.get('q')}` : 'Search')
   const query = useDebounced(text.trim(), 350)
-  const [preview, setPreview] = useState<SearchResult | null>(null)
-  const previewPanel = useDialog<HTMLDivElement>(!!preview, () => setPreview(null))
-  const { addStates, add, onDeck, libraryIdOf } = useAdder()
+  const { addStates, add, onDeck, hrefOf } = useAdder()
   const s = useSearch(query, type, 40)
   // "/" or ⌘K / Ctrl+K: this page's box (the top bar doesn't show its own here).
   const box = useRef<HTMLInputElement>(null)
@@ -72,7 +68,7 @@ export function SearchPage() {
       onDeck={onDeck.has(resultKey(r))}
       state={addStates[resultKey(r)]}
       onAdd={() => add(r)}
-      onPreview={() => setPreview(r)}
+      href={hrefOf(r)}
     />
   )
   const current = SEARCH_TYPES.find((t) => t.value === type)!
@@ -145,24 +141,6 @@ export function SearchPage() {
         )}
       </div>
 
-      {preview &&
-        createPortal(
-          <div className="fixed inset-0 z-50 grid grid-cols-1 place-items-center p-4" role="dialog" aria-modal="true" aria-label={preview.title}>
-            <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} aria-hidden="true" />
-            <div ref={previewPanel} tabIndex={-1} className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface shadow-2xl outline-none">
-              <Preview
-                result={preview}
-                added={onDeck.has(resultKey(preview)) || addStates[resultKey(preview)] === 'added'}
-                state={addStates[resultKey(preview)]}
-                libraryId={libraryIdOf.get(resultKey(preview))}
-                onAdd={() => add(preview)}
-                onBack={() => setPreview(null)}
-                onOpen={() => setPreview(null)}
-              />
-            </div>
-          </div>,
-          document.body,
-        )}
     </div>
   )
 }

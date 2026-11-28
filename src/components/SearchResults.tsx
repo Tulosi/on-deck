@@ -3,10 +3,11 @@ import { useState, type ReactNode } from 'react'
 import { useTypeOrder } from '../lib/navLayout'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowLeft, BookOpen, Check, ChevronRight, Film, Gamepad2, Layers, Loader2, Plus, Sparkles, Star, Tv, type LucideIcon } from 'lucide-react'
+import { BookOpen, Check, ChevronRight, Film, Gamepad2, Layers, Loader2, Plus, Sparkles, Tv, type LucideIcon } from 'lucide-react'
 import { resultKey, useAddFromTmdb, useItems, type SearchResult } from '../lib/library'
 import type { SearchSection, SearchType, useSearch } from '../lib/search'
 import { plainError } from '../lib/errors'
+import { resultPreviewPath } from '../lib/preview'
 
 export type AddState = 'adding' | 'added' | { error: string }
 
@@ -54,7 +55,7 @@ export function Cover({ result, className }: { result: SearchResult; className: 
   )
 }
 
-/** Add / Added button, shared by result rows and the preview. */
+/** Add / Added button on result rows. */
 export function AddButton({ added, state, onAdd, large }: { added: boolean; state?: AddState; onAdd: () => void; large?: boolean }) {
   return (
     <button
@@ -84,26 +85,25 @@ export function ResultRow({
   onDeck,
   state,
   onAdd,
-  onPreview,
+  href,
+  onOpen,
 }: {
   result: SearchResult
   onDeck: boolean
   state?: AddState
   onAdd: () => void
-  onPreview: () => void
+  /** Its page: the title page when it's in your library, otherwise the full preview (pages/TitlePreview). */
+  href: string
+  /** Called when the link is followed (the top-bar dropdown closes). */
+  onOpen?: () => void
 }) {
   const TypeIcon = typeIcon(result.mediaType)
   const added = onDeck || state === 'added'
   const credit = result.author ?? result.developer
   return (
     <li className="flex items-center gap-3 px-3 py-2 hover:bg-raised/60">
-      {/* Tap the cover or title for a quick synopsis before adding. */}
-      <button
-        type="button"
-        onClick={onPreview}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        aria-label={`${result.title}: show details`}
-      >
+      {/* Tap the cover or title for its full page (scores, cast, where to watch, prices) before adding. */}
+      <Link to={href} onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={`${result.title}: open its page`}>
         <Cover result={result} className="h-[60px] w-10" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-fg">{result.title}</span>
@@ -118,93 +118,11 @@ export function ResultRow({
           {typeof state === 'object' && <span className="block truncate text-xs text-bad">{state.error}</span>}
         </span>
         <ChevronRight className="size-4 shrink-0 text-faint max-sm:hidden" />
-      </button>
+      </Link>
       <AddButton added={added} state={state} onAdd={onAdd} />
     </li>
   )
 }
-
-/** Short synopsis of a search result, to check it's the right title before adding. */
-export function Preview({
-  result,
-  added,
-  state,
-  libraryId,
-  onAdd,
-  onBack,
-  onOpen,
-}: {
-  result: SearchResult
-  added: boolean
-  state?: AddState
-  libraryId?: string
-  onAdd: () => void
-  onBack: () => void
-  onOpen: () => void
-}) {
-  const [more, setMore] = useState(false)
-  const credit = result.author ?? result.developer
-  const rating =
-    result.rating == null
-      ? null
-      : result.mediaType === 'book'
-        ? `★ ${result.rating.toFixed(1)} / 5 on Hardcover`
-        : result.mediaType === 'game'
-          ? null
-          : `★ ${result.rating.toFixed(1)} / 10 on TMDB`
-  const overview = result.overview?.trim()
-  const long = (overview?.length ?? 0) > 420
-  return (
-    <div className="p-4">
-      <button type="button" onClick={onBack} className="mb-3 flex items-center gap-1.5 text-xs text-muted hover:text-fg">
-        <ArrowLeft className="size-3.5" /> Results
-      </button>
-      <div className="flex gap-4">
-        <Cover result={result} className="h-36 w-24 rounded-md" />
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-base leading-snug font-semibold text-fg">{result.title}</p>
-          <p className="text-xs text-muted">
-            {[typeName(result.mediaType), result.year, result.pages ? `${result.pages} pages` : null].filter(Boolean).join(', ')}
-          </p>
-          {credit && <p className="text-sm text-muted">{result.mediaType === 'book' ? 'by ' : ''}{credit}</p>}
-          {result.series && <p className="text-xs text-faint">{result.series}</p>}
-          {rating && (
-            <p className="flex items-center gap-1 font-mono text-xs text-faint">
-              <Star className="size-3" /> {rating.replace('★ ', '')}
-            </p>
-          )}
-        </div>
-      </div>
-      {overview ? (
-        <div className="mt-4">
-          <p className={clsx('text-sm leading-relaxed whitespace-pre-line text-fg/90', !more && long && 'line-clamp-6')}>{overview}</p>
-          {long && (
-            <button type="button" onClick={() => setMore((m) => !m)} className="mt-1 text-xs text-accent-ink hover:underline">
-              {more ? 'Less' : 'More'}
-            </button>
-          )}
-        </div>
-      ) : (
-        <p className="mt-4 text-sm text-faint">No synopsis available.</p>
-      )}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {libraryId ? (
-          <Link
-            to={`/title/${libraryId}`}
-            onClick={onOpen}
-            className="flex h-10 items-center gap-1.5 rounded-md border border-line px-5 text-sm text-fg hover:border-accent"
-          >
-            <Check className="size-4 text-good" /> In your library. Open it
-          </Link>
-        ) : (
-          <AddButton added={added} state={state} onAdd={onAdd} large />
-        )}
-        {typeof state === 'object' && <p className="text-xs text-bad">{state.error}</p>}
-      </div>
-    </div>
-  )
-}
-
 
 /** Remembers the picked search type (shared by the dropdown and the full page). */
 export function saveType(t: SearchType) {
@@ -232,7 +150,12 @@ export function useAdder() {
       setAddStates((s) => ({ ...s, [key]: { error: plainError(err, 'Couldn’t add that. Try again.') } }))
     }
   }
-  return { addStates, add, onDeck, libraryIdOf }
+  /** Where a result's row goes: its title page if it's yours, otherwise the full preview. */
+  const hrefOf = (r: SearchResult) => {
+    const id = libraryIdOf.get(resultKey(r))
+    return id ? `/title/${id}` : resultPreviewPath(r)
+  }
+  return { addStates, add, onDeck, hrefOf }
 }
 
 /** One labelled block of results (its own loading / error / empty state). */

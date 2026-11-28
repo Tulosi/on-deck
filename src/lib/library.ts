@@ -12,7 +12,7 @@ import { supabase } from './supabase'
 
 // ─── Row shapes (mirror supabase/migrations) ───────────────────────────────
 
-interface TitleRow {
+export interface TitleRow {
   id: string
   media_type: MediaType
   source: string
@@ -171,6 +171,41 @@ function toUserItem(row: ItemRow): UserItem {
   }
 }
 
+/**
+ * A title that isn't in the library yet, shaped like a library item so the title page can show it (TitlePreview).
+ * Its id is not a user item id: nothing may be saved against it.
+ */
+export function previewItem(t: TitleRow): UserItem {
+  const now = new Date().toISOString()
+  return toUserItem({
+    id: `preview:${t.id}`,
+    owned: false,
+    progress: 'wanted',
+    verdict: null,
+    favourite: false,
+    priority: null,
+    notes: null,
+    current_season: null,
+    current_episode: null,
+    plex_sync: true,
+    notify: true,
+    rating_skipped: null,
+    stalled_at: null,
+    archived_at: null,
+    completed_at: null,
+    started_at: null,
+    created_at: now,
+    updated_at: now,
+    last_activity_at: null,
+    snoozed_until: null,
+    past_completions: null,
+    season_overrides: null,
+    steam_playtime_minutes: null,
+    steam_last_played: null,
+    title: t,
+  })
+}
+
 // ─── Reading ───────────────────────────────────────────────────────────────
 
 export const libraryKey = (userId: string | undefined) => ['library', userId]
@@ -212,7 +247,7 @@ function withAvailability(item: UserItem, a: AvailabilityRow | undefined): UserI
   }
 }
 
-function withPrice(item: UserItem, r: PriceRow | undefined): UserItem {
+export function withPrice(item: UserItem, r: PriceRow | undefined): UserItem {
   if (!r || item.title.mediaType !== 'game') return item
   const gamePrice = gamePriceFromRow(r)
   const best = cheapest(gamePrice)
@@ -352,42 +387,55 @@ export async function searchTmdb(query: string, type?: 'movie' | 'tv', limit?: n
   return data.results as SearchResult[]
 }
 
-export function useAddFromTmdb() {
+/** Which function fetches a title's full details (and caches it in `titles`), and what to send it. */
+export function addRequest(r: { mediaType: MediaType; tmdbId?: number; igdbId?: number; steamAppId?: number; hardcoverId?: number }) {
+  return r.mediaType === 'game'
+    ? { fn: 'igdb', body: r.igdbId ? { action: 'add', igdbId: r.igdbId } : { action: 'add', steamAppId: r.steamAppId } }
+    : r.mediaType === 'book'
+      ? { fn: 'hardcover', body: { action: 'add', hardcoverId: r.hardcoverId } }
+      : { fn: 'tmdb', body: { action: 'add', tmdbId: r.tmdbId, mediaType: r.mediaType } }
+}
+
+/** Full details for one title (cached in `titles`, not added to the library). */
+export async function fetchTitle(r: Parameters<typeof addRequest>[0]): Promise<TitleRow> {
+  const { fn, body } = addRequest(r)
+  const { data, error } = await supabase!.functions.invoke(fn, { body })
+  if (error) throw await functionError(error)
+  return data.title as TitleRow
+}
+
+/** Puts a title whose details are already cached into your library, then the background follow-ups. */
+export function useAddTitle() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
-
-  return async (result: SearchResult) => {
-    const { data, error } =
-      result.mediaType === 'game'
-        ? await supabase!.functions.invoke('igdb', {
-            body: result.igdbId ? { action: 'add', igdbId: result.igdbId } : { action: 'add', steamAppId: result.steamAppId },
-          })
-        : result.mediaType === 'book'
-          ? await supabase!.functions.invoke('hardcover', { body: { action: 'add', hardcoverId: result.hardcoverId } })
-          : await supabase!.functions.invoke('tmdb', {
-            body: { action: 'add', tmdbId: result.tmdbId, mediaType: result.mediaType },
-          })
-    if (error) throw await functionError(error)
-
+  return async (titleId: string, mediaType: MediaType) => {
     // Already on deck → do nothing (unique user_id + title_id).
     const { error: insertError } = await supabase!
       .from('user_items')
-      .upsert({ title_id: data.title.id }, { onConflict: 'user_id,title_id', ignoreDuplicates: true })
+      .upsert({ title_id: titleId }, { onConflict: 'user_id,title_id', ignoreDuplicates: true })
     if (insertError) throw insertError
 
     await queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) })
     // Background follow-ups, then refresh the list: where to watch (movies/TV), already owned (games).
-    if (result.mediaType === 'book') return // nothing to follow up for books yet
+    if (mediaType === 'book') return // nothing to follow up for books yet
     const follow =
-      result.mediaType === 'game'
+      mediaType === 'game'
         ? Promise.all([
-            supabase!.functions.invoke('steam', { body: { action: 'owned', titleIds: [data.title.id] } }),
-            refreshPrices({ titleIds: [data.title.id] }),
+            supabase!.functions.invoke('steam', { body: { action: 'owned', titleIds: [titleId] } }),
+            refreshPrices({ titleIds: [titleId] }),
           ])
-        : refreshAvailability({ titleIds: [data.title.id] })
+        : refreshAvailability({ titleIds: [titleId] })
     void Promise.resolve(follow)
       .catch(() => undefined)
       .then(() => queryClient.invalidateQueries({ queryKey: libraryKey(user?.id) }))
+  }
+}
+
+export function useAddFromTmdb() {
+  const addTitle = useAddTitle()
+  return async (result: SearchResult) => {
+    const title = await fetchTitle(result)
+    await addTitle(title.id, result.mediaType)
   }
 }
 

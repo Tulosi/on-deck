@@ -1,5 +1,6 @@
 // Game prices for the user's games in their region (docs/SPEC.md → Game pricing). Caller must be signed in.
 //   POST { action: 'refresh', titleIds?: string[], before?: ISO timestamp } → { checked, remaining }
+//        titleIds may include up to 3 games that aren't in the caller's library (a title page previewed before adding).
 // Prices are the same for everyone in a region, so they're cached per (title, country) in `game_prices` and
 // shared. Due = not fetched in the last 12 h (or fetched before `before`, after a region change).
 //   Steam:    Steam's own price, read straight from the Steam store for the region (always shown).
@@ -74,6 +75,17 @@ serve(async (req) => {
       itadId: t.external_ids.itad_id ?? null,
       isFree: !!t.metadata?.is_free,
     }))
+
+  // Previewed games (not added yet): priced the same way, a few at a time. Prices are shared per region anyway.
+  const asked = Array.isArray(body.titleIds) ? body.titleIds.map(String) : []
+  const extra = asked.filter((id) => !all.some((g) => g.titleId === id)).slice(0, 3)
+  if (extra.length) {
+    const { data: rows } = await db.from('titles').select('id, media_type, external_ids, metadata').in('id', extra)
+    for (const t of (rows ?? []) as Json[]) {
+      if (t.media_type !== 'game' || !t.external_ids?.steam_appid) continue
+      all.push({ titleId: t.id, steamAppId: String(t.external_ids.steam_appid), itadId: t.external_ids.itad_id ?? null, isFree: !!t.metadata?.is_free })
+    }
+  }
 
   const { data: cached } = await db
     .from('game_prices')

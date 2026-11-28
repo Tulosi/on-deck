@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, ViewTransition } from 'react'
+import { useLayoutEffect, useRef, useState, ViewTransition, type ReactNode } from 'react'
 import { usePageTitle } from '../lib/usePageTitle'
 import { backdropProps, coverProps } from '../lib/images'
 import { posterMorphName } from '../components/PosterCard'
@@ -14,7 +14,7 @@ import { WhereToWatch } from '../components/WhereToWatch'
 import { supportsWhereToWatch } from '../lib/integrations'
 import { useItems, useRemoveItemWithUndo } from '../lib/library'
 import { episodeCode, releaseInfo, releaseLong, tvSchedule, tvScheduleLong } from '../lib/release'
-import { mediaLabels, type MediaType, type Title } from '../types'
+import { mediaLabels, type MediaType, type Title, type UserItem } from '../types'
 
 const typeIcon: Record<MediaType, typeof Film> = { movie: Film, tv: Tv, game: Gamepad2, book: BookOpen }
 
@@ -320,6 +320,29 @@ export function TitleDetail() {
       </div>
     )
 
+  // No "Are you sure?": it's removed with an Undo toast, and only deleted once that runs out.
+  const remove = () => removeItem(item, () => navigate('/', { replace: true }))
+  return <TitleBody item={item} isSample={isSample} morph={morph} onRemove={remove} />
+}
+
+/**
+ * The title page itself. `preview` (a title not added yet, see TitlePreview): what goes where your status and
+ * tracking would be (the Add button), and nothing that belongs to a library item (collections, Remove, archive).
+ */
+export function TitleBody({
+  item,
+  isSample,
+  morph,
+  onRemove,
+  preview,
+}: {
+  item: UserItem
+  isSample: boolean
+  morph: string
+  onRemove?: () => void
+  preview?: ReactNode
+}) {
+  const navigate = useNavigate()
   const { title } = item
   const Icon = typeIcon[title.mediaType]
   const d = (title.details ?? {}) as Record<string, unknown>
@@ -337,9 +360,6 @@ export function TitleDetail() {
     (next.episode_number ?? 1) > 1 &&
     next.air_date >= new Date().toISOString().slice(0, 10)
   const statusText = currentlyAiring ? 'Currently airing' : typeof d.status === 'string' ? d.status : undefined
-
-  // No "Are you sure?": it's removed with an Undo toast, and only deleted once that runs out.
-  const remove = () => removeItem(item, () => navigate('/', { replace: true }))
 
   return (
     <div className="-mx-4 -mt-6 md:-mx-6">
@@ -428,10 +448,14 @@ export function TitleDetail() {
       <div className="mx-auto mt-6 grid max-w-6xl gap-6 px-4 pb-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
         <div className="min-w-0 space-y-5">
           {/* The main action first: status and progress sit right under the title. */}
-          {title.mediaType === 'game' && title.steamAppId && <SteamButtons appId={title.steamAppId} />}
+          {title.mediaType === 'game' && title.steamAppId && <SteamButtons appId={title.steamAppId} launch={!preview} />}
           {isSample && <SampleNote />}
-          <StatusControls item={item} />
-          <TrackingDetails item={item} />
+          {preview ?? (
+            <>
+              <StatusControls item={item} />
+              <TrackingDetails item={item} />
+            </>
+          )}
           <CastRow d={d} />
         </div>
 
@@ -467,12 +491,12 @@ export function TitleDetail() {
           </section>
           {!isSample && supportsWhereToWatch(title.mediaType) && <WhereToWatch title={title} />}
           {title.mediaType === 'game' && (!isSample || item.gamePrice) && <GamePrices item={item} />}
-          {!isSample && <CollectionPicker item={item} />}
-          {!isSample && (
+          {!isSample && !preview && <CollectionPicker item={item} />}
+          {!isSample && onRemove && (
             <div>
               <button
                 type="button"
-                onClick={remove}
+                onClick={onRemove}
                 className="flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm text-muted hover:border-bad hover:text-bad"
               >
                 <Trash2 className="size-4" />

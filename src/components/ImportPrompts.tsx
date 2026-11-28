@@ -7,6 +7,7 @@ import { usePlexStatus, useProfile } from '../lib/integrations'
 import { fetchPlexRecent, fetchSkips, fetchSteamNew, importCandidates, markSteamSeen, skipCandidate, type Candidate, type CandidateList } from '../lib/importer'
 import { plainError } from '../lib/errors'
 import { POSTER_W } from '../lib/posterWidth'
+import { previewPath } from '../lib/preview'
 
 const PLEX_SHOWN = 5
 const small = 'flex h-7 flex-1 items-center justify-center gap-1 rounded-md text-xs disabled:opacity-50'
@@ -28,7 +29,12 @@ function PromptTile({
   const Icon = c.mediaType === 'game' ? Gamepad2 : Tv
   return (
     <div className={POSTER_W}>
-      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-raised">
+      {/* The full title page, to check it out before adding. */}
+      <Link
+        to={previewPath(c.mediaType, c.source, c.sourceId)}
+        aria-label={`${c.title}: open its page`}
+        className="relative block aspect-[2/3] overflow-hidden rounded-lg bg-raised"
+      >
         {c.poster ? (
           <img src={c.poster} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
@@ -37,7 +43,7 @@ function PromptTile({
             {c.title}
           </div>
         )}
-      </div>
+      </Link>
       <p className="mt-1.5 truncate text-sm font-medium text-fg" title={c.title}>
         {c.title}
       </p>

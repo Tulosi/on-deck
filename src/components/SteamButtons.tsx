@@ -3,9 +3,10 @@ import { steamLaunch, steamStore } from '../lib/steam'
 import { SteamIcon } from './SteamIcon'
 
 /** Title page, Steam games: the store listing (in the browser) and, on a computer, Launch in the Steam app. */
-export function SteamButtons({ appId }: { appId: number }) {
+/** `launch: false` leaves out Launch (a game you haven't added, so likely don't own). */
+export function SteamButtons({ appId, launch: canLaunch = true }: { appId: number; launch?: boolean }) {
   const store = steamStore(appId)
-  const launch = steamLaunch(appId)
+  const launch = canLaunch ? steamLaunch(appId) : null
   return (
     <div className="flex flex-wrap gap-2">
       <a

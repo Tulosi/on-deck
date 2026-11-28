@@ -6,7 +6,7 @@ import { Loader2, Maximize2, Search, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { resultKey, type SearchResult } from '../lib/library'
 import { useDebounced, useSearch, type SearchType } from '../lib/search'
-import { isSearchType, Preview, ResultRow, SampleSearch, SEARCH_TYPES, saveType, useSearchTypes, savedType, SearchResultsBody, useAdder } from './SearchResults'
+import { isSearchType, ResultRow, SampleSearch, SEARCH_TYPES, saveType, useSearchTypes, savedType, SearchResultsBody, useAdder } from './SearchResults'
 
 /** Full search page URL for a query and type. */
 export const fullSearchHref = (q: string, type: SearchType) =>
@@ -22,11 +22,10 @@ export function SearchBox() {
   const navigate = useNavigate()
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
-  const [preview, setPreview] = useState<SearchResult | null>(null)
   const wrapper = useRef<HTMLDivElement>(null)
   const query = useDebounced(text.trim(), 300)
   const input = useRef<HTMLInputElement>(null)
-  const { addStates, add, onDeck, libraryIdOf } = useAdder()
+  const { addStates, add, onDeck, hrefOf } = useAdder()
 
   // Type: the page's type filter when it has one (Home, Library and Calendar use ?type=; no ?type there means All
   // types, so search covers everything too), otherwise your last pick.
@@ -54,7 +53,6 @@ export function SearchBox() {
 
   const close = () => {
     setOpen(false)
-    setPreview(null)
     input.current?.blur()
   }
   const openFull = () => {
@@ -66,18 +64,12 @@ export function SearchBox() {
   // Close on a click / tap outside, and whenever you go to another page.
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!wrapper.current?.contains(e.target as Node)) {
-        setOpen(false)
-        setPreview(null)
-      }
+      if (!wrapper.current?.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [])
-  useEffect(() => {
-    setOpen(false)
-    setPreview(null)
-  }, [pathname])
+  useEffect(() => setOpen(false), [pathname])
   // "/" or ⌘K / Ctrl+K from anywhere jumps to search (not while you're typing in another field).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -94,8 +86,6 @@ export function SearchBox() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
-  // A new search goes back to the results.
-  useEffect(() => setPreview(null), [query, type])
 
   const hasQuery = text.trim().length >= 2
   const row = (r: SearchResult) => (
@@ -105,7 +95,8 @@ export function SearchBox() {
       onDeck={onDeck.has(resultKey(r))}
       state={addStates[resultKey(r)]}
       onAdd={() => add(r)}
-      onPreview={() => setPreview(r)}
+      href={hrefOf(r)}
+      onOpen={close}
     />
   )
 
@@ -115,10 +106,7 @@ export function SearchBox() {
       className="relative max-w-md flex-1"
       // Focus moving elsewhere (Tab past the end, a shortcut opening a dialog) closes the results; the text stays.
       onBlur={(e) => {
-        if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) {
-          setOpen(false)
-          setPreview(null)
-        }
+        if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setOpen(false)
       }}
     >
       <label className="flex h-11 items-center gap-2 rounded-md sm:h-9 border border-line bg-surface px-3 text-sm text-muted focus-within:border-accent">
@@ -141,8 +129,7 @@ export function SearchBox() {
               return
             }
             if (e.key !== 'Escape') return
-            if (preview) setPreview(null)
-            else close()
+            close()
           }}
           placeholder={current.placeholder}
           aria-label={current.placeholder.replace('…', '')}
@@ -217,16 +204,6 @@ export function SearchBox() {
 
           {!user ? (
             <SampleSearch text={text} type={type} onOpen={close} onAll={() => setType('all')} />
-          ) : preview ? (
-            <Preview
-              result={preview}
-              added={onDeck.has(resultKey(preview)) || addStates[resultKey(preview)] === 'added'}
-              state={addStates[resultKey(preview)]}
-              libraryId={libraryIdOf.get(resultKey(preview))}
-              onAdd={() => add(preview)}
-              onBack={() => setPreview(null)}
-              onOpen={close}
-            />
           ) : !hasQuery ? (
             <p className="px-4 py-4 text-sm text-faint">
               Type a title to search {current.label === 'All' ? 'everything' : current.label.toLowerCase()}. Add a year
@@ -247,7 +224,7 @@ export function SearchBox() {
                     ? 'From TMDB, IGDB and Hardcover'
                     : 'From TMDB'}
             </p>
-            {user && hasQuery && !preview && (
+            {user && hasQuery && (
               <button type="button" onClick={openFull} className="flex items-center gap-1.5 text-xs text-accent-ink hover:underline">
                 <Maximize2 className="size-3.5" /> Open full results
               </button>
